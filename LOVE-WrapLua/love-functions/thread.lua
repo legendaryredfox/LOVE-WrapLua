@@ -24,3 +24,26 @@ function love.thread.getChannel(name)
     channels[name] = channel
     return channel
 end
+
+function love.thread.newThread(func)
+  local thread = {
+      running = false,
+      func = func,
+      start = function(self)
+          self.running = true
+          coroutine.wrap(function()
+              self.func()
+              self.running = false
+          end)()
+      end,
+      isRunning = function(self)
+          return self.running
+      end,
+      wait = function(self)
+          -- while self.running do
+          --     -- Yield or delay here if needed
+          -- end
+      end
+  }
+  return thread
+end

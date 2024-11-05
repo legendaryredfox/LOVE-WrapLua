@@ -1,5 +1,6 @@
 if lv1lua.isPSP then
-    lv1lua.saveloc = "ms0:/PSP/GAME/"..lv1lua.loveconf.identity.."/savedata/"
+    --lv1lua.saveloc = "ms0:/PSP/GAME/"..lv1lua.loveconf.identity.."/savedata/"
+    lv1lua.saveloc = "ms0:/PSP/GAME/LOVE-WrapLua/savedata/"
 elseif lv1lua.mode == "PS3" then
     lv1lua.saveloc = lv1lua.dataloc.."savedata/"
 else
@@ -23,7 +24,7 @@ function love.filesystem.read(file)
     elseif lv1lua.exists(lv1lua.dataloc.."game/"..file) then
         file = lv1lua.dataloc.."game/"..file
     end
-    
+
     local openfile = io.open(file, "r")
     local contents
     if openfile then

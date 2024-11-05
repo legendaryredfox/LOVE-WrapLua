@@ -25,25 +25,30 @@ function love.thread.getChannel(name)
     return channel
 end
 
-function love.thread.newThread(func)
-  local thread = {
-      running = false,
-      func = func,
-      start = function(self)
-          self.running = true
-          coroutine.wrap(function()
-              self.func()
-              self.running = false
-          end)()
-      end,
-      isRunning = function(self)
-          return self.running
-      end,
-      wait = function(self)
-          -- while self.running do
-          --     -- Yield or delay here if needed
-          -- end
-      end
-  }
-  return thread
+-- Add to love.thread module
+function love.thread.newThread(filename)
+    local thread = {
+        running = false,
+        start = function(self)
+            self.running = true
+            local chunk, err = love.filesystem.load(filename)
+            if not chunk then
+                error("Failed to load thread file: " .. err)
+            end
+
+            coroutine.wrap(function()
+                chunk() 
+                self.running = false
+            end)()
+        end,
+        isRunning = function(self)
+            return self.running
+        end,
+        wait = function(self)
+            -- while self.running do
+            --     -- Small sleep or coroutine yield could go here if necessary
+            -- end
+        end
+    }
+    return thread
 end

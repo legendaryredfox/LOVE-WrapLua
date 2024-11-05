@@ -2,6 +2,7 @@
 
 # Disclaimers
 
+- Shoutout to the [OneLua](http://onelua.x10.mx/) team, for their contributions for the development community for these amazing plaforms
 - I focus on the PSP platform. It should work just fine with any other of the platforms originally intended, but you may have to fiddle with the code, specially the `filesystem.lua` file
 - I'm currently using Lua 5.4 and LÖVE 11.5 (Mysterious Mysteries)
 - This project was NOT developed with clean code/best practices in mind. If  it works, it works.

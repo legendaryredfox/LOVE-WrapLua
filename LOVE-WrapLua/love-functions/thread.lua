@@ -1,4 +1,3 @@
--- Initialize the thread module
 love.thread = {}
 local channels = {}
 
@@ -37,7 +36,7 @@ function love.thread.newThread(filename)
             end
 
             coroutine.wrap(function()
-                chunk() 
+                chunk()
                 self.running = false
             end)()
         end,

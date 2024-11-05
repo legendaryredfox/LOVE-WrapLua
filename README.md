@@ -1,3 +1,10 @@
+# Disclaimers
+
+- This project was NOT developed with clean code/best practices in mind, if it works, it works.
+- Original project by [LukeZGD](https://github.com/LukeZGD/LOVE-WrapLua). This project appears to be archived, so I'm trying to implement features that may be useful for me or other people
+- I'm not an experienced lua programmer, keep that in mind when using this code
+- Feel free to open issues with features you'd like to see implemented. Just please, for all that is good and sacred, write a thorough description.
+
 # LOVE-WrapLua
 
 A small and simple LOVE2D wrapper for OneLua, lpp-vita, and Lua Player PS3

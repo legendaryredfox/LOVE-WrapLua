@@ -21,6 +21,8 @@ love.system = {}
 love.filesystem = {}
 love.keyboard = {}
 
+require("LOVE-WrapLua/love-functions/thread")
+
 --for checking conf files
 function lv1lua.exists(file)
     if lv1lua.mode == "OneLua" then

@@ -1,3 +1,6 @@
+buttons = buttons or {}
+buttons.held = buttons.held or {}
+
 function love.keyboard.isDown(key)
     if key == lv1lua.keyset[1] then
         key = "circle"

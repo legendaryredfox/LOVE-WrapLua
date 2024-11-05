@@ -1,3 +1,5 @@
+![Greetings](images/warudo.png)
+
 # Disclaimers
 
 - This project was NOT developed with clean code/best practices in mind, if it works, it works.

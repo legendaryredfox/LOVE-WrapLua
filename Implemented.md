@@ -1,4 +1,13 @@
-# Implemented
+# Implemented - New
+
+## love.thread
+- love.thread.getChannel
+- love.thread.getThread
+- love.thread.getThreads
+- love.thread.newChannel
+- love.thread.newThread
+
+# Implemented - Legacy
 
 ## Callbacks
 - love.load
@@ -67,7 +76,6 @@
 - Source:isLooping
 - Source:setLooping
 - Source:setVolume
-
 
 # VITA OneLua callbacks
 - onLiveArea

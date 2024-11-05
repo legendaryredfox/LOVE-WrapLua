@@ -1,6 +1,34 @@
 love.thread = {}
 local channels = {}
 
+local function createChannel()
+    local channel = {
+        messages = {},
+    }
+
+    function channel:push(msg)
+        table.insert(self.messages, msg)
+    end
+
+    function channel:pop()
+        return table.remove(self.messages, 1)
+    end
+
+    function channel:peek()
+        return self.messages[1]
+    end
+
+    function channel:clear()
+        self.messages = {}
+    end
+
+    function channel:hasRead()
+        return #self.messages > 0
+    end
+
+    return channel
+end
+
 function love.thread.getChannel(name)
     if channels[name] then
         return channels[name]
@@ -24,7 +52,6 @@ function love.thread.getChannel(name)
     return channel
 end
 
--- Add to love.thread module
 function love.thread.newThread(filename)
     local thread = {
         running = false,
@@ -50,4 +77,23 @@ function love.thread.newThread(filename)
         end
     }
     return thread
+end
+
+function love.thread.getThreads()
+    return threads
+end
+
+function love.thread.newChannel(name)
+    if name then
+        if not channels[name] then
+            channels[name] = createChannel()
+        end
+        return channels[name]
+    else
+        return createChannel()
+    end
+end
+
+function love.thread.getThread(name)
+    return threads[name]
 end

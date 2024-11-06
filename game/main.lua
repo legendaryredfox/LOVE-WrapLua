@@ -7,7 +7,7 @@ function love.load()
   player = {}
   player.x = width / 2
   player.y = height / 2
-  player.speed = 200  -- Adjust speed as needed
+  player.speed = 200
 end
 
 function love.update(dt)
@@ -28,7 +28,7 @@ function love.update(dt)
   player.x = math.max(0, math.min(player.x, width))
   player.y = math.max(0, math.min(player.y, height))
 
-  love.graphics.print(greeting, width / 16, 5)
+  love.graphics.printf(greeting, width / 16, 5)
 end
 
 function love.draw()

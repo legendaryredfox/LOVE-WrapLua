@@ -91,6 +91,39 @@ function love.graphics.print(text,x,y)
     end
 end
 
+local CHAR_WIDTH = 8
+local LINE_HEIGHT = 16
+
+function love.graphics.printf(text, x, y, width, align)
+    align = align or "left"
+    width = width or 480
+
+    local lines = {}
+    local function wrapText(text, maxChars)
+        local currentLine = ""
+        for word in text:gmatch("%S+") do
+            if #currentLine + #word + 1 > maxChars then
+                table.insert(lines, currentLine)
+                currentLine = word
+            else
+                currentLine = currentLine == "" and word or (currentLine .. " " .. word)
+            end
+        end
+        table.insert(lines, currentLine)
+    end
+    wrapText(text, math.floor(width / CHAR_WIDTH))  
+    for i, line in ipairs(lines) do
+        local offsetX = 0
+        if align == "center" then
+            offsetX = (width - #line * CHAR_WIDTH) / 2
+        elseif align == "right" then
+            offsetX = width - #line * CHAR_WIDTH
+        end
+
+        love.graphics.print(line, x + offsetX, y + (i - 1) * LINE_HEIGHT)
+    end
+end
+
 function love.graphics.setColor(r,g,b,a)
     if not a then a = 255 end
     lv1lua.current.color = color.new(r,g,b,a)

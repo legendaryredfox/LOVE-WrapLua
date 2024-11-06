@@ -28,9 +28,10 @@ function love.update(dt)
   player.x = math.max(0, math.min(player.x, width))
   player.y = math.max(0, math.min(player.y, height))
 
-  love.graphics.printf(greeting, width / 16, 5)
+  
 end
 
 function love.draw()
   love.graphics.circle(player.x, player.y, 100)
+  love.graphics.printf(greeting, width / 16, 5)
 end

@@ -12,11 +12,11 @@ lv1lua.current = {font=defaultfont,color=color.new(255,255,255,255)}
 
 function love.graphics.newImage(filename)
     img = image.load(lv1lua.dataloc.."game/"..filename)
-    
+
     if lv1luaconf.imgscale == true then
         image.scale(img,scale*100)
     end
-    
+
     return img
 end
 
@@ -24,20 +24,20 @@ function love.graphics.draw(drawable,x,y,r,sx,sy)
     if not x then x = 0 end
     if not y then y = 0 end
     if sx and not sy then sy = sx end
-    
+
     --scale 1280x720 to 480x270(psp)
     if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then
         x = x * scale; y = y * scale
     end
-    
+
     if r then
         image.rotate(drawable,(r/math.pi)*180) --radians to degrees
     end
-    
+
     if sx then
         image.resize(drawable,image.getrealw(drawable)*sx,image.getrealh(drawable)*sy)
     end
-    
+
     if drawable then
         image.blit(drawable,x,y,color.a(lv1lua.current.color))
     end
@@ -49,13 +49,13 @@ function love.graphics.newFont(setfont, setsize)
     elseif not setsize then
         setsize = 12
     end
-    
+
     if tonumber(setfont) or lv1lua.isPSP then
         setfont = defaultfont.font
     elseif setfont then
         setfont = font.load(lv1lua.dataloc.."game/"..setfont)
     end
-        
+
     local table = {
         font = setfont;
         size = setsize;
@@ -69,7 +69,7 @@ function love.graphics.setFont(setfont,setsize)
     else
         lv1lua.current.font = defaultfont
     end
-    
+
     if setsize then
         lv1lua.current.font.size = setsize
     end
@@ -79,13 +79,13 @@ function love.graphics.print(text,x,y)
     local fontsize = lv1lua.current.font.size/18.5
     if not x then x = 0 end
     if not y then y = 0 end
-    
+
     --scale 1280x720 to 480x270(psp)
     if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then
         x = x * scale; y = y * scale
         fontsize = fontsize*fontscale
     end
-    
+
     if text then
         screen.print(lv1lua.current.font.font,x,y,text,fontsize,lv1lua.current.color)
     end
@@ -111,7 +111,7 @@ function love.graphics.printf(text, x, y, width, align)
         end
         table.insert(lines, currentLine)
     end
-    wrapText(text, math.floor(width / CHAR_WIDTH))  
+    wrapText(text, math.floor(width / CHAR_WIDTH))
     for i, line in ipairs(lines) do
         local offsetX = 0
         if align == "center" then
@@ -138,7 +138,7 @@ function love.graphics.rectangle(mode, x, y, w, h)
     if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then
         x = x * scale; y = y * scale; w = w * scale; h = h * scale
     end
-    
+
     if mode == "fill" then
         draw.fillrect(x, y, w, h, lv1lua.current.color)
     elseif mode == "line" then
@@ -152,4 +152,29 @@ end
 
 function love.graphics.circle(x,y,radius)
     draw.circle(x,y,radius,lv1lua.current.color,30)
+end
+
+
+function love.graphics.setDefaultFilter(min, mag, anisotropy)
+    --Point/Nearest
+    --Apoint (Not supported from love)
+    --Linear
+    --Alinear (Not supported from love)
+    if(min == "linear") then
+        min = __IMG_FILTER_LINEAR
+    elseif(min == "nearest" or min == "point") then
+        min = __IMG_FILTER_POINT
+    end
+    if(mag == "linear") then
+        mag = __IMG_FILTER_LINEAR
+    elseif(mag == "nearest" or mag == "point") then
+        mag = __IMG_FILTER_POINT
+    end
+    defaultMinificationFilter = min
+    defaultMagnificationFilter = mag
+    anisotropy = (anisotropy == nil) and 0 or 1
+end
+
+function love.graphics.getDefaultFilter()
+    return defaultMinificationFilter, defaultMagnificationFilter, anisotropy
 end

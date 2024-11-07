@@ -1,18 +1,17 @@
--- old graphics.lua for psp compat
+
 local defaultfont
 local scale = 0.375
 local fontscale = 0.6
 
---default print font
 defaultfont = {font=font.load("oneFont.pgf"),size=15}
 font.setdefault(defaultfont.font)
 
---set up stuff
 lv1lua.current = {font=defaultfont,color=color.new(255,255,255,255)}
 
 function love.graphics.newImage(filename)
     img = image.load(lv1lua.dataloc.."game/"..filename)
 
+    --scale 1280x720 to 480x270(psp)
     if lv1luaconf.imgscale == true then
         image.scale(img,scale*100)
     end
@@ -21,27 +20,39 @@ function love.graphics.newImage(filename)
 end
 
 function love.graphics.draw(drawable, x, y, r, sx, sy)
-    if not x then x = 0 end
-    if not y then y = 0 end
+
+    x = x or 0
+    y = y or 0
+
+
     if sx and not sy then sy = sx end
 
-    --scale 1280x720 to 480x270(psp)
-    if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then
-        x = x * scale; y = y * scale
+
+    if lv1luaconf.imgscale or lv1luaconf.resscale then
+        x = x * scale
+        y = y * scale
     end
+
 
     if r then
-        image.rotate(drawable, (r/math.pi) * 180) --radians to degrees
+        local degrees = (r / math.pi) * 180
+        image.rotate(drawable, degrees)
     end
 
-    if sx then
-        image.resize(drawable, image.getrealw(drawable)*sx, image.getrealh(drawable)*sy)
+
+    if sx and sy then
+        local width = image.getrealw(drawable) * sx
+        local height = image.getrealh(drawable) * sy
+        image.resize(drawable, width, height)
     end
+
 
     if drawable then
-        image.blit(drawable, x, y, color.a(lv1lua.current.color))
+        local color_alpha = color.a(lv1lua.current.color) or 255
+        image.blit(drawable, x, y, color_alpha)
     end
 end
+
 
 function love.graphics.newFont(setfont, setsize)
     if tonumber(setfont) then
@@ -80,7 +91,7 @@ function love.graphics.print(text,x,y)
     if not x then x = 0 end
     if not y then y = 0 end
 
-    --scale 1280x720 to 480x270(psp)
+
     if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then
         x = x * scale; y = y * scale
         fontsize = fontsize*fontscale
@@ -177,4 +188,28 @@ end
 
 function love.graphics.getDefaultFilter()
     return defaultMinificationFilter, defaultMagnificationFilter, anisotropy
+end
+
+function love.graphics.newQuad(x, y, width, height, imageWidth, imageHeight)
+    local quad = {
+        x = x or 0,
+        y = y or 0,
+        width = width or 0,
+        height = height or 0,
+        imageWidth = imageWidth or width,
+        imageHeight = imageHeight or height
+    }
+
+    function quad:getViewport()
+        return self.x, self.y, self.width, self.height
+    end
+
+    function quad:setViewport(x, y, width, height)
+        self.x = x or self.x
+        self.y = y or self.y
+        self.width = width or self.width
+        self.height = height or self.height
+    end
+
+    return quad
 end

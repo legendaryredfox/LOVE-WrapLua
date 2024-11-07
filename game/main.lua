@@ -2,23 +2,30 @@ local greeting = 'Hello WAAAAAAAAAAAARUDOOOOOOOOOOOO!!!!!'
 local width = 480
 local height = 272
 
-local desAnim8 = require 'libraries/desAnim8'
 
 local player = {}
 local sprites = {}
 local animations = {}
+local frames = {}
+local currentFrame = 1
+local fps = 5                 -- Frames per second for the animation
+local timeElapsed = 0
+local timePerFrame = 1 / fps  -- Time per frame based on FPS
+local desAnim8 = require("libraries/desAnim8")
+local animation
 
 function love.load()
     love.graphics.setDefaultFilter("nearest", "nearest") -- Best filter for pixel art
 
-    player.animation = desAnim8.new("assets/player_idle.png", 25, 25, 6, 0.15)
+    animation = desAnim8.newAnimation("/assets/player_idle", 6, 5)
 
     player.x = width / 2
     player.y = height / 2
-    player.speed = 200
+    player.speed = 80
 end
 
 function love.update(dt)
+    timeElapsed = timeElapsed + dt
     local isMoving = false
 
     if love.keyboard.isDown("left") then
@@ -46,10 +53,12 @@ function love.update(dt)
     player.x = math.max(0, math.min(player.x, width - 48))
     player.y = math.max(0, math.min(player.y, height - 48))
 
-    player.animation:update(dt)
+    animation:update(dt)
 end
 
 function love.draw()
+    local frame = frames[currentFrame]
     love.graphics.printf(greeting, 0, 5, width, "center")
-    player.animation:draw(player.x, player.y)
+    -- love.graphics.draw(frames[currentFrame], player.x, player.y, nil, nil, nil, 25 / 2, 25/ 2)
+    animation:draw(player.x, player.y, nil, nil, nil)
 end

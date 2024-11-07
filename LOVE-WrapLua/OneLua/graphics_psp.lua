@@ -19,37 +19,42 @@ function love.graphics.newImage(filename)
     return img
 end
 
-function love.graphics.draw(drawable, x, y, r, sx, sy)
-
-    x = x or 0
-    y = y or 0
-
-
+function love.graphics.draw(drawable,x,y,r,sx,sy)
+    if not x then x = 0 end
+    if not y then y = 0 end
     if sx and not sy then sy = sx end
 
-
-    if lv1luaconf.imgscale or lv1luaconf.resscale then
-        x = x * scale
-        y = y * scale
+    --scale 1280x720 to 480x270(psp)
+    if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then
+        x = x * scale; y = y * scale
     end
-
 
     if r then
-        local degrees = (r / math.pi) * 180
-        image.rotate(drawable, degrees)
+        image.rotate(drawable,(r/math.pi)*180) --radians to degrees
     end
 
-
-    if sx and sy then
-        local width = image.getrealw(drawable) * sx
-        local height = image.getrealh(drawable) * sy
-        image.resize(drawable, width, height)
+    if sx then
+        image.resize(drawable,image.getrealw(drawable)*sx,image.getrealh(drawable)*sy)
     end
-
 
     if drawable then
-        local color_alpha = color.a(lv1lua.current.color) or 255
-        image.blit(drawable, x, y, color_alpha)
+        image.blit(drawable,x,y,color.a(lv1lua.current.color))
+    end
+end
+
+function love.graphics.print(text,x,y)
+    local fontsize = lv1lua.current.font.size/18.5
+    if not x then x = 0 end
+    if not y then y = 0 end
+
+    --scale 1280x720 to 480x270(psp)
+    if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then
+        x = x * scale; y = y * scale
+        fontsize = fontsize*fontscale
+    end
+
+    if text then
+        screen.print(lv1lua.current.font.font,x,y,text,fontsize,lv1lua.current.color)
     end
 end
 

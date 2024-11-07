@@ -3,7 +3,7 @@
 local desAnim8 = {}
 desAnim8.__index = desAnim8
 
-function desAnim8.new(imagePath, frameWidth, frameHeight, totalFrames, animationSpeed)
+function desAnim8.new(imagePath, frameWidth, frameHeight, totalFrames, animationSpeed, imageWidth, imageHeight)
     local self = setmetatable({}, desAnim8)
     self.image = love.graphics.newImage(imagePath)
     self.frameWidth = frameWidth
@@ -20,7 +20,7 @@ function desAnim8.new(imagePath, frameWidth, frameHeight, totalFrames, animation
     for i = 0, totalFrames - 1 do
         self.quads[i + 1] = love.graphics.newQuad(
             i * frameWidth, 0, frameWidth, frameHeight,
-            self.image:getDimensions()
+            imageWidth, imageHeight
         )
     end
 
@@ -38,7 +38,7 @@ end
 
 function desAnim8:draw(x, y)
     -- Draw the current frame with flipping
-    love.graphics.draw(self.image, self.quads[self.currentFrame], x, y, 0, self.flipX, self.flipY, self.frameWidth / 2, self.frameHeight / 2)
+    love.graphics.draw(self.image, x, y, 0, self.flipX, self.flipY, self.frameWidth / 2, self.frameHeight / 2)
 end
 
 -- Method to set the flip state

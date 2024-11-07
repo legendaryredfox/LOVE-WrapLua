@@ -20,7 +20,7 @@ function love.graphics.newImage(filename)
     return img
 end
 
-function love.graphics.draw(drawable,x,y,r,sx,sy)
+function love.graphics.draw(drawable, x, y, r, sx, sy)
     if not x then x = 0 end
     if not y then y = 0 end
     if sx and not sy then sy = sx end
@@ -31,15 +31,15 @@ function love.graphics.draw(drawable,x,y,r,sx,sy)
     end
 
     if r then
-        image.rotate(drawable,(r/math.pi)*180) --radians to degrees
+        image.rotate(drawable, (r/math.pi) * 180) --radians to degrees
     end
 
     if sx then
-        image.resize(drawable,image.getrealw(drawable)*sx,image.getrealh(drawable)*sy)
+        image.resize(drawable, image.getrealw(drawable)*sx, image.getrealh(drawable)*sy)
     end
 
     if drawable then
-        image.blit(drawable,x,y,color.a(lv1lua.current.color))
+        image.blit(drawable, x, y, color.a(lv1lua.current.color))
     end
 end
 

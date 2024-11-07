@@ -13,7 +13,7 @@
 - This is a hobby project, stuff will get upgraded whenever I have the time to go over them
 - Most of this code has not been fully tested
 - Most of the testing is carried out using RetroArch
-- Assets used in the sample project are from [Kenney](https://kenney.nl/assets/scribble-dungeons), go show them some love if you can!
+- Assets used in the sample project are from [Kenney](https://kenney.nl/assets/scribble-dungeons) and [game-endeavor](https://game-endeavor.itch.io/mystic-woods), go show them some love if you can!
 
 # LOVE-WrapLua
 

@@ -1,6 +1,6 @@
 local desAnim8 = {
     _VERSION     = 'desAnim8 v0.0.1',
-    _DESCRIPTION = 'An animation library for LÖVE in the PSP platform',
+    _DESCRIPTION = 'An animation library for LÖVE games in the PSP platform',
     _URL         = 'https://github.com/legendaryredfox/desAnim8',
     _THANKS      = [[
         All thanks, recognition and incentives should go to https://github.com/kikito

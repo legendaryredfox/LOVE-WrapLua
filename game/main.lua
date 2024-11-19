@@ -2,10 +2,10 @@ local desAnim8 = require 'libraries.desAnim8'
 
 local screenWidth = 480
 local screenHeight = 272
-local frameDuration = 0.15 -- Duration of each frame in seconds
-local numFrames = 6 -- Number of frames in the animation
-local imageWidth = 288 -- Width of the entire sprite sheet
-local imageHeight = 48 -- Height of the entire sprite sheet
+local frameDuration = 0.15
+local numFrames = 6
+local imageWidth = 288
+local imageHeight = 48
 
 function love.load()
     local sprite = love.graphics.newImage('assets/mystic_woods/sprites/characters/player.png')

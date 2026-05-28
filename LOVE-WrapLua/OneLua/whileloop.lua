@@ -8,6 +8,15 @@ dofile(lv1lua.dataloc.."LOVE-WrapLua/"..lv1lua.mode.."/callbacks.lua")
 
 --Live area will be handled manually
 
+local buttonMap = {
+    circle   = lv1lua.keyset[1],
+    cross    = lv1lua.keyset[2],
+    triangle = lv1lua.keyset[3],
+    square   = lv1lua.keyset[4],
+    l        = lv1lua.keyset[5],
+    r        = lv1lua.keyset[6],
+    select   = "back",
+}
 
 function lv1lua.draw()
     if love.draw then love.draw() end
@@ -28,40 +37,22 @@ end
 function lv1lua.updatecontrols()
     -- buttons.homepopup(0)
     buttons.read()
-    for i=1,#mask do
-        if buttons[mask[i]] and mask[i] == "circle" then
-            love.keypressed(lv1lua.keyset[1])
-        elseif buttons[mask[i]] and mask[i] == "cross" then
-            love.keypressed(lv1lua.keyset[2])
-        elseif buttons[mask[i]] and mask[i] == "triangle" then
-            love.keypressed(lv1lua.keyset[3])
-        elseif buttons[mask[i]] and mask[i] == "square" then
-            love.keypressed(lv1lua.keyset[4])
-        elseif buttons[mask[i]] and mask[i] == "l" then
-            love.keypressed(lv1lua.keyset[5])
-        elseif buttons[mask[i]] and mask[i] == "r" then
-            love.keypressed(lv1lua.keyset[6])
-        elseif buttons[mask[i]] and mask[i] == "select" then
-            love.keypressed("back")
-        elseif buttons[mask[i]] then
-            love.keypressed(mask[i])
+
+    -- Update joystick analog axes (-1..1)
+    local js = lv1lua.joystickState
+    js.axes[1] = ((buttons.analoglx or 128) - 128) / 128
+    js.axes[2] = ((buttons.analogly or 128) - 128) / 128
+    js.axes[3] = ((buttons.analogrx or 128) - 128) / 128
+    js.axes[4] = ((buttons.analogry or 128) - 128) / 128
+
+    for i = 1, #mask do
+        local btn = mask[i]
+        local key = buttonMap[btn] or btn
+        if buttons[btn] then
+            love.keypressed(key)
         end
-        if buttons.released[mask[i]] and mask[i] == "circle" then
-            love.keyreleased(lv1lua.keyset[1])
-        elseif buttons.released[mask[i]] and mask[i] == "cross" then
-            love.keyreleased(lv1lua.keyset[2])
-        elseif buttons.released[mask[i]] and mask[i] == "triangle" then
-            love.keyreleased(lv1lua.keyset[3])
-        elseif buttons.released[mask[i]] and mask[i] == "square" then
-            love.keyreleased(lv1lua.keyset[4])
-        elseif buttons.released[mask[i]] and mask[i] == "l" then
-            love.keyreleased(lv1lua.keyset[5])
-        elseif buttons.released[mask[i]] and mask[i] == "r" then
-            love.keyreleased(lv1lua.keyset[6])
-        elseif buttons.released[mask[i]] and mask[i] == "select" then
-            love.keyreleased("back")
-        elseif buttons.released[mask[i]] then
-            love.keyreleased(mask[i])
+        if buttons.released[btn] then
+            love.keyreleased(key)
         end
     end
     __checkGameRestart()

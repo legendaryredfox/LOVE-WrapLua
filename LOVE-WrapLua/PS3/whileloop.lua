@@ -2,6 +2,21 @@ loadstring = load
 dt = 0.0167
 sys.UtilRegisterCallback()
 
+local buttonDefs = {
+    {fn = "circle",   key = lv1lua.keyset[1], id = "circle"},
+    {fn = "cross",    key = lv1lua.keyset[2], id = "cross"},
+    {fn = "triangle", key = lv1lua.keyset[3], id = "triangle"},
+    {fn = "square",   key = lv1lua.keyset[4], id = "square"},
+    {fn = "L1",       key = lv1lua.keyset[5], id = "l"},
+    {fn = "R1",       key = lv1lua.keyset[6], id = "r"},
+    {fn = "up",       key = "up",             id = "up"},
+    {fn = "down",     key = "down",           id = "down"},
+    {fn = "left",     key = "left",           id = "left"},
+    {fn = "right",    key = "right",          id = "right"},
+    {fn = "select",   key = "back",           id = "select"},
+    {fn = "start",    key = "start",          id = "start"},
+}
+
 function lv1lua.draw()
     StartGFX()
     if love.draw then love.draw() end
@@ -10,96 +25,36 @@ end
 
 function lv1lua.update() --this isn't really dt stuff, but ok heh
     if love.update then love.update(dt) end
-    
+
     --Check ingame XMB
     local ret = sys.UtilCheckCallback(g_status)
     if ret == sys.SYSUTIL_EXIT_GAME then
         love.event.quit() --quit game over ingame XMB
     end
-    
+
     --Play audio
     lv1lua.playsound()
 end
 
 function lv1lua.updatecontrols()
-    --pressed
-    if pad.circle(0) > 0 and lv1lua.key.circle == 0 then
-        love.keypressed(lv1lua.keyset[1])
-        lv1lua.key.circle = 1
-    elseif pad.cross(0) > 0 and lv1lua.key.cross == 0 then
-        love.keypressed(lv1lua.keyset[2])
-        lv1lua.key.cross = 1
-    elseif pad.triangle(0) > 0 and lv1lua.key.triangle == 0 then
-        love.keypressed(lv1lua.keyset[3])
-        lv1lua.key.triangle = 1
-    elseif pad.square(0) > 0 and lv1lua.key.square == 0 then
-        love.keypressed(lv1lua.keyset[4])
-        lv1lua.key.square = 1
-    elseif pad.L1(0) > 0 and lv1lua.key.l == 0 then
-        love.keypressed(lv1lua.keyset[5])
-        lv1lua.key.l = 1
-    elseif pad.R1(0) > 0 and lv1lua.key.r == 0 then
-        love.keypressed(lv1lua.keyset[6])
-        lv1lua.key.r = 1
-    elseif pad.up(0) > 0 and lv1lua.key.up == 0 then
-        love.keypressed("up")
-        lv1lua.key.up = 1
-    elseif pad.down(0) > 0 and lv1lua.key.down == 0 then
-        love.keypressed("down")
-        lv1lua.key.down = 1
-    elseif pad.left(0) > 0 and lv1lua.key.left == 0 then
-        love.keypressed("left")
-        lv1lua.key.left = 1
-    elseif pad.right(0) > 0 and lv1lua.key.right == 0 then
-        love.keypressed("right")
-        lv1lua.key.right = 1
-    elseif pad.select(0) > 0 and lv1lua.key.select == 0 then
-        love.keypressed("back")
-        lv1lua.key.select = 1
-    elseif pad.start(0) > 0 and lv1lua.key.start == 0 then
-        love.keypressed("start")
-        lv1lua.key.start = 1
+    -- Update joystick analog axes (-1..1); PS3 sticks report 0-255
+    local js = lv1lua.joystickState
+    js.axes[1] = (pad.lx(0)  - 128) / 128
+    js.axes[2] = (pad.ly(0)  - 128) / 128
+    js.axes[3] = (pad.rx(0)  - 128) / 128
+    js.axes[4] = (pad.ry(0)  - 128) / 128
+
+    for i = 1, #buttonDefs do
+        local def = buttonDefs[i]
+        if pad[def.fn](0) > 0 and lv1lua.key[def.id] == 0 then
+            love.keypressed(def.key)
+            lv1lua.key[def.id] = 1
+        elseif pad[def.fn](0) == 0 and lv1lua.key[def.id] == 1 then
+            love.keyreleased(def.key)
+            lv1lua.key[def.id] = 0
+        end
     end
-    
-    --released
-    if pad.circle(0) == 0 and lv1lua.key.circle == 1 then
-        love.keyreleased(lv1lua.keyset[1])
-        lv1lua.key.circle = 0
-    elseif pad.cross(0) == 0 and lv1lua.key.cross == 1 then
-        love.keyreleased(lv1lua.keyset[2])
-        lv1lua.key.cross = 0
-    elseif pad.triangle(0) == 0 and lv1lua.key.triangle == 1 then
-        love.keyreleased(lv1lua.keyset[3])
-        lv1lua.key.triangle = 0
-    elseif pad.square(0) == 0 and lv1lua.key.square == 1 then
-        love.keyreleased(lv1lua.keyset[4])
-        lv1lua.key.square = 0
-    elseif pad.L1(0) == 0 and lv1lua.key.l == 1 then
-        love.keyreleased(lv1lua.keyset[5])
-        lv1lua.key.l = 0
-    elseif pad.R1(0) == 0 and lv1lua.key.r == 1 then
-        love.keyreleased(lv1lua.keyset[6])
-        lv1lua.key.r = 0
-    elseif pad.up(0) == 0 and lv1lua.key.up == 1 then
-        love.keyreleased("up")
-        lv1lua.key.up = 0
-    elseif pad.down(0) == 0 and lv1lua.key.down == 1 then
-        love.keyreleased("down")
-        lv1lua.key.down = 0
-    elseif pad.left(0) == 0 and lv1lua.key.left == 1 then
-        love.keyreleased("left")
-        lv1lua.key.left = 0
-    elseif pad.right(0) == 0 and lv1lua.key.right == 1 then
-        love.keyreleased("right")
-        lv1lua.key.right = 0
-    elseif pad.select(0) == 0 and lv1lua.key.select == 1 then
-        love.keyreleased("back")
-        lv1lua.key.select = 0
-    elseif pad.start(0) == 0 and lv1lua.key.start == 1 then
-        love.keyreleased("start")
-        lv1lua.key.start = 0
-    end
-    
+
     --force quit
     if pad.L3(0) > 0 and pad.R3(0) > 0 then
         love.event.quit()

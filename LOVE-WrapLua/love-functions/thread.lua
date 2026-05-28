@@ -30,26 +30,10 @@ local function createChannel()
 end
 
 function love.thread.getChannel(name)
-    if channels[name] then
-        return channels[name]
+    if not channels[name] then
+        channels[name] = createChannel()
     end
-        local channel = {
-        messages = {},
-        push = function(self, msg)
-            table.insert(self.messages, msg)
-        end,
-        pop = function(self)
-            return table.remove(self.messages, 1)
-        end,
-        clear = function(self)
-            self.messages = {}
-        end,
-        hasRead = function(self)
-            return #self.messages > 0
-        end
-    }
-    channels[name] = channel
-    return channel
+    return channels[name]
 end
 
 function love.thread.newThread(filename)

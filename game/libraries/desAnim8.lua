@@ -61,7 +61,8 @@ end
 function desAnim8:draw(x, y)
     local quad = self.quads[self.currentFrame]
     local quadX, quadY, quadWidth, quadHeight = quad:getViewport()
-    image.blit(self.image, x, y, quadX, quadY, quadWidth, quadHeight)
+    local imgData = self.image.imgData or self.image
+    image.blit(imgData, x, y, quadX, quadY, quadWidth, quadHeight)
 end
 
 return desAnim8

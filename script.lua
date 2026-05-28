@@ -10,16 +10,33 @@ if not lv1lua.mode then
     lv1lua.mode = "OneLua"
 end
 
+-- Screen dimensions per platform
+if lv1lua.isPSP then
+    lv1lua.screenWidth  = 480
+    lv1lua.screenHeight = 272
+elseif lv1lua.mode == "PS3" then
+    lv1lua.screenWidth  = 720
+    lv1lua.screenHeight = 480
+else
+    lv1lua.screenWidth  = 960
+    lv1lua.screenHeight = 544
+end
+
 --set up love
 love = {}
-love.graphics = {}
-love.timer = {}
-love.audio = {}
-love.event = {}
-love.math = {}
-love.system = {}
-love.filesystem = {}
-love.keyboard = {}
+love.graphics  = {}
+love.timer     = {}
+love.audio     = {}
+love.event     = {}
+love.math      = {}
+love.system    = {}
+love.filesystem= {}
+love.keyboard  = {}
+love.window    = {}
+love.joystick  = {}
+love.data      = {}
+love.touch     = {}
+love.mouse     = {}
 
 require("LOVE-WrapLua/love-functions/thread")
 
@@ -30,19 +47,13 @@ function lv1lua.exists(file)
     elseif lv1lua.mode == "lpp-vita" then
         return System.doesFileExist(file) or System.doesDirExist(file)
     else
-        local openfile = io.open(file, "r")
-        if openfile then
-            openfile:close()
-            return true
-        end
+        local f = io.open(file, "r")
+        if f then f:close(); return true end
     end
 end
 
---love conf, custom configs go to game/conf.lua
-t = {
-    window = {},
-    modules = {}
-}
+--love conf
+t = { window = {}, modules = {} }
 lv1lua.loveconf = t
 
 if lv1lua.exists(lv1lua.dataloc.."game/conf.lua") then
@@ -56,9 +67,8 @@ end
 t = nil
 
 if not lv1luaconf then
-    --lv1luaconf, custom configs should go to lv1lua.lua
     lv1luaconf = {
-        keyconf = "XB",
+        keyconf   = "XB",
         img_scale = false,
         res_scale = false
     }
@@ -67,7 +77,7 @@ end
 --set key config
 if lv1luaconf.keyconf == "SE" then
     lv1lua.confirm = false
-    
+
     if lv1lua.mode == "lpp-vita" then
         if Controls.getEnterButton() == SCE_CTRL_CIRCLE then lv1lua.confirm = true end
     elseif lv1lua.mode == "OneLua" then
@@ -106,10 +116,13 @@ dofile(lv1lua.dataloc.."LOVE-WrapLua/"..lv1lua.mode.."/keyboard.lua")
 dofile(lv1lua.dataloc.."LOVE-WrapLua/filesystem.lua")
 dofile(lv1lua.dataloc.."LOVE-WrapLua/math.lua")
 dofile(lv1lua.dataloc.."LOVE-WrapLua/system.lua")
+dofile(lv1lua.dataloc.."LOVE-WrapLua/window.lua")
+dofile(lv1lua.dataloc.."LOVE-WrapLua/joystick.lua")
+dofile(lv1lua.dataloc.."LOVE-WrapLua/data.lua")
 
---return LOVE 0.10.2
+--LOVE 11.5
 function love.getVersion()
-    return 0, 10, 2
+    return 11, 5, 0, "Mysterious Mysteries"
 end
 
 if lv1lua.mode == "OneLua" then
@@ -135,10 +148,11 @@ if love.load then
     love.load()
 end
 
---gamepadpressed or keypressed stuff
+-- Gamepad / keyboard callback bridging
+-- If the game only implements gamepadpressed, route keypressed there too.
 if not love.keypressed and love.gamepadpressed then
     function love.keypressed(key)
-        love.gamepadpressed(joy,button)
+        love.gamepadpressed(love.joystick.getJoysticks()[1], key)
     end
 elseif not love.keypressed then
     love.keypressed = function() end
@@ -146,20 +160,30 @@ end
 
 if not love.keyreleased and love.gamepadreleased then
     function love.keyreleased(key)
-        love.gamepadreleased(joy,button)
+        love.gamepadreleased(love.joystick.getJoysticks()[1], key)
     end
 elseif not love.keyreleased then
     love.keyreleased = function() end
 end
 
+-- Stub rarely-used callbacks so platform code never needs nil-checks
+love.mousepressed  = love.mousepressed  or function() end
+love.mousereleased = love.mousereleased or function() end
+love.mousemoved    = love.mousemoved    or function() end
+love.wheelmoved    = love.wheelmoved    or function() end
+love.touchpressed  = love.touchpressed  or function() end
+love.touchreleased = love.touchreleased or function() end
+love.touchmoved    = love.touchmoved    or function() end
+love.focus         = love.focus         or function() end
+love.visible       = love.visible       or function() end
+love.resize        = love.resize        or function() end
+love.lowmemory     = love.lowmemory     or function() end
+love.textinput     = love.textinput     or function() end
+love.threaderror   = love.threaderror   or function() end
+
 --Main loop
 while lv1lua.running do
-    --Draw
     lv1lua.draw()
-    
-    --Update
     lv1lua.update()
-    
-    --Controls
     lv1lua.updatecontrols()
 end

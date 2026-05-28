@@ -32,7 +32,7 @@ function love.shader.getPixel(x, y)
     return _pixels[y * _screenWidth + x]
 end
 
-function love.shader.getPixeCachel(img, x, y)
+function love.shader.getPixelCache(img, x, y)
     return _imageCache[img].pixels[y * _screenWidth + x]
 end
 

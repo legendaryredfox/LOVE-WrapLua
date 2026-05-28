@@ -23,6 +23,14 @@ end
 
 function lv1lua.updatecontrols()
     lv1lua.pad = Controls.read()
+
+    -- Update joystick analog axes (-1..1); lpp-vita sticks report 0-255
+    local js = lv1lua.joystickState
+    js.axes[1] = (Controls.getLeftX(lv1lua.pad)  - 128) / 128
+    js.axes[2] = (Controls.getLeftY(lv1lua.pad)  - 128) / 128
+    js.axes[3] = (Controls.getRightX(lv1lua.pad) - 128) / 128
+    js.axes[4] = (Controls.getRightY(lv1lua.pad) - 128) / 128
+
     for i = 1, #lv1lua.keyenum do
         if Controls.check(lv1lua.pad, lv1lua.keyenum[i]) then
             if not lv1lua.keymask[i] then

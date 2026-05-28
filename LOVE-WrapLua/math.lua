@@ -3,6 +3,8 @@ function love.math.setRandomSeed(seed)
 end
 
 function love.math.random(a, b)
+    if a == nil then return math.random() end
+    if b == nil then return math.random(a) end
     return math.random(a, b)
 end
 
@@ -69,6 +71,7 @@ function love.math.noise(x, y, z, w)
 end
 
 -- Transform object (2D affine transform)
+local _unpack = table.unpack or unpack
 local Transform = {}
 Transform.__index = Transform
 
@@ -101,7 +104,7 @@ end
 
 function Transform:clone()
     local t = setmetatable({}, Transform)
-    t._m = {unpack(self._m)}
+    t._m = {_unpack(self._m)}
     return t
 end
 
@@ -339,6 +342,7 @@ function love.math.gammaToLinear(r, g, b, a)
     if type(r) == 'table' then
         return {f(r[1]), f(r[2]), f(r[3]), r[4] or 1}
     end
+    if g == nil then return f(r) end  -- single-channel form
     return f(r), f(g), f(b), a
 end
 
@@ -347,5 +351,6 @@ function love.math.linearToGamma(r, g, b, a)
     if type(r) == 'table' then
         return {f(r[1]), f(r[2]), f(r[3]), r[4] or 1}
     end
+    if g == nil then return f(r) end  -- single-channel form
     return f(r), f(g), f(b), a
 end

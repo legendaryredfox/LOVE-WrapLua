@@ -94,6 +94,32 @@ T.describe("love.graphics transform stack", function()
     end)
 end)
 
+-- ── Source-image immutability (#6) ───────────────────────────────
+T.describe("love.graphics.draw does not mutate the source image", function()
+    T.it("drawing sx=2 then sx=1 leaves source dimensions unchanged", function()
+        love.graphics.reset()
+        local img = love.graphics.newImage("s.png")
+        local src = img.imgData
+        __rec.reset()
+        love.graphics.draw(img, 0, 0, 0, 2, 2)
+        love.graphics.draw(img, 0, 0, 0, 1, 1)
+        T.eq(image.getrealw(src), 64)
+        T.eq(image.getrealh(src), 64)
+        T.eq(__rec.count("image.resize"), 0)
+    end)
+
+    T.it("a rot=0 draw after a rotated draw is upright", function()
+        love.graphics.reset()
+        local img = love.graphics.newImage("s.png")
+        love.graphics.draw(img, 0, 0, math.pi / 2)
+        __rec.reset()
+        love.graphics.draw(img, 0, 0, 0)
+        local c = __rec.last("image.rotate")
+        T.ok(c ~= nil, "rotation should be set on every draw")
+        T.near(c.args[2], 0, 1e-6)
+    end)
+end)
+
 -- ── Screen metrics ───────────────────────────────────────────────
 T.describe("love.graphics screen info", function()
     T.it("getDimensions returns screenWidth x screenHeight", function()

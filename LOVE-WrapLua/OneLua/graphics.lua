@@ -500,6 +500,23 @@ function love.graphics.present() end  -- handled by main loop
 -- ──────────────────────────────────────────────────────────────
 -- Draw pipeline
 -- ──────────────────────────────────────────────────────────────
+-- Loaded images are immutable sources. Scaling makes a transient copy keyed by
+-- (source, sx, sy) so the same image can be drawn at different scales in one
+-- frame without corrupting the shared drawable (#6). Weak keys let unused
+-- copies be collected.
+local _scaledCache = setmetatable({}, { __mode = "k" })
+
+local function _scaledCopy(src, sx, sy)
+    local e = _scaledCache[src]
+    if not e or e.sx ~= sx or e.sy ~= sy or not e.img then
+        local w = image.getrealw(src) * sx
+        local h = image.getrealh(src) * sy
+        e = { img = image.copyscale(src, w, h), sx = sx, sy = sy }
+        _scaledCache[src] = e
+    end
+    return e.img
+end
+
 function love.graphics._defaultDraw(drawable, x, y, r, sx, sy, xf, yf, w, h)
     if drawable == nil then print("No drawable"); return end
     x = x or 0; y = y or 0
@@ -511,19 +528,22 @@ function love.graphics._defaultDraw(drawable, x, y, r, sx, sy, xf, yf, w, h)
 
     _transformStack:updateTransform()
     local rot = (r or 0) + _transformStack.transform._rotation
-    if rot ~= 0 then
-        image.rotate(drawable, (rot / math.pi) * 180)
+
+    -- Draw a cached scaled copy instead of resizing the source in place.
+    local img = drawable
+    if sx and (sx ~= 1 or sy ~= 1) then
+        img = _scaledCopy(drawable, sx, sy)
+        image.setfilter(img, defaultMagFilter, defaultMinFilter)
     end
 
-    if sx then
-        image.setfilter(drawable, defaultMagFilter, defaultMinFilter)
-        image.resize(drawable, image.getrealw(drawable)*sx, image.getrealh(drawable)*sy)
-    end
+    -- Always set absolute rotation (including 0) so a prior rotated draw does
+    -- not leave this drawable tilted on a later upright draw.
+    image.rotate(img, (rot / math.pi) * 180)
 
     if xf ~= nil then
-        image.blit(drawable, x, y, xf, yf, w, h, color.a(lv1lua.current.color))
+        image.blit(img, x, y, xf, yf, w, h, color.a(lv1lua.current.color))
     else
-        image.blit(drawable, x, y, color.a(lv1lua.current.color))
+        image.blit(img, x, y, color.a(lv1lua.current.color))
     end
 end
 

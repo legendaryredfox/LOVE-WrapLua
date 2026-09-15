@@ -127,7 +127,8 @@ end
 -- ──────────────────────────────────────────────────────────────
 font.setdefault(font.load(defaultfont))
 lv1lua.current = {
-    font       = defaultfont,
+    -- Real Font object, assigned right after love.graphics.newFont is defined.
+    font       = nil,
     color      = color.new(255,255,255,255),
     colorRGBA  = {1,1,1,1},
     bgcolor    = color.new(0,0,0,255),
@@ -646,6 +647,10 @@ function love.graphics.newFont(setfont, setsize)
         return _loadedFonts.fontInstances[fontName..setsize]
     end
 end
+
+-- LÖVE starts with a usable 12px default font, so print/printf work before
+-- the game calls setFont. Must run after newFont is defined.
+lv1lua.current.font = love.graphics.newFont(defaultfont, 12)
 
 function love.graphics.setFont(setfont, setsize)
     lv1lua.current.font = setfont

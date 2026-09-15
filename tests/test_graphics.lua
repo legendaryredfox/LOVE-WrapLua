@@ -2,6 +2,31 @@ local T = dofile("tests/runner.lua")
 dofile("tests/mock_platform.lua")
 dofile("LOVE-WrapLua/OneLua/graphics.lua")
 
+-- ── Default font (#9) ────────────────────────────────────────────
+-- Runs first, before any test calls setFont, so it sees the initial state.
+T.describe("love.graphics default font", function()
+    T.it("getFont returns a Font object, not the font path string", function()
+        local f = love.graphics.getFont()
+        T.eq(type(f), "table")
+        T.ok(f.getWidth,  "default font should have getWidth")
+        T.ok(f.getHeight, "default font should have getHeight")
+    end)
+
+    T.it("default font size is 12", function()
+        T.eq(love.graphics.getFont().size, 12)
+    end)
+
+    T.it("print works before any setFont", function()
+        __rec.reset()
+        love.graphics.print("hello", 0, 0)
+        T.eq(__rec.count("screen.print"), 1)
+    end)
+
+    T.it("printf works before any setFont", function()
+        love.graphics.printf("hello world", 0, 0, 100, "left")
+    end)
+end)
+
 -- ── Color ────────────────────────────────────────────────────────
 T.describe("love.graphics.setColor / getColor", function()
     T.it("stores 0-1 components and returns them", function()

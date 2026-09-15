@@ -160,7 +160,8 @@ end
 
 function love.graphics.line(...)
     local c = type(select(1,...))=="table" and select(1,...) or {...}
-    for i=1,#c-2,2 do Graphics.drawLine(c[i],c[i+1],c[i+2],c[i+3],lv1lua.current.color) end
+    -- native Graphics.drawLine order is (x1, x2, y1, y2, color)
+    for i=1,#c-2,2 do Graphics.drawLine(c[i],c[i+2],c[i+1],c[i+3],lv1lua.current.color) end
 end
 
 function love.graphics.circle(mode, x, y, radius, segments)
@@ -169,7 +170,7 @@ function love.graphics.circle(mode, x, y, radius, segments)
         local r,s = radius, segments or 32
         for i=0,s-1 do
             local a1,a2=i/s*math.pi*2,(i+1)/s*math.pi*2
-            Graphics.drawLine(x+r*math.cos(a1),y+r*math.sin(a1),x+r*math.cos(a2),y+r*math.sin(a2),lv1lua.current.color)
+            Graphics.drawLine(x+r*math.cos(a1),x+r*math.cos(a2),y+r*math.sin(a1),y+r*math.sin(a2),lv1lua.current.color)
         end
     end
 end
@@ -189,12 +190,12 @@ function love.graphics.polygon(mode, vertices, ...)
         for i=1,#v,2 do cx=cx+v[i]; cy=cy+v[i+1] end
         cx,cy=cx/n,cy/n
         for i=1,#v-2,2 do
-            Graphics.drawLine(cx,cy,v[i],v[i+1],lv1lua.current.color)
-            Graphics.drawLine(v[i],v[i+1],v[i+2],v[i+3],lv1lua.current.color)
+            Graphics.drawLine(cx,v[i],cy,v[i+1],lv1lua.current.color)
+            Graphics.drawLine(v[i],v[i+2],v[i+1],v[i+3],lv1lua.current.color)
         end
     else
-        for i=1,#v-2,2 do Graphics.drawLine(v[i],v[i+1],v[i+2],v[i+3],lv1lua.current.color) end
-        Graphics.drawLine(v[#v-1],v[#v],v[1],v[2],lv1lua.current.color)
+        for i=1,#v-2,2 do Graphics.drawLine(v[i],v[i+2],v[i+1],v[i+3],lv1lua.current.color) end
+        Graphics.drawLine(v[#v-1],v[1],v[#v],v[2],lv1lua.current.color)
     end
 end
 
@@ -255,7 +256,7 @@ function love.graphics.newShader(c)  return {send=function()end,hasUniform=funct
 function love.graphics.setShader()   end; function love.graphics.getShader() return nil end
 function love.graphics.newQuad(x,y,w,h,swOrImg,sh)
     local sw,_sh
-    if type(swOrImg)=="table" then sw=swOrImg:getDimensions and swOrImg:getDimensions() or w; _sh=sh
+    if type(swOrImg)=="table" then sw=swOrImg.getDimensions and swOrImg:getDimensions() or w; _sh=sh
     else sw=swOrImg or w; _sh=sh or h end
     local q={x=x,y=y,width=w,height=h,sw=sw,sh=_sh}
     function q:getViewport() return self.x,self.y,self.width,self.height end

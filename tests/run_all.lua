@@ -2,6 +2,7 @@
 -- Run from the project root: lua tests/run_all.lua
 
 local test_files = {
+    "tests/test_primitives.lua",
     "tests/test_math.lua",
     "tests/test_data.lua",
     "tests/test_thread.lua",

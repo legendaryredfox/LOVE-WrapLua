@@ -35,7 +35,7 @@
 |---|---|---|---|---|
 | newImage(filename, settings) | ✓ | ✓ | ✓ | ✓ |
 | newQuad(x,y,w,h,sw,sh or img) | ✓ | ✓ | ✓ | ✓ |
-| draw(drawable, …) | ✓ | ✓ | ✓ | ✓ |
+| draw(drawable, …) | ✓ | ✓ scale/flip via a cached copy, source never mutated | ✓ no quad or rotation yet | ✓ position only |
 | setColor(r,g,b,a) **0–1 range** | ✓ | ✓ | ✓ | ✓ |
 | getColor() | ✓ | ✓ | ✓ | ✓ |
 | setBackgroundColor | ✓ | ✓ | ✓ | ✓ |

@@ -27,7 +27,12 @@ image = {
     flipv     = function(...) __rec.log("image.flipv", ...) end,
     rotate    = function(...) __rec.log("image.rotate", ...) end,
     setfilter = function(...) end,
-    copyscale = function(h, w, ht) return { _w=w, _h=ht, _path=(type(h)=="table" and h._path) } end,
+    -- Returns a *new* handle: the wrapper is expected to scale into a copy
+    -- rather than resize the shared source.
+    copyscale = function(h, w, ht)
+        __rec.log("image.copyscale", h, w, ht)
+        return { _w=w, _h=ht, _path=(type(h)=="table" and h._path) }
+    end,
     lost      = function(...) end,
 }
 

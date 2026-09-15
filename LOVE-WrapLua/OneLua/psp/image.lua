@@ -8,26 +8,52 @@ function love.graphics.newImage(filename, settings)
     return img
 end
 
--- Known limitation: rotation and scale are applied to the handle itself, so
--- drawing one image twice in a frame at different scales leaves the source
--- mutated. The Vita path solves this with a cached scaled copy
--- (OneLua/graphics/draw.lua); the same fix is still owed here (FIX_PLAN #6).
+-- Loaded images are immutable sources. Scaling makes a transient copy keyed by
+-- (source, sx, sy), so the same image drawn twice in one frame at different
+-- scales does not have the first draw corrupt the second (#6). Weak keys let
+-- unused copies be collected, which matters on a 32MB PSP.
+local _scaledCache = setmetatable({}, { __mode = "k" })
+
+local function _scaledCopy(src, sx, sy)
+    local e = _scaledCache[src]
+    if not e or e.sx ~= sx or e.sy ~= sy or not e.img then
+        local img = image.copyscale(src, image.getrealw(src) * math.abs(sx),
+                                         image.getrealh(src) * math.abs(sy))
+        -- A negative scale mirrors in LOVE. Flip the private copy; the source
+        -- handle is shared and must stay untouched.
+        if sx < 0 then image.fliph(img) end
+        if sy < 0 then image.flipv(img) end
+        e = { img = img, sx = sx, sy = sy }
+        _scaledCache[src] = e
+    end
+    return e.img
+end
+
 function love.graphics.draw(drawable, x, y, r, sx, sy, ox, oy)
-    x, y = (x or 0) - (ox or 0) * math.abs(sx or 1),
-           (y or 0) - (oy or 0) * math.abs(sy or 1)
-    if sx and not sy then sy = sx end
+    if drawable == nil then return end
+    sx = sx or 1
+    sy = sy or sx
+    x = (x or 0) - (ox or 0) * math.abs(sx)
+    y = (y or 0) - (oy or 0) * math.abs(sy)
     if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then
         local s = lv1lua.gfx.scale
         x = x * s; y = y * s
     end
-    if r then image.rotate(drawable, (r / math.pi) * 180) end
-    if sx then
-        image.resize(drawable, image.getrealw(drawable) * sx,
-                               image.getrealh(drawable) * sy)
+
+    local img = drawable
+    if sx ~= 1 or sy ~= 1 then
+        img = _scaledCopy(drawable, sx, sy)
     end
-    if drawable then
-        image.blit(drawable, x, y, color.a(lv1lua.current.color))
-    end
+
+    -- A mirrored draw grows left/up from the anchor, as it does in LOVE.
+    if sx < 0 then x = x + image.getrealw(drawable) * sx end
+    if sy < 0 then y = y + image.getrealh(drawable) * sy end
+
+    -- Always set absolute rotation, including 0, so an earlier rotated draw
+    -- cannot leave this image tilted on a later upright one.
+    image.rotate(img, ((r or 0) / math.pi) * 180)
+
+    image.blit(img, x, y, color.a(lv1lua.current.color))
 end
 
 function love.graphics.newQuad(x, y, width, height, swOrImg, sh)

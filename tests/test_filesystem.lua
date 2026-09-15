@@ -49,6 +49,13 @@ T.describe("love.filesystem.append", function()
         T.ok(content:find("line1"), "original content preserved")
         T.ok(content:find("line2"), "appended content present")
     end)
+
+    T.it("appends verbatim without injecting a newline", function()
+        love.filesystem.write("verbatim.txt", "a")
+        love.filesystem.append("verbatim.txt", "b")
+        love.filesystem.append("verbatim.txt", "c")
+        T.eq(love.filesystem.read("verbatim.txt"), "abc")
+    end)
 end)
 
 -- ── isFile ───────────────────────────────────────────────────────

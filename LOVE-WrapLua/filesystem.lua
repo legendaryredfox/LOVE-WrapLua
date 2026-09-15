@@ -47,7 +47,7 @@ function love.filesystem.append(file, data, size)
     local f = io.open(lv1lua.saveloc..file, "ab")
     if not f then return false, "Cannot open for appending" end
     local content = size and string.sub(data, 1, size) or data
-    local ok = f:write(content.."\n")
+    local ok = f:write(content)
     f:close()
     return ok ~= nil
 end

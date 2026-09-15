@@ -11,7 +11,7 @@ This document is a complete orientation for AI agents working on this repository
 | Target | SDK | Platform files |
 |---|---|---|
 | PS Vita (native) | **OneLua** | `LOVE-WrapLua/OneLua/` |
-| PSP | **OneLua** (PSP sub-mode) | `LOVE-WrapLua/OneLua/graphics_psp.lua` |
+| PSP | **OneLua** (PSP sub-mode) | `LOVE-WrapLua/OneLua/` + `OneLua/psp/` |
 | PS3 | **PS3 Lua Player** | `LOVE-WrapLua/PS3/` |
 | PS Vita (alternative) | **lpp-vita** | `LOVE-WrapLua/lpp-vita/` |
 
@@ -26,7 +26,7 @@ The wrapper is not executed on a desktop PC.  There is no build step and no pack
 Every `love.*` module is an **entry point that loads one file per area of the
 API**.  Opening `OneLua/graphics.lua` shows you the load order; the code lives
 in `OneLua/graphics/`.  Backend modules share state through `lv1lua.gfx`
-(transform stack, font cache, platform constants) — never through file-locals,
+(transform stack, font cache, platform constants), never through file-locals,
 since each file is a separate `dofile` chunk.
 
 ```
@@ -39,7 +39,7 @@ LOVE-WrapLua/
 │       └── desAnim8.lua        ← Console port of anim8 (uses imgData field of love.Image).
 ├── LOVE-WrapLua/
 │   ├── core/                   ← Backend-agnostic, no native calls.
-│   │   ├── loader.lua          ← lv1lua.load / loadOnce — dofile with the data prefix.
+│   │   ├── loader.lua          ← lv1lua.load / loadOnce: dofile with the data prefix.
 │   │   ├── util.lua            ← Rounding, 0-1↔0-255 colour, UTF-8 glyph iteration.
 │   │   ├── transform.lua       ← Software transform stack (push/pop/flatten).
 │   │   ├── textwrap.lua        ← Greedy word wrap, measured by the font itself.
@@ -339,23 +339,39 @@ Read before committing anything.
 ## Common tasks
 
 ### Adding a new love.graphics function
-1. Add it to all three platform graphics files (and/or the PSP file).
+1. Put it in the submodule that owns that area (`graphics/primitives.lua`,
+   `graphics/font.lua`, …) for all four backends: `OneLua/graphics/`,
+   `OneLua/psp/`, `lpp-vita/graphics/`, `PS3/graphics/`.
 2. If it is a stub, make it return the correct type so call-sites don't crash.
-3. Update `Implemented.md`.
+3. If the logic is pure Lua and backend-independent, put it in `core/` instead
+   and have each backend call it (that is what `core/textwrap.lua` is).
+4. Update `Implemented.md`.
+
+### Adding a new submodule to a backend
+1. Create `LOVE-WrapLua/<backend>/graphics/<area>.lua`.
+2. Add an `lv1lua.load` line to that backend's `graphics.lua`, in dependency
+   order (`state` first, `font` before `text`).
+3. Share state through `lv1lua.gfx`, never through file-locals: each file is a
+   separate `dofile` chunk and cannot see another's locals.
 
 ### Adding a new shared module
-1. Create `LOVE-WrapLua/<module>.lua`.
-2. Initialise its namespace in `script.lua` (`love.<module> = {}`).
-3. Add a `dofile` line in `script.lua` after `system.lua` and before `game/main.lua`.
+1. Create `LOVE-WrapLua/<module>.lua` (an entry point if it needs more than one
+   file, with the parts in `LOVE-WrapLua/<module>/`).
+2. Initialise its namespace in `core/runtime.lua` (`love.<module> = {}`).
+3. Add an `lv1lua.load` line in `core/modules.lua`.
 4. Add unit tests in `tests/test_<module>.lua` and register in `tests/run_all.lua`.
 
 ### Adding a new platform
-1. Create `LOVE-WrapLua/<platform>/` with `graphics.lua`, `audio.lua`, `keyboard.lua`, `timer.lua`, `whileloop.lua`, `event.lua`.
-2. Extend `lv1lua.mode` detection in `script.lua`.
-3. Add screen dimensions to the platform detection block in `script.lua`.
+1. Create `LOVE-WrapLua/<platform>/` with `graphics.lua` (entry) plus its
+   `graphics/` submodules, and `audio.lua`, `keyboard.lua`, `timer.lua`,
+   `whileloop.lua`, `event.lua`.
+2. Extend `lv1lua.mode` detection and the screen-size block in
+   `core/runtime.lua`.
+3. Add a mock in `tests/mock_<platform>.lua`, register it in `tests/setup.lua`,
+   and add the backend to the shared suites (`test_primitives`, `test_text`).
 
 ### Changing the key layout
-Edit `lv1lua.keyset` in `script.lua`.  The six entries map to: circle, cross, triangle, square, L, R.  `lv1lua.keyset[1]` is always the confirm button.
+Edit `lv1lua.keyset` in `core/config.lua`.  The six entries map to: circle, cross, triangle, square, L, R.  `lv1lua.keyset[1]` is always the confirm button.
 
 ---
 

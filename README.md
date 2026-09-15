@@ -230,19 +230,25 @@ are bugs being tracked for fix.
 
 ## Project structure
 
+Each `love.*` module is an entry point that loads one file per area of the API,
+so `OneLua/graphics.lua` is a short list of `lv1lua.load` calls and the code
+sits in `OneLua/graphics/`.
+
 ```
 game/           ← your LÖVE game lives here (main.lua, conf.lua, assets)
-script.lua      ← wrapper bootstrap
+script.lua      ← wrapper bootstrap: ordered core/* steps, then the main loop
 index.lua       ← lpp-vita entry point
 app.lua         ← PS3 entry point
 LOVE-WrapLua/
-  math.lua / filesystem.lua / data.lua     ← shared pure-Lua modules
-  window.lua / joystick.lua / system.lua
+  core/         ← backend-agnostic: loader, util, transform stack, word wrap,
+                  runtime, config, module list, require shim, callbacks
+  math.lua      ← entry point over math/{random,noise,transform,geometry,color}
+  filesystem.lua / data.lua / window.lua / joystick.lua / system.lua
   love-functions/thread.lua
-  OneLua/       ← Vita + PSP platform modules
-  lpp-vita/     ← lpp-vita platform modules
-  PS3/          ← PS3 Lua Player platform modules
-tests/          ← unit tests (desktop Lua)
+  OneLua/       ← Vita modules (graphics/) + PSP modules (psp/)
+  lpp-vita/     ← lpp-vita platform modules (graphics/)
+  PS3/          ← PS3 Lua Player platform modules (graphics/)
+tests/          ← unit tests (desktop Lua), one suite per area + 4 backends
 Implemented.md  ← detailed per-backend API coverage table
 AGENTS.md       ← AI agent orientation guide
 ```

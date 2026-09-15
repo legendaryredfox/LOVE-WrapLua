@@ -122,8 +122,10 @@ end
 function Transform:rotate(angle)
     local c, s = math.cos(angle), math.sin(angle)
     local m = self._m
-    m[1], m[2] = m[1]*c + m[4]*s, m[2]*c + m[5]*s
-    m[4], m[5] = m[4]*c - m[1]*s, m[5]*c - m[2]*s
+    -- cache the original columns; the second column must use the OLD first
+    local m1, m2, m4, m5 = m[1], m[2], m[4], m[5]
+    m[1], m[2] = m1*c + m4*s, m2*c + m5*s
+    m[4], m[5] = m4*c - m1*s, m5*c - m2*s
     return self
 end
 
@@ -138,8 +140,10 @@ end
 
 function Transform:shear(kx, ky)
     local m = self._m
-    m[1], m[2] = m[1] + m[4]*ky, m[2] + m[5]*ky
-    m[4], m[5] = m[4] + m[1]*kx, m[5] + m[2]*kx
+    -- cache the original columns; each output column mixes the OLD other one
+    local m1, m2, m4, m5 = m[1], m[2], m[4], m[5]
+    m[1], m[2] = m1 + m4*ky, m2 + m5*ky
+    m[4], m[5] = m4 + m1*kx, m5 + m2*kx
     return self
 end
 

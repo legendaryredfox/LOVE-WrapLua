@@ -100,6 +100,35 @@ T.describe("love.math.newTransform", function()
         T.near(y, 1, 1e-5)
     end)
 
+    T.it("rotate 90° maps (0,1) to (-1,0)", function()
+        local tf = love.math.newTransform(0, 0, math.pi / 2)
+        local x, y = tf:transformPoint(0, 1)
+        T.near(x, -1, 1e-5)
+        T.near(y, 0, 1e-5)
+    end)
+
+    T.it("two rotations compose additively", function()
+        local a = love.math.newTransform(); a:rotate(0.3); a:rotate(0.4)
+        local b = love.math.newTransform(); b:rotate(0.7)
+        local ax, ay = a:transformPoint(1, 2)
+        local bx, by = b:transformPoint(1, 2)
+        T.near(ax, bx, 1e-6); T.near(ay, by, 1e-6)
+    end)
+
+    T.it("rotate then translate composes in local space", function()
+        local tf = love.math.newTransform()
+        tf:rotate(math.pi / 2); tf:translate(1, 0)
+        local x, y = tf:transformPoint(0, 0)
+        T.near(x, 0, 1e-5); T.near(y, 1, 1e-5)
+    end)
+
+    T.it("shear does not corrupt the second axis", function()
+        local tf = love.math.newTransform()
+        tf:shear(0.5, 0.4)  -- x' = x + 0.5y ; y' = y + 0.4x
+        local x, y = tf:transformPoint(0, 1)
+        T.near(x, 0.5, 1e-6); T.near(y, 1, 1e-6)
+    end)
+
     T.it("inverseTransformPoint undoes transformPoint", function()
         local tf = love.math.newTransform(30, -10, 0, 2, 2)
         local px, py = 7, 13

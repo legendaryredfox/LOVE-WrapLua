@@ -697,13 +697,18 @@ local function _getAlignX(x, align, size, wrapSize)
     else return x end
 end
 
+-- Iterates whole UTF-8 glyphs (lead byte + its continuation bytes), so a
+-- multibyte character is measured once instead of once per byte.
+-- Pattern is Lua 5.1-safe (no %z needed).
+local _UTF8_GLYPH = "[^\128-\191][\128-\191]*"
+
 local function _formatTextPrint(text, x, y, wrapWidth, align)
     local word, phrase = "", ""
     local wordW, phraseW = 0, 0
     local spaceW = lv1lua.current.font:getWidth(" ")
     local idx = 1
 
-    for c in string.gmatch(text, ".") do
+    for c in string.gmatch(text, _UTF8_GLYPH) do
         if c == "\n" or wordW > wrapWidth or wordW + phraseW > wrapWidth then
             if wordW > wrapWidth then
                 cachedPrintf:cache(text, word, _getAlignX(x, align, wordW, wrapWidth), y, align)
@@ -745,13 +750,22 @@ local function _formatTextPrint(text, x, y, wrapWidth, align)
             word  = word..c
             wordW = wordW + lv1lua.current.font:getWidth(c)
         end
-        idx = idx + 1
+        idx = idx + #c
     end
 
     if phraseW ~= 0 or wordW ~= 0 then
-        local combined = phrase.." "..word
-        cachedPrintf:cache(text, combined, _getAlignX(x, align, wordW+phraseW+spaceW*2, wrapWidth), y, align)
-        love.graphics.print(combined, _getAlignX(x, align, wordW+phraseW+spaceW*2, wrapWidth), y)
+        -- Only join with a space when there is actually a phrase to join to,
+        -- otherwise a single-word line gets a leading space (and is measured
+        -- as if it had two).
+        local combined, combinedW
+        if phrase ~= "" then
+            combined, combinedW = phrase.." "..word, phraseW + wordW + spaceW
+        else
+            combined, combinedW = word, wordW
+        end
+        local ax = _getAlignX(x, align, combinedW, wrapWidth)
+        cachedPrintf:cache(text, combined, ax, y, align)
+        love.graphics.print(combined, ax, y)
     end
 end
 

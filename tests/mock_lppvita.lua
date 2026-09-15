@@ -50,7 +50,7 @@ Font = {
     -- Real native call: returns pixel width of `text` in `font`.
     getTextWidth  = function(f, text)
         local px = (type(f)=="table" and f._px) or 12
-        return #text * px * 0.5
+        return __glyphCount(text) * px * 0.5
     end,
 }
 

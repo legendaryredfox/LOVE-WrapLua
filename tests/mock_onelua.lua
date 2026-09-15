@@ -36,7 +36,8 @@ screen = {
     print      = function(...) __rec.log("screen.print", ...) end,
     clear      = function(...) __rec.log("screen.clear", ...) end,
     flip       = function(...) end,
-    textwidth  = function(f, t, s) return #t * 8 end,
+    -- 8px per glyph at scale 1 (intraFont measures glyphs, not bytes).
+    textwidth  = function(f, t, s) return __glyphCount(t) * 8 * (s or 1) end,
     textheight = function(f, s)    return s or 12 end,
     frame      = function()        return 0 end,
     fps        = function()        return 60 end,

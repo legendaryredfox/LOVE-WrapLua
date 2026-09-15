@@ -65,11 +65,21 @@ end
 -- ──────────────────────────────────────────────────────────────
 -- Font / Print
 -- ──────────────────────────────────────────────────────────────
+-- No PS3 Lua player exposes a text-measuring call, so width stays an estimate
+-- here. Count UTF-8 glyphs rather than bytes, so multibyte text is not
+-- over-measured by 2-4x. Documented in Implemented.md.
+local _UTF8_GLYPH = "[^\128-\191][\128-\191]*"
+local function _glyphCount(s)
+    local n = 0
+    for _ in tostring(s):gmatch(_UTF8_GLYPH) do n = n + 1 end
+    return n
+end
+
 function love.graphics.newFont(setfont, setsize)
     if tonumber(setfont) then setsize=setfont; setfont=nil end
     setsize = setsize or 12
     local wrap = { _font=nil, size=setsize }
-    function wrap:getWidth(t) return #t * self.size * 0.6 end
+    function wrap:getWidth(t) return _glyphCount(t) * self.size * 0.6 end
     function wrap:getHeight() return self.size end
     function wrap:getBaseline() return self.size end
     function wrap:getAscent() return self.size end
@@ -79,8 +89,14 @@ function love.graphics.newFont(setfont, setsize)
     return wrap
 end
 
-function love.graphics.setFont(setfont, setsize) end
+function love.graphics.setFont(setfont, setsize)
+    if setfont then lv1lua.current.font = setfont end
+    if setsize and lv1lua.current.font then lv1lua.current.font.size = setsize end
+end
 function love.graphics.getFont()    return lv1lua.current.font end
+
+-- LÖVE ships a usable 12px default font; print/printf must work before setFont.
+lv1lua.current.font = love.graphics.newFont(nil, 12)
 function love.graphics.setNewFont(setfont, setsize)
     local newfont = love.graphics.newFont(setfont, setsize)
     love.graphics.setFont(newfont, setsize)
@@ -96,18 +112,23 @@ end
 function love.graphics.printf(text, x, y, wrapWidth, align)
     if not text or text=="" then return end
     align = align or "left"; wrapWidth = wrapWidth or lv1lua.screenWidth
+    local fnt   = lv1lua.current.font
     local lineH = 14
-    local maxCh = math.floor(wrapWidth / 8)
+    local function measure(s)
+        if type(fnt)=="table" and fnt.getWidth then return fnt:getWidth(s) end
+        return _glyphCount(s) * 8
+    end
     local lines = {}; local cur = ""
     for word in text:gmatch("%S+") do
         local test = cur=="" and word or cur.." "..word
-        if #test > maxCh and cur~="" then table.insert(lines,cur); cur=word
+        if measure(test) > wrapWidth and cur~="" then table.insert(lines,cur); cur=word
         else cur=test end
     end
     table.insert(lines, cur)
     for i, line in ipairs(lines) do
         local ox = 0
-        if align=="center" then ox=(wrapWidth-#line*8)/2 elseif align=="right" then ox=wrapWidth-#line*8 end
+        local lw = measure(line)
+        if align=="center" then ox=(wrapWidth-lw)/2 elseif align=="right" then ox=wrapWidth-lw end
         love.graphics.print(line, x+ox, y+(i-1)*lineH)
     end
 end

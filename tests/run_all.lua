@@ -10,6 +10,7 @@ local test_files = {
     "tests/test_joystick.lua",
     "tests/test_filesystem.lua",
     "tests/test_graphics.lua",
+    "tests/test_text.lua",
     "tests/test_keyboard.lua",
     "tests/test_timer.lua",
     "tests/test_audio.lua",

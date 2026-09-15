@@ -8,7 +8,8 @@ local function _c255(r,g,b,a)
 end
 
 lv1lua.current = {
-    font        = defaultfont,
+    -- Font wrapper object, assigned right after love.graphics.newFont exists.
+    font        = nil,
     color       = Color.new(255,255,255,255),
     colorRGBA   = {1,1,1,1},
     bgcolor     = Color.new(0,0,0,255),
@@ -86,7 +87,11 @@ function love.graphics.newFont(setfont, setsize)
     Font.setPixelSizes(fobj, setsize)
     local wrap = { _font=fobj, size=setsize }
     function wrap:getWidth(text)
-        -- lpp-vita doesn't expose text width easily; approximate
+        if not text or text == "" then return 0 end
+        -- Native Font.getTextWidth(font, text) returns the real pixel width,
+        -- so multibyte glyphs measure correctly. Fall back to an estimate only
+        -- if the binding is missing.
+        if Font.getTextWidth then return Font.getTextWidth(self._font, text) end
         return #text * self.size * 0.6
     end
     function wrap:getHeight()  return self.size end
@@ -98,12 +103,18 @@ function love.graphics.newFont(setfont, setsize)
     return wrap
 end
 
+-- LÖVE ships a usable 12px default font; print/printf and getFont():getWidth
+-- must work before the game calls setFont.
+lv1lua.current.font = love.graphics.newFont(nil, 12)
+
 function love.graphics.setFont(setfont, setsize)
-    if setfont then
-        lv1lua.current.font = setfont
-        if setfont._font then Font.setPixelSizes(setfont._font, setfont.size) end
-    end
-    if setsize and lv1lua.current.font then lv1lua.current.font.size = setsize end
+    if setfont then lv1lua.current.font = setfont end
+    local f = lv1lua.current.font
+    if not f then return end
+    if setsize then f.size = setsize end
+    -- Push the *final* size to the native font, so getTextWidth measures at
+    -- the size we actually print with.
+    if f._font then Font.setPixelSizes(f._font, f.size) end
 end
 
 function love.graphics.getFont() return lv1lua.current.font end
@@ -128,21 +139,26 @@ end
 function love.graphics.printf(text, x, y, wrapWidth, align)
     if not text or text=="" then return end
     align = align or "left"; wrapWidth = wrapWidth or lv1lua.screenWidth
-    local fobj = type(lv1lua.current.font)=="table" and lv1lua.current.font._font or lv1lua.current.font
-    local lineH = (type(lv1lua.current.font)=="table" and lv1lua.current.font.size or 12)
+    local fnt   = lv1lua.current.font
+    local lineH = (type(fnt)=="table" and fnt.size or 12)
+    -- Measure with the font itself (native pixel width) instead of guessing
+    -- from byte count, so wrapping is correct for multibyte text.
+    local function measure(s)
+        if type(fnt)=="table" and fnt.getWidth then return fnt:getWidth(s) end
+        return #s * lineH * 0.6
+    end
     local lines = {}
     local cur = ""
     for word in text:gmatch("%S+") do
         local test = cur=="" and word or cur.." "..word
-        local tw = #test * lineH * 0.6
-        if tw > wrapWidth and cur~="" then
+        if measure(test) > wrapWidth and cur~="" then
             table.insert(lines, cur); cur = word
         else cur = test end
     end
     table.insert(lines, cur)
     for i, line in ipairs(lines) do
         local ox = 0
-        local lw = #line * lineH * 0.6
+        local lw = measure(line)
         if align=="center" then ox=(wrapWidth-lw)/2
         elseif align=="right" then ox=wrapWidth-lw end
         love.graphics.print(line, x+ox, y+(i-1)*lineH*1.2)

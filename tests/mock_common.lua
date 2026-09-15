@@ -31,6 +31,16 @@ function __rec.all(name)
 end
 function __rec.count(name) return #__rec.all(name) end
 
+-- ── text measuring helper ────────────────────────────────────────
+-- Real native text measuring (intraFont on PSP, freetype on Vita) works per
+-- glyph, not per byte. The mocks measure the same way so that a wrapper which
+-- measures byte counts is visibly wrong for multibyte text.
+function __glyphCount(s)
+    local n = 0
+    for _ in tostring(s):gmatch("[^\128-\191][\128-\191]*") do n = n + 1 end
+    return n
+end
+
 -- ── Runtime state ────────────────────────────────────────────────
 lv1lua = {
     dataloc      = "",

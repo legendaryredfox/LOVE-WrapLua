@@ -1,7 +1,7 @@
 -- lpp-vita graphics: primitive shapes.
 --
 -- Native argument order is the footgun here: Graphics.drawLine, fillRect and
--- fillEmptyRect all take (x1, x2, y1, y2, color) — both x values before both y
+-- fillEmptyRect all take (x1, x2, y1, y2, color): both x values before both y
 -- values (luaGraphics.cpp). Every call below follows that; the lpp-vita mock in
 -- tests/ asserts it.
 

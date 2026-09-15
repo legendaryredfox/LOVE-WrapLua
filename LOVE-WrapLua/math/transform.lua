@@ -1,4 +1,4 @@
--- love.math.newTransform — 2D affine transform object.
+-- love.math.newTransform: 2D affine transform object.
 --
 -- The matrix is stored row-major as a flat 3x3 (`_m`); LÖVE's get/setMatrix
 -- speak the 16-element column-major form, so those two convert.

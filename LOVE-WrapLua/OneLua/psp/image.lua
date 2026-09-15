@@ -11,7 +11,7 @@ end
 -- Known limitation: rotation and scale are applied to the handle itself, so
 -- drawing one image twice in a frame at different scales leaves the source
 -- mutated. The Vita path solves this with a cached scaled copy
--- (OneLua/graphics/draw.lua); the same fix is still owed here — FIX_PLAN #6.
+-- (OneLua/graphics/draw.lua); the same fix is still owed here (FIX_PLAN #6).
 function love.graphics.draw(drawable, x, y, r, sx, sy, ox, oy)
     x, y = (x or 0) - (ox or 0) * math.abs(sx or 1),
            (y or 0) - (oy or 0) * math.abs(sy or 1)

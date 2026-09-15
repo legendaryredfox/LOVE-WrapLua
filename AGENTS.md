@@ -23,16 +23,33 @@ The wrapper is not executed on a desktop PC.  There is no build step and no pack
 
 ## Repository layout
 
+Every `love.*` module is an **entry point that loads one file per area of the
+API**.  Opening `OneLua/graphics.lua` shows you the load order; the code lives
+in `OneLua/graphics/`.  Backend modules share state through `lv1lua.gfx`
+(transform stack, font cache, platform constants) — never through file-locals,
+since each file is a separate `dofile` chunk.
+
 ```
 LOVE-WrapLua/
-├── script.lua                  ← Boot script.  Sets up lv1lua, loads modules, runs the main loop.
+├── script.lua                  ← Boot: ordered core/* steps, then the main loop.
 ├── index.lua / app.lua         ← Platform entry points (loaded by the console OS).
 ├── game/                       ← User game code lives here (main.lua, conf.lua, assets …).
 │   └── libraries/
 │       ├── anim8.lua           ← LÖVE anim8 animation library (standard, unmodified).
 │       └── desAnim8.lua        ← Console port of anim8 (uses imgData field of love.Image).
 ├── LOVE-WrapLua/
-│   ├── math.lua                ← love.math  (shared, pure Lua).
+│   ├── core/                   ← Backend-agnostic, no native calls.
+│   │   ├── loader.lua          ← lv1lua.load / loadOnce — dofile with the data prefix.
+│   │   ├── util.lua            ← Rounding, 0-1↔0-255 colour, UTF-8 glyph iteration.
+│   │   ├── transform.lua       ← Software transform stack (push/pop/flatten).
+│   │   ├── textwrap.lua        ← Greedy word wrap, measured by the font itself.
+│   │   ├── runtime.lua         ← Platform detection, screen size, love namespace.
+│   │   ├── config.lua          ← game/conf.lua, lv1luaconf, button layout.
+│   │   ├── modules.lua         ← Loads the backend + shared modules.
+│   │   ├── require.lua         ← Redirects the game's require into game/.
+│   │   └── callbacks.lua       ← Gamepad↔key bridging + callback stubs.
+│   ├── math.lua                ← love.math entry → math/{random,noise,transform,
+│   │                             geometry,color}.lua (shared, pure Lua).
 │   ├── filesystem.lua          ← love.filesystem (shared, uses io.* or platform VFS).
 │   ├── data.lua                ← love.data  (shared, pure Lua — base64/hex/ByteData).
 │   ├── window.lua              ← love.window (shared, stubs for always-fullscreen console).
@@ -41,8 +58,13 @@ LOVE-WrapLua/
 │   ├── love-functions/
 │   │   └── thread.lua          ← love.thread (coroutine-based pseudo-threads + channels).
 │   ├── OneLua/
-│   │   ├── graphics.lua        ← love.graphics for Vita (OneLua SDK).
-│   │   ├── graphics_psp.lua    ← love.graphics for PSP (OneLua SDK, simpler).
+│   │   ├── graphics.lua        ← Entry: love.graphics for Vita (OneLua SDK).
+│   │   ├── graphics/           ← state, transform, image, draw, font, text,
+│   │   │                         primitives, canvas, spritebatch, textobject,
+│   │   │                         mesh, particles, info.
+│   │   ├── graphics_psp.lua    ← Entry: love.graphics for PSP.
+│   │   ├── psp/                ← state, transform, image, font, text,
+│   │   │                         primitives, objects, info.
 │   │   ├── audio.lua           ← love.audio (OneLua sound.* API, 2 channels).
 │   │   ├── keyboard.lua        ← love.keyboard (OneLua buttons.* API).
 │   │   ├── timer.lua           ← love.timer (OneLua timer.* API).
@@ -54,14 +76,18 @@ LOVE-WrapLua/
 │   │   ├── font.lua            ← Font helper utilities.
 │   │   └── shader.lua          ← Pixel-cache shader stub.
 │   ├── lpp-vita/
-│   │   ├── graphics.lua        ← love.graphics (lpp-vita Graphics.* API).
+│   │   ├── graphics.lua        ← Entry: love.graphics (lpp-vita Graphics.* API).
+│   │   ├── graphics/           ← state, transform, image, draw, font, text,
+│   │   │                         primitives, objects, info.
 │   │   ├── audio.lua           ← love.audio (lpp-vita Sound.* API).
 │   │   ├── keyboard.lua        ← love.keyboard (lpp-vita Controls.* API).
 │   │   ├── timer.lua           ← love.timer (lpp-vita Timer.* API).
 │   │   ├── whileloop.lua       ← Per-frame hooks.
 │   │   └── event.lua           ← love.event.
 │   └── PS3/
-│       ├── graphics.lua        ← love.graphics (PS3 Lua Player API, many stubs).
+│       ├── graphics.lua        ← Entry: love.graphics (PS3 Lua Player, many stubs).
+│       ├── graphics/           ← state, transform, image, font, text,
+│       │                         primitives, objects, info.
 │       ├── audio.lua           ← love.audio (snd.* PS3 API, stream only).
 │       ├── keyboard.lua        ← love.keyboard (pad.* API).
 │       ├── timer.lua           ← love.timer (sys.TimerUsleep).
@@ -74,9 +100,14 @@ LOVE-WrapLua/
     ├── mock_onelua.lua         ← OneLua native API (lowercase image/screen/draw/…).
     ├── mock_lppvita.lua        ← lpp-vita native API — encodes real arg orders.
     ├── mock_ps3.lua            ← PS3 native API (permissive stubs).
-    ├── setup.lua               ← Loads common + backend mock per __MODE.
+    ├── setup.lua               ← Loads common + backend mock per __MODE
+    │                             ("OneLua" | "PSP" | "lpp-vita" | "PS3").
     ├── mock_platform.lua       ← Back-compat shim (OneLua mode) for legacy tests.
-    ├── test_primitives.lua     ← Shared primitive suite across all 3 backends.
+    ├── fixtures/               ← Small files loaded by tests.
+    ├── test_core.lua           ← core/util, core/transform, core/textwrap.
+    ├── test_bootstrap.lua      ← core/loader, core/runtime, core/config.
+    ├── test_primitives.lua     ← Shared primitive suite across all 4 backends.
+    ├── test_text.lua           ← Text metrics + printf across all 4 backends.
     ├── test_math.lua
     ├── test_data.lua
     ├── test_thread.lua
@@ -94,7 +125,7 @@ LOVE-WrapLua/
 ## Boot sequence
 
 1. The console OS loads `index.lua` (OneLua/lpp-vita) or `app.lua` (PS3), which sets `lv1lua.dataloc` and `lv1lua.mode` then calls `dofile("script.lua")`.
-2. `script.lua` initialises `lv1lua.*`, creates the `love.*` namespace, loads platform modules via `dofile`, loads shared modules (`math.lua`, `filesystem.lua`, `window.lua`, `joystick.lua`, `data.lua`, `system.lua`, `thread.lua`), sets `love.getVersion()`, loads and runs `game/conf.lua` (optional), loads `game/main.lua`, calls `love.load()`, then enters `while lv1lua.running do … end`.
+2. `script.lua` dofiles `core/loader.lua` (which defines `lv1lua.load`), then runs the core steps in order: `core/util`, `core/transform`, `core/textwrap` → `core/runtime` (platform detection, screen size, `love.*` namespace, `love.getVersion`) → `love-functions/thread` → `core/config` (`game/conf.lua`, `lv1luaconf`, `lv1lua.keyset`) → `core/modules` (backend + shared modules) → `core/require`.  It then seeds the RNG, loads `game/main.lua`, calls `love.load()`, wires `core/callbacks`, and enters `while lv1lua.running do … end`.
 3. Each iteration calls `lv1lua.draw()` → `lv1lua.update()` → `lv1lua.updatecontrols()`, all defined in the platform's `whileloop.lua`.
 
 ---

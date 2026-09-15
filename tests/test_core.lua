@@ -15,7 +15,7 @@ lv1lua.load("LOVE-WrapLua/core/textwrap.lua")
 local util = lv1lua.util
 local core = lv1lua.core
 
--- "áéí" — 3 glyphs, 6 bytes.
+-- "áéí": 3 glyphs, 6 bytes.
 local MULTIBYTE = "\195\161\195\169\195\173"
 
 -- ── util ─────────────────────────────────────────────────────────

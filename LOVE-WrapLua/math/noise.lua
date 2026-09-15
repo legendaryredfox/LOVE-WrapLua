@@ -1,4 +1,4 @@
--- love.math.noise — Perlin gradient noise, pure Lua.
+-- love.math.noise: Perlin gradient noise, pure Lua.
 --
 -- Known limitations: the 4th dimension (`w`) is ignored, and loading this file
 -- reseeds the global RNG to build the permutation table. Both are FIX_PLAN

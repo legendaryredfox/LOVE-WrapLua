@@ -1,4 +1,4 @@
--- love.math — backend-agnostic, pure Lua.
+-- love.math: backend-agnostic, pure Lua.
 --
 -- Entry point only: one module per area of the API.
 

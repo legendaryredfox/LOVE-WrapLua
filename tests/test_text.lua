@@ -26,7 +26,7 @@ local function load_backend(mode)
     __rec.reset()
 end
 
--- "áéí" — 3 glyphs, 6 bytes in UTF-8.
+-- "áéí": 3 glyphs, 6 bytes in UTF-8.
 local MULTIBYTE = "\195\161\195\169\195\173"
 local ASCII3    = "abc"
 

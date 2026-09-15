@@ -1,6 +1,6 @@
 -- PSP graphics: primitive shapes.
 --
--- Native order here is the plain (x1, y1, x2, y2) of OneLua's draw.* calls —
+-- Native order here is the plain (x1, y1, x2, y2) of OneLua's draw.* calls,
 -- unlike lpp-vita, which wants both x values first.
 
 function love.graphics.rectangle(mode, x, y, w, h)

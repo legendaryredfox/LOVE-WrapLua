@@ -67,7 +67,7 @@ function love.graphics.clear(r, g, b, a)
     end
 end
 
--- ── Blend mode (stub — OneLua exposes no blend state) ────────────
+-- ── Blend mode (stub: OneLua exposes no blend state) ────────────
 function love.graphics.setBlendMode(mode, alphamode)
     lv1lua.current.blendMode = mode
 end

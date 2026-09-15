@@ -70,7 +70,13 @@ LOVE-WrapLua/
 └── tests/
     ├── run_all.lua             ← Entry point: lua tests/run_all.lua (from project root).
     ├── runner.lua              ← Minimal test framework (dofile it for a fresh instance).
-    ├── mock_platform.lua       ← Stubs all console globals (OneLua Vita mode).
+    ├── mock_common.lua         ← Backend-agnostic mock + __rec native-call recorder.
+    ├── mock_onelua.lua         ← OneLua native API (lowercase image/screen/draw/…).
+    ├── mock_lppvita.lua        ← lpp-vita native API — encodes real arg orders.
+    ├── mock_ps3.lua            ← PS3 native API (permissive stubs).
+    ├── setup.lua               ← Loads common + backend mock per __MODE.
+    ├── mock_platform.lua       ← Back-compat shim (OneLua mode) for legacy tests.
+    ├── test_primitives.lua     ← Shared primitive suite across all 3 backends.
     ├── test_math.lua
     ├── test_data.lua
     ├── test_thread.lua
@@ -151,10 +157,22 @@ _transformStack.transform  -- accumulated result (recomputed when _dirty=true)
 ```
 
 `love.graphics.push()` appends a new Transform; `pop()` removes it.
-`translate/scale/rotate` modify the **top** entry of the stack (SET, not accumulate).
-`updateTransform()` is called lazily before any draw operation.
+`translate/scale/rotate` modify the **top** entry of the stack and **compose in
+local space** (accumulate): `translate` adds `scale*delta` to the offset, `scale`
+multiplies the existing scale, `rotate` adds to the angle. (This was fixed in the
+Phase 1 work — do **not** revert to plain assignment; `translate(10,0)` then
+`translate(5,0)` must equal `translate(15,0)`.) `updateTransform()` is called
+lazily before any draw operation and multiplies the stack levels together.
 
-PSP and lpp-vita transform functions are no-ops; PS3 uses scale constants.
+PSP and lpp-vita transform functions are still no-ops (parity work pending); PS3
+uses scale constants.
+
+> **lpp-vita native arg-order gotcha.** `Graphics.drawLine`, `Graphics.fillRect`
+> and `Graphics.fillEmptyRect` take **`(x1, x2, y1, y2, color)`** — the two X
+> coordinates first, then the two Y — not `(x1,y1,x2,y2)`. This is verified
+> against `lpp-vita/source/luaGraphics.cpp`. Passing love-order coordinates
+> silently mis-renders on device; the `tests/mock_lppvita.lua` mock encodes the
+> real order so a mistake fails in tests.
 
 ---
 
@@ -212,16 +230,21 @@ lua tests/test_graphics.lua
 # etc.
 ```
 
-### Test architecture
+### Test architecture (multi-backend)
 
 - `tests/runner.lua` — Returns a fresh test-runner table each time it is `dofile`d.  Methods: `describe(name, fn)`, `it(desc, fn)`, `eq/near/ok/nok/istype/inrange`, `summary() → failcount`.
-- `tests/mock_platform.lua` — Stubs all console globals (`image`, `screen`, `draw`, `font`, `sound`, `buttons`, `timer`, `files`, `color`, `os.*` extensions, `touch`, `osk`) and initialises `lv1lua` and `love` to a clean Vita/OneLua state.  Must be `dofile`d before the module under test.
-- Each test file: `dofile("tests/runner.lua")`, then `dofile("tests/mock_platform.lua")`, then the module under test, then test cases, then `return T.summary()`.
-- `tests/run_all.lua` — `dofile`s each test file in sequence and accumulates failure counts.  Exits `0` on all-pass, `1` otherwise.
+- `tests/mock_common.lua` — Backend-agnostic mock: `lv1lua`, `lv1luaconf`, a **fresh** `love` namespace, the VFS `files`, `os.*` extensions, input stubs, and the **native-call recorder** `__rec` (`__rec.reset()`, `__rec.log(name,...)`, `__rec.last(name)`, `__rec.all/count(name)`). Re-dofile'ing it resets all state, so one process can exercise every backend.
+- `tests/mock_onelua.lua` / `tests/mock_lppvita.lua` / `tests/mock_ps3.lua` — Per-backend native APIs. **The lpp-vita mock encodes the real native arg orders** (see the gotcha above), and records draw/primitive calls into `__rec` so wrong-order bugs fail.
+- `tests/setup.lua` — Loads `mock_common` then the backend mock for the global `__MODE` (default `"OneLua"`). Set `__MODE` before dofiling it to target a backend.
+- `tests/mock_platform.lua` — Back-compat shim: `dofile("tests/setup.lua")` in OneLua mode. Existing single-backend tests keep using it.
+- Each test file: `dofile("tests/runner.lua")`, then `dofile("tests/mock_platform.lua")` (or `setup.lua` with a chosen `__MODE`), then the module under test, then cases, then `return T.summary()`.
+- `tests/test_primitives.lua` — Runs the shared primitive suite under **all three backends** and asserts the lpp-vita native arg order. Model for future backend-parametrised tests.
+- `tests/run_all.lua` — `dofile`s each test file in sequence, accumulates failures, exits `0`/`1`.
+- **CI:** `.github/workflows/ci.yml` runs `lua tests/run_all.lua` on lua 5.1 / 5.3 / 5.4 / luajit.
 
-Tests currently cover: `love.math`, `love.data`, `love.thread`, `love.window`, `love.joystick`, `love.filesystem`, `love.graphics` (OneLua), `love.keyboard` (OneLua), `love.timer` (OneLua), `love.audio` (OneLua).
+Coverage: `love.math`, `love.data`, `love.thread`, `love.window`, `love.joystick`, `love.filesystem`, `love.graphics`/`keyboard`/`timer`/`audio` (OneLua), plus multi-backend primitives (OneLua + lpp-vita + PS3).
 
-**Platform-specific modules (lpp-vita, PS3) are not covered by unit tests** because their SDK APIs differ too much from the OneLua mocks.  If you add lpp-vita or PS3 tests, add a corresponding `mock_lpp_vita.lua` / `mock_ps3.lua`.
+To add a backend-specific test, dofile `setup.lua` with the right `__MODE`, load that backend's module, and assert against `__rec`. Extend the per-backend mock if a native call is missing.
 
 ---
 
@@ -252,6 +275,33 @@ Tests currently cover: `love.math`, `love.data`, `love.thread`, `love.window`, `
 - **Button maps instead of if-elseif chains**.  See `whileloop.lua` for the pattern.
 - **Shared modules** (`math.lua`, `data.lua`, `window.lua`, `joystick.lua`, `filesystem.lua`, `system.lua`, `thread.lua`) must not reference any platform-specific global.  They depend only on `lv1lua.*` and standard Lua.
 - **Platform modules** (`OneLua/`, `lpp-vita/`, `PS3/`) may reference SDK globals freely but must never import from each other.
+
+---
+
+## Rules for AI agents
+
+Read before committing anything.
+
+- **Commit authorship is fixed.** Every commit and push must be authored solely by
+  `Legendary Redfox <legendaryredfox.dev@gmail.com>`. Set it explicitly:
+  `git commit --author="Legendary Redfox <legendaryredfox.dev@gmail.com>"`.
+- **No AI trailer (no-ai-trailing).** Never add `Co-Authored-By: Claude`, "Generated
+  with", or any AI attribution line to commit messages, PR bodies, or code.
+- **No em-dashes.** Do not use the em-dash character in prose, docs, code comments,
+  or commit messages. Use a comma, parentheses, a colon, or reword the sentence.
+- **Never commit on `master` directly.** Branch first (`fix/...`, `feat/...`).
+- **Test-first for behaviour changes.** Add a test that fails before the fix and
+  passes after. Run the full suite (`lua tests/run_all.lua`) before every commit;
+  it must be green on lua 5.1 and 5.4 at minimum.
+- **LuaJIT / Lua 5.1 compatible.** The wrapper runs on the console SDKs' Lua. No
+  5.3+ integer ops (`//`, `&`, `|`, `<<`, `>>`), no `<const>`/`<close>`, no
+  `math.type`. Use `table.unpack or unpack`.
+- **Keep backends independent.** Shared modules never touch platform globals;
+  platform modules never import from each other.
+- **Update `Implemented.md`** whenever you change API coverage or a documented
+  limitation.
+- One logical change per commit, Conventional Commits subject
+  (`fix(scope): …`, `feat(scope): …`, `test: …`).
 
 ---
 

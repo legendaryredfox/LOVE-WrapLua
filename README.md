@@ -256,6 +256,25 @@ AGENTS.md       ← AI agent orientation guide
 
 ---
 
+## Ecosystem & prior art
+
+LOVE-WrapLua sits on top of the native homebrew stacks and borrows lessons from
+the wider console-OSS scene. Useful to know when you hit a wall or want to
+contribute a native feature:
+
+| Layer | Project | What it gives us / teaches |
+|---|---|---|
+| PSP 2D + fonts | [OSLib / OSLib MOD](https://github.com/PSP-Archive/oslibmodv2) | Mature C 2D lib with an animated **Sprites Lib** and **intraFont** text (UTF-8, fixed-width blit). Confirms native text width and blend/alpha are available on PSP. |
+| Vita 2D | [vita2d](https://github.com/xerpi/libvita2d) | The C lib lpp-vita wraps. Has tint/rotate/scale/part draw calls (quad + rotation in one shot), texture filters, freetype fonts, and `create_empty_texture_rendertarget` — the hook a future **Canvas** would use. |
+| PS3 2D/3D | [tiny3D](https://github.com/cloned67/tiny3d) + [Mini2D](https://github.com/Dnawrkshp/mini2d) | Scene-to-texture **surfaces** (PS3 Canvas is feasible), a pixel-shader pipeline, and TTF fonts. A model for turning the PS3 backend from stub into a real one. |
+| Whole-framework | [raylib4PlayStation](https://github.com/raylib4PlayStation/raylib4PlayStation) / [raylib-ps3](https://github.com/nbe1233/raylib-ps3) | raylib runs on Vita/PS4/PS3. A clean, zlib-licensed reference for module boundaries and a possible alternative native layer (no PSP target, though). |
+
+If you want to help push past the current limits (Canvas, blend modes, shaders,
+a first-class PS3 backend), the `FIX_PLAN.md` "Console OSS engines & frameworks"
+notes point at the exact native calls to build on.
+
+---
+
 ## Credits and thanks
 
 - [OneLua](http://onelua.x10.mx/) team — for their contributions to the PSP/Vita

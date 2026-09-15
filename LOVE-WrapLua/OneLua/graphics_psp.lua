@@ -11,8 +11,8 @@ if not lv1lua.load then
     dofile((lv1lua.dataloc or "") .. "LOVE-WrapLua/core/loader.lua")
 end
 
-lv1lua.load("LOVE-WrapLua/core/util.lua")
-lv1lua.load("LOVE-WrapLua/core/textwrap.lua")
+lv1lua.loadOnce("LOVE-WrapLua/core/util.lua")
+lv1lua.loadOnce("LOVE-WrapLua/core/textwrap.lua")
 
 local GRAPHICS = "LOVE-WrapLua/OneLua/psp/"
 

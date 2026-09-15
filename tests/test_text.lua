@@ -14,6 +14,7 @@ local T = dofile("tests/runner.lua")
 
 local GFX = {
     ["OneLua"]   = "LOVE-WrapLua/OneLua/graphics.lua",
+    ["PSP"]      = "LOVE-WrapLua/OneLua/graphics_psp.lua",
     ["lpp-vita"] = "LOVE-WrapLua/lpp-vita/graphics.lua",
     ["PS3"]      = "LOVE-WrapLua/PS3/graphics.lua",
 }
@@ -78,6 +79,31 @@ T.describe("OneLua text metrics (screen.textwidth)", function()
         local printed = __rec.all("screen.print")
         T.ok(#printed >= 1, "should print something")
         T.eq(printed[1].args[4], MULTIBYTE)
+    end)
+end)
+
+-- ── PSP (OneLua on 480x272) ──────────────────────────────────────
+load_backend("PSP")
+shared_suite("PSP")
+T.describe("PSP text metrics (PGF system font)", function()
+    T.it("newFont always returns the system face", function()
+        local f = love.graphics.newFont(nil, 20)
+        T.eq(f.font, lv1lua.gfx.defaultFont.font)
+        T.eq(f.size, 20)
+    end)
+
+    T.it("setFont keeps the system face but takes the size", function()
+        love.graphics.setFont(love.graphics.newFont(nil, 18), 18)
+        T.eq(love.graphics.getFont().font, lv1lua.gfx.defaultFont.font)
+        T.eq(love.graphics.getFont().size, 18)
+    end)
+
+    T.it("printf wraps on measured width", function()
+        love.graphics.setFont(nil, 12)
+        __rec.reset()
+        -- Mock: 8px per glyph at scale 1; "abc" is 3 glyphs.
+        love.graphics.printf("abc abc", 0, 0, 30, "left")
+        T.ok(__rec.count("screen.print") >= 2, "should wrap onto two lines")
     end)
 end)
 

@@ -10,6 +10,7 @@ local T = dofile("tests/runner.lua")
 
 local GFX = {
     ["OneLua"]   = "LOVE-WrapLua/OneLua/graphics.lua",
+    ["PSP"]      = "LOVE-WrapLua/OneLua/graphics_psp.lua",
     ["lpp-vita"] = "LOVE-WrapLua/lpp-vita/graphics.lua",
     ["PS3"]      = "LOVE-WrapLua/PS3/graphics.lua",
 }
@@ -60,6 +61,29 @@ T.describe("OneLua native order", function()
         T.ok(c ~= nil, "draw.line should be called")
         T.eq(c.args[1], 0); T.eq(c.args[2], 0)
         T.eq(c.args[3], 10); T.eq(c.args[4], 20)
+    end)
+end)
+
+-- ── PSP (OneLua on 480x272) ──────────────────────────────────────
+load_backend("PSP")
+shared_suite("PSP")
+T.describe("PSP native order", function()
+    T.it("line maps to draw.line(x1,y1,x2,y2)", function()
+        __rec.reset()
+        love.graphics.line(0, 0, 10, 20)
+        local c = __rec.last("draw.line")
+        T.ok(c ~= nil, "draw.line should be called")
+        T.eq(c.args[1], 0); T.eq(c.args[2], 0)
+        T.eq(c.args[3], 10); T.eq(c.args[4], 20)
+    end)
+
+    T.it("reports the 480x272 screen", function()
+        T.eq(love.graphics.getWidth(), 480)
+        T.eq(love.graphics.getHeight(), 272)
+    end)
+
+    T.it("reports the 512px texture limit", function()
+        T.eq(love.graphics.getSystemLimits().texturesize, 512)
     end)
 end)
 

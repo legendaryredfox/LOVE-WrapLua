@@ -11,8 +11,12 @@ __MODE = MODE
 
 dofile("tests/mock_common.lua")
 
+-- "PSP" is the OneLua SDK again, just on PSP hardware: same native calls, a
+-- 480x272 screen and lv1lua.isPSP set, which is what OneLua/graphics_psp.lua
+-- keys off.
 local backend_file = ({
     ["OneLua"]   = "tests/mock_onelua.lua",
+    ["PSP"]      = "tests/mock_onelua.lua",
     ["lpp-vita"] = "tests/mock_lppvita.lua",
     ["PS3"]      = "tests/mock_ps3.lua",
 })[MODE]
@@ -22,3 +26,9 @@ if not backend_file then
 end
 
 dofile(backend_file)
+
+if MODE == "PSP" then
+    lv1lua.mode  = "OneLua"
+    lv1lua.isPSP = true
+    lv1lua.screenWidth, lv1lua.screenHeight = 480, 272
+end

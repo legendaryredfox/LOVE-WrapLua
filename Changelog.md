@@ -1,4 +1,61 @@
 ## Changelog
+
+### 2026-09-15, branch `fix/phase0-1-correctness`
+
+Correctness work from `CODE_REVIEW.md` / `FIX_PLAN.md`, plus a modular
+restructure. Every behavioural change landed with a test that fails before it
+and passes after; the suite runs on lua5.1, lua5.4 and luajit.
+
+**Fixes**
+- Default font is a real Font object on all four backends, so `print` before
+  any `setFont` no longer dies on nil arithmetic (#9).
+- Real text metrics (#10): lpp-vita uses the native `Font.getTextWidth` (the
+  "not exposed" comment was wrong), OneLua and PSP measure whole UTF-8 glyphs
+  instead of bytes, and `printf` wraps and aligns on measured width. PS3 still
+  estimates, but per glyph.
+- `RandomGenerator` replaced with L'Ecuyer's combined generator (#11): the old
+  LCG lost its low bits past 2^53 from the second draw on and ignored `seed2`.
+  Output is now identical on lua5.1, lua5.4 and luajit.
+- PSP `draw` no longer mutates the source image (#6, previously fixed only on
+  the Vita path), and a negative scale mirrors properly instead of resizing to
+  a negative width.
+- `keypressed` / `keyreleased` are edge-triggered on every backend, with
+  `isrepeat` and a working `setKeyRepeat`; OneLua used to fire every frame a
+  button was held. The `dt` global leak in all three frame loops is gone.
+- `love.math.noise` handles the 4th dimension, and loading it no longer
+  reseeds Lua's global RNG.
+
+**Structure**
+- Each `love.*` module is now an entry point that loads one file per area:
+  `OneLua/graphics/`, `OneLua/psp/`, `lpp-vita/graphics/`, `PS3/graphics/`,
+  `math/`. The 1117-line OneLua graphics file and the 328-line PSP fork are
+  gone.
+- New `LOVE-WrapLua/core/`: `loader`, `util`, `transform`, `textwrap`, `input`,
+  `runtime`, `config`, `modules`, `require`, `callbacks`. Backends share state
+  through `lv1lua.gfx`, never through file-locals.
+- `printf` on lpp-vita, PSP and PS3 now shares one wrap implementation, which
+  also gained newline handling and correct treatment of a word wider than the
+  wrap box.
+
+**Tests**
+- PSP went from no coverage to a tested backend (`__MODE = "PSP"`).
+- New suites: `test_core` (util, transform stack, word wrap), `test_bootstrap`
+  (loader, runtime, config), `test_text` (metrics across four backends),
+  `test_input` (key edges and repeat, core plus all three loops).
+- Mocks gained a drivable pad (lpp-vita, PS3), a touch panel (OneLua), and
+  glyph-based text measuring, so a wrapper that measures bytes fails the suite.
+
+**Known gaps after this work**
+- `love.graphics.draw(image, quad, …)` only understands a quad on
+  OneLua/Vita, so upstream `anim8` runs there and nowhere else (T2.1).
+- `desAnim8` still calls the OneLua native `image.blit` directly, so it works
+  on OneLua and PSP only. A rework is planned as T9.1, against a spec kept
+  outside this repo.
+- lpp-vita and PS3 have no transform stack yet (T2.2), and the GitHub CI runs
+  are red for a billing lock on the account, not for a code failure.
+
+---
+
 - By Hipreme/MrcSnm:
 ### OneLua/PS_Vita Only
 - Support most of love.graphics functions 

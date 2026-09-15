@@ -214,7 +214,15 @@ Key implemented: `getDimensions`, `getWidth`, `getHeight`, `getTitle`, `setTitle
 
 `newThread`, `getChannel`, `newChannel`, `getThread`, `getThreads`
 
-Channel methods: `push`, `pop`, `peek`, `clear`, `hasRead`
+Channel methods: `push`, `pop`, `peek`, `clear`, `hasRead`, `getCount`,
+`supply`, `demand`, `performAtomic`
+
+**Synchronous, by design.** There is no OS threading on these backends: a
+thread runs as a coroutine when `start(...)` is called and finishes before
+`start` returns, with its extra arguments forwarded into the chunk.
+Consequently `Channel:supply` cannot block (it is an immediate push) and
+`Channel:demand` is a non-blocking pop returning `nil` on an empty channel.
+Do not write producer/consumer logic that relies on cross-thread blocking.
 
 ---
 

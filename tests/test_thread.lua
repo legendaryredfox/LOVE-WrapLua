@@ -109,5 +109,43 @@ T.describe("love.thread.newThread", function()
     end)
 end)
 
+-- ── Thread registry + blocking channel API (#4) ──────────────────
+T.describe("thread registry + channel API", function()
+    T.it("getThreads returns a table and never errors", function()
+        T.istype(love.thread.getThreads(), "table")
+    end)
+
+    T.it("getThread returns nil for an unknown name", function()
+        T.ok(love.thread.getThread("no_such_thread") == nil)
+    end)
+
+    T.it("newThread registers a retrievable thread", function()
+        local th = love.thread.newThread("worker.lua")
+        T.ok(love.thread.getThread("worker.lua") == th)
+    end)
+
+    T.it("supply/demand/getCount behave", function()
+        local ch = love.thread.newChannel()
+        ch:supply("a"); ch:supply("b")
+        T.eq(ch:getCount(), 2)
+        T.eq(ch:demand(), "a")
+        T.eq(ch:getCount(), 1)
+    end)
+
+    T.it("performAtomic runs a function with the channel", function()
+        local ch = love.thread.newChannel()
+        local n = ch:performAtomic(function(c) c:push(1); c:push(2); return c:getCount() end)
+        T.eq(n, 2)
+    end)
+
+    T.it("start forwards args into the thread chunk", function()
+        local captured
+        love.filesystem.load = function(_) return function(a, b) captured = {a, b} end end
+        local th = love.thread.newThread("args.lua")
+        th:start(7, 9)
+        T.eq(captured[1], 7); T.eq(captured[2], 9)
+    end)
+end)
+
 io.write("\n=== love.thread ===\n")
 return T.summary()

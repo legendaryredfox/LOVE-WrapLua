@@ -1,5 +1,10 @@
 love.thread = {}
 local channels = {}
+-- Registry of spawned threads, keyed by filename. Kept module-local so
+-- getThreads()/getThread() never touch an undefined global (#4).
+local threads = {}
+
+local unpack = table.unpack or unpack
 
 local function createChannel()
     local channel = {
@@ -26,6 +31,27 @@ local function createChannel()
         return #self.messages > 0
     end
 
+    function channel:getCount()
+        return #self.messages
+    end
+
+    -- supply/demand are the blocking variants in desktop LÖVE. This wrapper is
+    -- single-threaded (threads run synchronously as coroutines), so they cannot
+    -- block: supply is an immediate push, demand is a non-blocking pop that
+    -- returns nil when the channel is empty. See Implemented.md.
+    function channel:supply(msg)
+        table.insert(self.messages, msg)
+        return true
+    end
+
+    function channel:demand()
+        return table.remove(self.messages, 1)
+    end
+
+    function channel:performAtomic(fn, ...)
+        return fn(self, ...)
+    end
+
     return channel
 end
 
@@ -39,15 +65,17 @@ end
 function love.thread.newThread(filename)
     local thread = {
         running = false,
-        start = function(self)
+        start = function(self, ...)
             self.running = true
+            local args = { ... }
+            local nargs = select("#", ...)
             local chunk, err = love.filesystem.load(filename)
             if not chunk then
-                error("Failed to load thread file: " .. err)
+                error("Failed to load thread file: " .. tostring(err))
             end
 
             coroutine.wrap(function()
-                chunk()
+                chunk(unpack(args, 1, nargs))
                 self.running = false
             end)()
         end,
@@ -55,16 +83,22 @@ function love.thread.newThread(filename)
             return self.running
         end,
         wait = function(self)
-            -- while self.running do
-            --     -- Small sleep or coroutine yield could go here if necessary
-            -- end
-        end
+            -- Threads run synchronously, so nothing to wait on.
+        end,
+        getError = function(self)
+            return nil
+        end,
     }
+    threads[filename] = thread
     return thread
 end
 
 function love.thread.getThreads()
     return threads
+end
+
+function love.thread.getThread(name)
+    return threads[name]
 end
 
 function love.thread.newChannel(name)
@@ -76,8 +110,4 @@ function love.thread.newChannel(name)
     else
         return createChannel()
     end
-end
-
-function love.thread.getThread(name)
-    return threads[name]
 end

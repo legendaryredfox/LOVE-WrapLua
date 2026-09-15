@@ -234,13 +234,22 @@ end
 
 function love.graphics.translate(offsetX, offsetY)
     local top = _transformStack.stack[#_transformStack.stack]
-    if top then top._offsetX = offsetX; top._offsetY = offsetY; _transformStack._dirty = true end
+    if top then
+        -- compose in local (already-scaled) space: offset += scale * delta
+        top._offsetX = top._offsetX + top._scaleX * offsetX
+        top._offsetY = top._offsetY + top._scaleY * offsetY
+        _transformStack._dirty = true
+    end
 end
 
 function love.graphics.scale(sx, sy)
     if not sy then sy = sx end
     local top = _transformStack.stack[#_transformStack.stack]
-    if top then top._scaleX = sx; top._scaleY = sy; _transformStack._dirty = true end
+    if top then
+        top._scaleX = top._scaleX * sx
+        top._scaleY = top._scaleY * sy
+        _transformStack._dirty = true
+    end
 end
 
 function love.graphics.rotate(angle)

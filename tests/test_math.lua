@@ -63,10 +63,60 @@ T.describe("love.math.noise", function()
         T.eq(a, b)
     end)
 
-    T.it("different inputs generally produce different output", function()
-        local a = love.math.noise(0.1, 0.1)
-        local b = love.math.noise(10.1, 10.1)
-        T.ok(a ~= b, "noise should differ for far-apart inputs")
+    T.it("varies across inputs", function()
+        -- Sampling a sweep rather than two fixed points: any two chosen points
+        -- can collide by chance in a gradient field, which says nothing about
+        -- whether the noise varies.
+        local seen, distinct = {}, 0
+        for i = 0, 15 do
+            local v = love.math.noise(i * 0.37, i * 0.71)
+            if not seen[v] then seen[v] = true; distinct = distinct + 1 end
+        end
+        T.ok(distinct > 12, "expected mostly distinct values, got " .. distinct)
+    end)
+
+    T.it("4D noise returns value in [0,1]", function()
+        T.inrange(love.math.noise(1.2, 3.4, 5.6, 7.8), 0, 1)
+    end)
+
+    T.it("4D noise reacts to the w axis", function()
+        local a = love.math.noise(1.5, 2.5, 3.5, 0.25)
+        local b = love.math.noise(1.5, 2.5, 3.5, 0.75)
+        T.ok(a ~= b, "w must affect the result")
+    end)
+
+    T.it("4D noise is continuous along w", function()
+        -- Neighbouring w values must be close: this catches a lookup that
+        -- hashes w instead of interpolating along it.
+        local a = love.math.noise(1.5, 2.5, 3.5, 0.50)
+        local b = love.math.noise(1.5, 2.5, 3.5, 0.51)
+        T.near(a, b, 0.05)
+    end)
+
+    T.it("4D noise is deterministic", function()
+        T.eq(love.math.noise(0.3, 0.4, 0.5, 0.6),
+             love.math.noise(0.3, 0.4, 0.5, 0.6))
+    end)
+
+    T.it("stays in range over a sweep of all four axes", function()
+        for i = 0, 40 do
+            local k = i / 7
+            T.inrange(love.math.noise(k, k * 2, k * 3, k * 5), 0, 1)
+        end
+    end)
+
+    T.it("loading the module does not disturb Lua's global RNG", function()
+        -- Game code may call math.random directly, so building the permutation
+        -- table must not reseed it. Compare the stream's next value against a
+        -- control run that did not reload the module.
+        math.randomseed(4242)
+        math.random()
+        local control = math.random()
+
+        math.randomseed(4242)
+        math.random()
+        lv1lua.load("LOVE-WrapLua/math/noise.lua")
+        T.eq(math.random(), control)
     end)
 end)
 

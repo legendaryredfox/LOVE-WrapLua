@@ -153,7 +153,7 @@
 | random / setRandomSeed | ✓ own generator, not Lua's `math.random`; `setRandomSeed(low, high)` uses both words |
 | getRandomSeed | ✓ returns the two state words |
 | randomNormal | ✓ Box-Muller |
-| noise(x,y,z,w) | ✓ Perlin, normalized 0–1; `w` is ignored (3D only) |
+| noise(x,y,z,w) | ✓ Perlin 1D-4D, normalized 0–1; loading does not reseed Lua's RNG |
 | newTransform | ✓ full 2D affine |
 | newBezierCurve | ✓ |
 | newRandomGenerator | ✓ L'Ecuyer combined generator: period ≈2.3e18, exact in a double on Lua 5.1–5.4 and LuaJIT. `getState` returns both words as `"s1,s2"` |

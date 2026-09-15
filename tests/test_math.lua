@@ -198,6 +198,106 @@ T.describe("love.math.newRandomGenerator", function()
         local r2 = love.math.newRandomGenerator(7)
         T.eq(r1:random(), r2:random())
     end)
+
+    -- Golden vector: the L'Ecuyer recurrence computed independently here.
+    -- Every product stays under 2^53, so these values must be identical on
+    -- Lua 5.1, 5.3, 5.4 and LuaJIT (#11).
+    T.it("matches the reference recurrence for a fixed seed", function()
+        local M1, M2 = 2147483563, 2147483399
+        local s1 = (12345 % (M1 - 1)) + 1
+        local s2 = ((12345 + 131071) % (M2 - 1)) + 1
+        local expected = {}
+        for i = 1, 3 do
+            s1 = (s1 * 40014) % M1
+            s2 = (s2 * 40692) % M2
+            expected[i] = ((s1 - s2) % (M1 - 1)) / (M1 - 1)
+        end
+
+        local rng = love.math.newRandomGenerator(12345)
+        T.near(rng:random(), expected[1], 1e-12)
+        T.near(rng:random(), expected[2], 1e-12)
+        T.near(rng:random(), expected[3], 1e-12)
+    end)
+
+    T.it("setSeed uses the second seed too", function()
+        local a = love.math.newRandomGenerator()
+        local b = love.math.newRandomGenerator()
+        a:setSeed(1, 1)
+        b:setSeed(1, 2)
+        T.ok(a:random() ~= b:random(), "seed2 must affect the stream")
+    end)
+
+    T.it("setSeed with one argument is reproducible", function()
+        local rng = love.math.newRandomGenerator()
+        rng:setSeed(2024)
+        local first = { rng:random(), rng:random(), rng:random() }
+        rng:setSeed(2024)
+        T.eq(rng:random(), first[1])
+        T.eq(rng:random(), first[2])
+        T.eq(rng:random(), first[3])
+    end)
+
+    T.it("getState / setState round-trips both state words", function()
+        local rng = love.math.newRandomGenerator(4321)
+        rng:random(); rng:random()
+        local saved = rng:getState()
+        local expected = { rng:random(), rng:random() }
+        rng:setState(saved)
+        T.eq(rng:random(), expected[1])
+        T.eq(rng:random(), expected[2])
+    end)
+
+    T.it("random(a,b) stays in range over many draws", function()
+        local rng = love.math.newRandomGenerator(555)
+        for _ = 1, 500 do
+            local v = rng:random(3, 7)
+            T.ok(v >= 3 and v <= 7, "value out of range: " .. tostring(v))
+            T.eq(v, math.floor(v), "should be an integer")
+        end
+    end)
+
+    T.it("draws spread over all buckets", function()
+        -- 4000 draws into 10 buckets: every bucket should get roughly 400.
+        -- A generator losing precision collapses into a few buckets.
+        local rng = love.math.newRandomGenerator(8675309)
+        local buckets = {}
+        for i = 1, 10 do buckets[i] = 0 end
+        for _ = 1, 4000 do
+            local b = math.floor(rng:random() * 10) + 1
+            buckets[b] = buckets[b] + 1
+        end
+        for i = 1, 10 do
+            T.ok(buckets[i] > 250 and buckets[i] < 550,
+                 "bucket " .. i .. " had " .. buckets[i])
+        end
+    end)
+
+    T.it("does not repeat within a long run", function()
+        local rng = love.math.newRandomGenerator(31337)
+        local seen, n = {}, 2000
+        for _ = 1, n do
+            local v = rng:random()
+            T.nok(seen[v], "value repeated: " .. tostring(v))
+            seen[v] = true
+        end
+    end)
+end)
+
+T.describe("love.math.random (global generator)", function()
+    T.it("is reproducible after setRandomSeed", function()
+        love.math.setRandomSeed(777)
+        local first = { love.math.random(), love.math.random() }
+        love.math.setRandomSeed(777)
+        T.eq(love.math.random(), first[1])
+        T.eq(love.math.random(), first[2])
+    end)
+
+    T.it("setRandomSeed accepts a second seed", function()
+        love.math.setRandomSeed(5, 1)
+        local a = love.math.random()
+        love.math.setRandomSeed(5, 2)
+        T.ok(love.math.random() ~= a, "seed2 must affect the global stream")
+    end)
 end)
 
 -- ── love.math.isConvex ───────────────────────────────────────────

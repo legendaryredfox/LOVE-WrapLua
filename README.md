@@ -1,5 +1,7 @@
 ![Greetings](images/warudo.png)
 
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-legendaryredfox-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/legendaryredfox)
+
 # LOVE-WrapLua
 
 A [LÖVE](https://love2d.org/) 11.5 compatibility layer for **PSP**, **PS Vita**, and **PS3**.

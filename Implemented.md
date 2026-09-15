@@ -11,8 +11,8 @@
 | love.load | ✓ | ✓ | ✓ | ✓ |
 | love.update(dt) | ✓ | ✓ | ✓ | ✓ |
 | love.draw | ✓ | ✓ | ✓ | ✓ |
-| love.keypressed | ✓ | ✓ | ✓ | ✓ |
-| love.keyreleased | ✓ | ✓ | ✓ | ✓ |
+| love.keypressed(key, scancode, isrepeat) once per press | ✓ | ✓ | ✓ | ✓ |
+| love.keyreleased(key, scancode) once per release | ✓ | ✓ | ✓ | ✓ |
 | love.textinput | stub | stub | stub | stub |
 | love.quit | ✓ | ✓ | ✓ | ✓ |
 | love.mousepressed | OL-Vita only | — | — | — |
@@ -102,7 +102,7 @@
 |---|---|
 | isDown(key) | ✓ |
 | isScancodeDown | ✓ |
-| hasKeyRepeat / setKeyRepeat | stub |
+| hasKeyRepeat / setKeyRepeat | ✓ off by default; when on, repeats after 0.4s at 0.05s intervals |
 | hasTextInput | stub |
 | getKeyFromScancode / getScancodeFromKey | ✓ (identity) |
 | showTextInput / setTextInput | ✓ |

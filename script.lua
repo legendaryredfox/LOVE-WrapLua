@@ -14,6 +14,7 @@ lv1lua.loadOnce("LOVE-WrapLua/core/transform.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/textwrap.lua")
 
 lv1lua.loadOnce("LOVE-WrapLua/core/runtime.lua")
+lv1lua.loadOnce("LOVE-WrapLua/core/input.lua")
 lv1lua.load("LOVE-WrapLua/love-functions/thread.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/config.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/modules.lua")

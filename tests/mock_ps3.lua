@@ -39,8 +39,28 @@ function surface()
     return setmetatable(s, { __index = function() return function() return 0 end end })
 end
 
--- Controller state.
+-- Free graphics functions the frame loop uses.
+FlipGFX = nop
+
+-- System utility namespace (in-game XMB callbacks).
+sys = {
+    UtilRegisterCallback = nop,
+    UtilCheckCallback    = function() return 0 end,
+    SYSUTIL_EXIT_GAME    = 1,
+    TimerUsleep          = nop,
+}
+g_status = 0
+
+-- Controller state. Every button reads as a function returning 0 or 1, like
+-- the real pad.* API; tests drive it through `pad._down`.
 pad = setmetatable(
-    { InitPads = nop, lx = 128, ly = 128, rx = 128, ry = 128 },
-    { __index = function() return function() return false end end }
+    {
+        InitPads = nop,
+        _down = {},
+        lx = function() return 128 end, ly = function() return 128 end,
+        rx = function() return 128 end, ry = function() return 128 end,
+    },
+    { __index = function(t, k)
+        return function() return t._down[k] and 1 or 0 end
+    end }
 )

@@ -125,7 +125,13 @@ buttons = {
     analogrx = 128, analogry = 128,
 }
 
-touch = { read = function() end }
+-- Touch panels. The real API exposes touch.front / touch.back as arrays of
+-- {x, y} with a `count` field; tests fill those in to simulate a touch.
+touch = {
+    read  = function() end,
+    front = { count = 0 },
+    back  = { count = 0 },
+}
 osk   = { init = function() return "" end }
 
 -- ── image filter constants ───────────────────────────────────────

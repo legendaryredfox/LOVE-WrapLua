@@ -11,9 +11,14 @@ function lv1lua.draw()
     Screen.flip()
 end
 
+local keys = lv1lua.core.newKeyTracker()
+
 function lv1lua.update()
     if Timer.getTime(lv1lua.timer) >= 16 then
-        dt = Timer.getTime(lv1lua.timer) / 1000
+        -- Kept on lv1lua rather than as a global, so game code cannot collide
+        -- with it.
+        local dt = Timer.getTime(lv1lua.timer) / 1000
+        lv1lua.dt = dt
         if love.update then
             love.update(dt)
         end
@@ -31,17 +36,13 @@ function lv1lua.updatecontrols()
     js.axes[3] = (Controls.getRightX(lv1lua.pad) - 128) / 128
     js.axes[4] = (Controls.getRightY(lv1lua.pad) - 128) / 128
 
+    -- Sample the pad, then let the shared tracker produce the edges.
+    -- lv1lua.keymask stays in step because love.keyboard.isDown reads it.
+    local held = {}
     for i = 1, #lv1lua.keyenum do
-        if Controls.check(lv1lua.pad, lv1lua.keyenum[i]) then
-            if not lv1lua.keymask[i] then
-                love.keypressed(lv1lua.keyname[i])
-                lv1lua.keymask[i] = true
-            end
-        else
-            if lv1lua.keymask[i] then
-                love.keyreleased(lv1lua.keyname[i])
-                lv1lua.keymask[i] = false
-            end
-        end
+        local down = Controls.check(lv1lua.pad, lv1lua.keyenum[i]) and true or false
+        held[lv1lua.keyname[i]] = down
+        lv1lua.keymask[i] = down
     end
+    keys:update(held, lv1lua.dt or 0)
 end

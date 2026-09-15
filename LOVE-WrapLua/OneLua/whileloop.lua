@@ -23,9 +23,14 @@ function lv1lua.draw()
     screen.flip()
 end
 
+local keys = lv1lua.core.newKeyTracker()
+
 function lv1lua.update()
     if lv1lua.timer:time() >= 16 then
-        dt = lv1lua.timer:time() / 1000
+        -- Kept on lv1lua rather than as a global, so game code cannot collide
+        -- with it (and so the helpers below can read it).
+        local dt = lv1lua.timer:time() / 1000
+        lv1lua.dt = dt
         if love.update then
             love.update(dt)
         end
@@ -45,16 +50,15 @@ function lv1lua.updatecontrols()
     js.axes[3] = ((buttons.analogrx or 128) - 128) / 128
     js.axes[4] = ((buttons.analogry or 128) - 128) / 128
 
+    -- Sample every button's held state, then let the tracker work out the
+    -- edges. buttons.held is the SDK's "down right now" table.
+    local held = {}
     for i = 1, #mask do
         local btn = mask[i]
-        local key = buttonMap[btn] or btn
-        if buttons[btn] then
-            love.keypressed(key)
-        end
-        if buttons.released[btn] then
-            love.keyreleased(key)
-        end
+        held[buttonMap[btn] or btn] = buttons.held[btn] and true or false
     end
+    keys:update(held, lv1lua.dt or 0)
+
     __checkGameRestart()
     if not lv1lua.isPSP then
         ___updateFrontTouch()
@@ -74,7 +78,7 @@ end
 function __checkHomePress()
     --When all analogs are 0 and not flicking, it means that home is pressed
     if(buttons.analoglx == 0 and buttons.analogly == 0 and buttons.analogrx == 0 and buttons.analogry == 0) then
-        homeHeldtime = homeHeldtime + dt
+        homeHeldtime = homeHeldtime + (lv1lua.dt or 0)
     else
         if(homeHeldtime>= homeCallbackThreshold and homeHeldtime < homeCallbackCancel) then
             __goLiveArea()

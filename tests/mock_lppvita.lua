@@ -79,8 +79,11 @@ Sound = {
 
 -- ── Controls ─────────────────────────────────────────────────────
 Controls = {
+    -- Tests drive the pad through Controls._down, keyed by the native button
+    -- bitmask value (see lv1lua.keyenum).
+    _down    = {},
     read     = function() return 0 end,
-    check    = function(pad, btn) return false end,
+    check    = function(pad, btn) return Controls._down[btn] == true end,
     getLeftX = function() return 0 end, getLeftY = function() return 0 end,
     getRightX= function() return 0 end, getRightY= function() return 0 end,
 }

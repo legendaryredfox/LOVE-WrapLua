@@ -1,6 +1,12 @@
-loadstring = load
-dt = 0.0167
+loadstring = load  -- PS3's Lua is 5.2+, where loadstring was removed
+
+-- The PS3 Lua Player exposes no timer, so the frame time is assumed rather
+-- than measured. Kept on lv1lua instead of as a global `dt`.
+lv1lua.dt = 1 / 60
+
 sys.UtilRegisterCallback()
+
+local keys = lv1lua.core.newKeyTracker()
 
 local buttonDefs = {
     {fn = "circle",   key = lv1lua.keyset[1], id = "circle"},
@@ -23,8 +29,8 @@ function lv1lua.draw()
     FlipGFX()
 end
 
-function lv1lua.update() --this isn't really dt stuff, but ok heh
-    if love.update then love.update(dt) end
+function lv1lua.update()
+    if love.update then love.update(lv1lua.dt) end
 
     --Check ingame XMB
     local ret = sys.UtilCheckCallback(g_status)
@@ -44,16 +50,16 @@ function lv1lua.updatecontrols()
     js.axes[3] = (pad.rx(0)  - 128) / 128
     js.axes[4] = (pad.ry(0)  - 128) / 128
 
+    -- Sample the pad, then let the shared tracker produce the edges.
+    -- lv1lua.key stays in step because love.keyboard.isDown reads it.
+    local held = {}
     for i = 1, #buttonDefs do
-        local def = buttonDefs[i]
-        if pad[def.fn](0) > 0 and lv1lua.key[def.id] == 0 then
-            love.keypressed(def.key)
-            lv1lua.key[def.id] = 1
-        elseif pad[def.fn](0) == 0 and lv1lua.key[def.id] == 1 then
-            love.keyreleased(def.key)
-            lv1lua.key[def.id] = 0
-        end
+        local def  = buttonDefs[i]
+        local down = pad[def.fn](0) > 0
+        held[def.key] = down
+        lv1lua.key[def.id] = down and 1 or 0
     end
+    keys:update(held, lv1lua.dt)
 
     --force quit
     if pad.L3(0) > 0 and pad.R3(0) > 0 then

@@ -43,6 +43,7 @@ LOVE-WrapLua/
 │   │   ├── util.lua            ← Rounding, 0-1↔0-255 colour, UTF-8 glyph iteration.
 │   │   ├── transform.lua       ← Software transform stack (push/pop/flatten).
 │   │   ├── textwrap.lua        ← Greedy word wrap, measured by the font itself.
+│   │   ├── input.lua           ← Key edge detection, repeat, setKeyRepeat state.
 │   │   ├── runtime.lua         ← Platform detection, screen size, love namespace.
 │   │   ├── config.lua          ← game/conf.lua, lv1luaconf, button layout.
 │   │   ├── modules.lua         ← Loads the backend + shared modules.
@@ -106,6 +107,7 @@ LOVE-WrapLua/
     ├── fixtures/               ← Small files loaded by tests.
     ├── test_core.lua           ← core/util, core/transform, core/textwrap.
     ├── test_bootstrap.lua      ← core/loader, core/runtime, core/config.
+    ├── test_input.lua          ← Key edges + repeat, core and all 3 whileloops.
     ├── test_primitives.lua     ← Shared primitive suite across all 4 backends.
     ├── test_text.lua           ← Text metrics + printf across all 4 backends.
     ├── test_math.lua
@@ -125,7 +127,7 @@ LOVE-WrapLua/
 ## Boot sequence
 
 1. The console OS loads `index.lua` (OneLua/lpp-vita) or `app.lua` (PS3), which sets `lv1lua.dataloc` and `lv1lua.mode` then calls `dofile("script.lua")`.
-2. `script.lua` dofiles `core/loader.lua` (which defines `lv1lua.load`), then runs the core steps in order: `core/util`, `core/transform`, `core/textwrap` → `core/runtime` (platform detection, screen size, `love.*` namespace, `love.getVersion`) → `love-functions/thread` → `core/config` (`game/conf.lua`, `lv1luaconf`, `lv1lua.keyset`) → `core/modules` (backend + shared modules) → `core/require`.  It then seeds the RNG, loads `game/main.lua`, calls `love.load()`, wires `core/callbacks`, and enters `while lv1lua.running do … end`.
+2. `script.lua` dofiles `core/loader.lua` (which defines `lv1lua.load`), then runs the core steps in order: `core/util`, `core/transform`, `core/textwrap` → `core/runtime` (platform detection, screen size, `love.*` namespace, `love.getVersion`) → `love-functions/thread` → `core/input` (key edges) → `core/config` (`game/conf.lua`, `lv1luaconf`, `lv1lua.keyset`) → `core/modules` (backend + shared modules) → `core/require`.  It then seeds the RNG, loads `game/main.lua`, calls `love.load()`, wires `core/callbacks`, and enters `while lv1lua.running do … end`.
 3. Each iteration calls `lv1lua.draw()` → `lv1lua.update()` → `lv1lua.updatecontrols()`, all defined in the platform's `whileloop.lua`.
 
 ---

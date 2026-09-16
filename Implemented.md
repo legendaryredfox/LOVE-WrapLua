@@ -78,7 +78,7 @@
 | newMesh | stub | stub | stub | stub |
 | newParticleSystem | ✓ (basic) | — | — | — |
 | getStats / getRendererInfo | ✓ | ✓ | ✓ | ✓ |
-| getSystemLimits / getSupported | ✓ | — | — | — |
+| getSystemLimits / getSupported | ✓ | ✓ | ✓ | ✓ (from central capability table) |
 | isGammaCorrect | ✓ | — | — | — |
 
 ---

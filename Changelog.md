@@ -25,6 +25,12 @@ Backend-independent sprite drawing and the desAnim8 rework.
   rasteriser (`core/polyfill.lua`) replaces the convex-only centroid fan, so
   concave shapes fill correctly on OneLua, PSP and lpp-vita; each backend just
   supplies a one-row `fillSpan`. `ellipse`/`arc` fills ride the same path.
+- Honest capabilities (T4.5): a central `core/capabilities.lua` records each
+  backend's real caps, and `getSupported`/`getSystemLimits` now come from it on
+  all four backends (lpp-vita and PS3 previously exposed neither). Reports
+  `canvas=false`/`glsl3=false` everywhere, the true texture limit per backend
+  (512 on OneLua/PSP/PS3, 1024 on lpp-vita), and a wrapper-internal
+  `love._backend.features` table (transform/quaddraw/scissor/…) for the docs.
 
 **Tests**
 - `test_primitives` gained lpp-vita cases for the quad/rotation draw and the

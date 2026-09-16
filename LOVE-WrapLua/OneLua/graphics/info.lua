@@ -19,16 +19,8 @@ function love.graphics.getRendererInfo()
     return "OneLua","1.0","",""
 end
 
-function love.graphics.getSystemLimits()
-    -- PSP texture units cap at 512x512; the Vita is larger but OneLua does not
-    -- report it, so the conservative limit is used for both.
-    return { pointsize=1, texturesize=512, multicanvas=1, canvasmsaa=0 }
-end
-
-function love.graphics.getSupported()
-    return { clampzero=false, lighten=false, multicanvasformats=false,
-             glsl3=false, instancing=false }
-end
+-- getSystemLimits / getSupported come from the central capability table.
+lv1lua.core.installCapabilities("OneLua")
 
 function love.graphics.captureScreenshot(callback_or_filename)
     -- Not available on this platform.

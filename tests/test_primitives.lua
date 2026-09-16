@@ -72,6 +72,13 @@ T.describe("OneLua native order", function()
         T.eq(c.args[3], 10)  -- span width across the 10px-wide square
         T.eq(c.args[4], 1)   -- one scanline tall
     end)
+
+    T.it("reports honest capabilities (T4.5)", function()
+        T.nok(love.graphics.getSupported().canvas)
+        T.nok(love.graphics.getSupported().glsl3)
+        T.eq(love.graphics.getSystemLimits().texturesize, 512)
+        T.ok(love._backend.features.transform, "OneLua has a transform stack")
+    end)
 end)
 
 -- ── PSP (OneLua on 480x272) ──────────────────────────────────────
@@ -101,6 +108,12 @@ T.describe("PSP native order", function()
         love.graphics.polygon("fill", {0,0, 10,0, 10,10, 0,10})
         T.ok(__rec.count("draw.fillrect") > 0, "fill should emit filled spans")
         T.eq(__rec.count("draw.line"), 0)
+    end)
+
+    T.it("reports the PSP capability profile (T4.5)", function()
+        T.eq(love.graphics.getSystemLimits().texturesize, 512)
+        T.nok(love._backend.features.transform, "PSP has no transform stack")
+        T.ok(love._backend.features.quaddraw, "PSP has quad sub-rect blit")
     end)
 end)
 
@@ -210,6 +223,13 @@ T.describe("lpp-vita native order (luaGraphics.cpp)", function()
         local c = __rec.last("Graphics.fillRect")
         T.eq(c.args[2] - c.args[1], 10)  -- span width (x2 - x1)
         T.eq(c.args[4] - c.args[3], 1)   -- one scanline tall (y2 - y1)
+    end)
+
+    T.it("reports the lpp-vita capability profile (T4.5)", function()
+        T.eq(love.graphics.getSystemLimits().texturesize, 1024)
+        T.ok(love.graphics.getSupported().fullnpot, "vita2d handles NPOT")
+        T.ok(love._backend.features.scissor, "lpp-vita has software scissor")
+        T.nok(love.graphics.getSupported().canvas)
     end)
 end)
 
@@ -344,6 +364,14 @@ end)
 -- ── PS3 ──────────────────────────────────────────────────────────
 load_backend("PS3")
 shared_suite("PS3")
+T.describe("PS3 capability profile (T4.5)", function()
+    T.it("reports the least-supported tier honestly", function()
+        T.nok(love._backend.features.primitives, "PS3 has no primitives")
+        T.nok(love._backend.features.quaddraw,  "PS3 has no quad sub-rect blit")
+        T.nok(love.graphics.getSupported().canvas)
+        T.eq(love.graphics.getSystemLimits().texturesize, 512)
+    end)
+end)
 
 io.write("\n=== primitives (multi-backend) ===\n")
 return T.summary()

@@ -186,6 +186,61 @@ T.describe("lpp-vita native order (luaGraphics.cpp)", function()
     end)
 end)
 
+-- ── lpp-vita draw: quad + rotation (T2.1) ────────────────────────
+T.describe("lpp-vita draw (drawImageExtended)", function()
+    T.it("an unrotated full-image draw uses the drawScaleImage fast path", function()
+        __rec.reset()
+        local img = love.graphics.newImage("s.png")
+        love.graphics.draw(img, 10, 20)
+        T.eq(__rec.count("Graphics.drawScaleImage"), 1)
+        T.eq(__rec.count("Graphics.drawImageExtended"), 0)
+        local c = __rec.last("Graphics.drawScaleImage")
+        T.eq(c.args[1], 10); T.eq(c.args[2], 20)
+    end)
+
+    T.it("a rotated draw uses drawImageExtended with the full image + radius", function()
+        __rec.reset()
+        local img = love.graphics.newImage("s.png")
+        love.graphics.draw(img, 5, 6, math.pi / 2)
+        local c = __rec.last("Graphics.drawImageExtended")
+        T.ok(c ~= nil, "drawImageExtended should be called for a rotated draw")
+        T.eq(c.args[1], 5)   -- x
+        T.eq(c.args[2], 6)   -- y
+        T.eq(c.args[4], 0)   -- st_x (full image)
+        T.eq(c.args[5], 0)   -- st_y
+        T.eq(c.args[6], 64)  -- w  (mock image is 64x64)
+        T.eq(c.args[7], 64)  -- h
+        T.near(c.args[8], math.pi / 2)  -- radius
+    end)
+
+    T.it("a quad draw maps the viewport into st_x/st_y/w/h", function()
+        __rec.reset()
+        local img = love.graphics.newImage("s.png")
+        local q   = love.graphics.newQuad(8, 16, 32, 24, img)
+        love.graphics.draw(img, q, 100, 50, 0, 2, 3)
+        local c = __rec.last("Graphics.drawImageExtended")
+        T.ok(c ~= nil, "drawImageExtended should be called for a quad draw")
+        T.eq(c.args[1], 100)  -- x
+        T.eq(c.args[2], 50)   -- y
+        T.eq(c.args[4], 8)    -- st_x = quad x
+        T.eq(c.args[5], 16)   -- st_y = quad y
+        T.eq(c.args[6], 32)   -- w    = quad w
+        T.eq(c.args[7], 24)   -- h    = quad h
+        T.eq(c.args[9], 2)    -- sx
+        T.eq(c.args[10], 3)   -- sy
+    end)
+
+    T.it("quad origin offset shifts the destination by ox*sx / oy*sy", function()
+        __rec.reset()
+        local img = love.graphics.newImage("s.png")
+        local q   = love.graphics.newQuad(0, 0, 32, 32, img)
+        love.graphics.draw(img, q, 100, 100, 0, 2, 2, 5, 10)
+        local c = __rec.last("Graphics.drawImageExtended")
+        T.eq(c.args[1], 100 - 5 * 2)   -- x - ox*sx
+        T.eq(c.args[2], 100 - 10 * 2)  -- y - oy*sy
+    end)
+end)
+
 -- ── PS3 ──────────────────────────────────────────────────────────
 load_backend("PS3")
 shared_suite("PS3")

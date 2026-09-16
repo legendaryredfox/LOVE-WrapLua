@@ -1,5 +1,36 @@
 ## Changelog
 
+### 2026-09-16, branch `fix/phase0-1-correctness`
+
+Backend-independent sprite drawing and the desAnim8 rework.
+
+**Fixes / features**
+- lpp-vita `draw` now handles the quad form and rotation through the native
+  `Graphics.drawImageExtended`, keeping `drawScaleImage` as the unrotated fast
+  path (T2.1). SpriteBatch/Text objects that draw themselves are dispatched too.
+- lpp-vita joined the shared software transform stack: translate/scale/rotate/
+  push/pop/origin, applyTransform/replaceTransform and transformPoint compose
+  into every draw; `setScissor` is enforced by rejecting draws whose box falls
+  outside the region (T2.2).
+- PSP `draw` gained a real quad sub-rect blit (source stays immutable; scale and
+  flip reuse the cached copy). PS3 `draw` accepts a quad so quad-based libraries
+  run, but ignores it and draws the whole surface (least-supported tier).
+- `desAnim8` rewritten (T9.1): a modular, backend-independent library (Grid +
+  Animation) that draws only through `love.graphics.draw(image, quad, …)`, with
+  no reach into native image data. Adds per-frame durations, flipH/flipV, clone,
+  pause/resume/gotoFrame, play-once with a one-shot completion callback, and a
+  current-frame query. The old `desAnim8.new` single-strip constructor still
+  works via a shim. Upstream `anim8` now runs on all four backends too.
+
+**Tests**
+- `test_primitives` gained lpp-vita cases for the quad/rotation draw and the
+  transform-stack + scissor behaviour.
+- New `test_desanim8`: the library runs under all four backend mocks —
+  integer-dt frame advance, independent `clone():flipH()`, one-shot play-once
+  callback, and the source image is never resized.
+
+---
+
 ### 2026-09-15, branch `fix/phase0-1-correctness`
 
 Correctness work from `CODE_REVIEW.md` / `FIX_PLAN.md`, plus a modular
@@ -46,13 +77,12 @@ and passes after; the suite runs on lua5.1, lua5.4 and luajit.
   glyph-based text measuring, so a wrapper that measures bytes fails the suite.
 
 **Known gaps after this work**
-- `love.graphics.draw(image, quad, …)` only understands a quad on
-  OneLua/Vita, so upstream `anim8` runs there and nowhere else (T2.1).
-- `desAnim8` still calls the OneLua native `image.blit` directly, so it works
-  on OneLua and PSP only. A rework is planned as T9.1, against a spec kept
-  outside this repo.
-- lpp-vita and PS3 have no transform stack yet (T2.2), and the GitHub CI runs
-  are red for a billing lock on the account, not for a code failure.
+- PS3 draws whole surfaces only: no quad sub-rect, scale or rotation (Lua Player
+  limit). Quad-based libraries run but render the full sheet there.
+- PSP quad draw rotates the whole cached copy, so rotating a single frame of a
+  packed sheet is imprecise; document per-frame sheets for rotated sprites.
+- The GitHub CI runs are red for a billing lock on the account, not for a code
+  failure.
 
 ---
 

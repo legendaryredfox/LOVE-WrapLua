@@ -7,8 +7,16 @@ function love.graphics.newImage(filename, settings)
 end
 
 -- Only position is honoured: the PS3 Lua Player blits a surface as-is, with no
--- scale, rotation or quad support.
-function love.graphics.draw(drawable, x, y, r, sx, sy, ox, oy)
+-- scale or rotation. A quad in argument 2 is accepted so quad-based libraries
+-- (anim8 / desAnim8) run here, but the Lua Player exposes no sub-rect blit, so
+-- the quad is ignored and the whole surface is drawn at (x, y). Documented in
+-- Implemented.md; PS3 is the least-supported tier (T8.5).
+function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy)
+    local x = xOrQuad
+    if type(xOrQuad) == "table" and xOrQuad.getViewport then
+        -- draw(drawable, quad, x, y, r, sx, sy, ox, oy): drop the quad, shift.
+        x, y, sx, sy, ox, oy = y, r, sy, ox, oy, nil
+    end
     x, y = (x or 0) - (ox or 0) * math.abs(sx or 1),
            (y or 0) - (oy or 0) * math.abs(sy or 1)
     x = x * lv1lua.gfx.scale

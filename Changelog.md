@@ -21,6 +21,10 @@ Backend-independent sprite drawing and the desAnim8 rework.
   pause/resume/gotoFrame, play-once with a one-shot completion callback, and a
   current-frame query. The old `desAnim8.new` single-strip constructor still
   works via a shim. Upstream `anim8` now runs on all four backends too.
+- `polygon('fill', …)` actually fills (T4.2). A shared even-odd scanline
+  rasteriser (`core/polyfill.lua`) replaces the convex-only centroid fan, so
+  concave shapes fill correctly on OneLua, PSP and lpp-vita; each backend just
+  supplies a one-row `fillSpan`. `ellipse`/`arc` fills ride the same path.
 
 **Tests**
 - `test_primitives` gained lpp-vita cases for the quad/rotation draw and the

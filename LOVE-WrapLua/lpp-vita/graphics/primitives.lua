@@ -49,19 +49,16 @@ function love.graphics.ellipse(mode, x, y, rx, ry, segments)
     love.graphics.polygon(mode, pts)
 end
 
+-- Native fillRect takes both x values first: (x1, x2, y1, y2).
+local function fillSpan(x, y, w, color) Graphics.fillRect(x, x + w, y, y + 1, color) end
+
 function love.graphics.polygon(mode, vertices, ...)
     local v = type(vertices) == "table" and vertices or {vertices, ...}
     if #v < 4 then return end
     if mode == "fill" then
-        -- No native filled polygon; fan out from the centroid, correct for
-        -- convex shapes only (documented in Implemented.md).
-        local cx, cy, n = 0, 0, #v/2
-        for i = 1, #v, 2 do cx = cx + v[i]; cy = cy + v[i+1] end
-        cx, cy = cx/n, cy/n
-        for i = 1, #v-2, 2 do
-            Graphics.drawLine(cx, v[i], cy, v[i+1], lv1lua.current.color)
-            Graphics.drawLine(v[i], v[i+2], v[i+1], v[i+3], lv1lua.current.color)
-        end
+        -- Scanline fill through the shared even-odd rasteriser, correct for
+        -- convex and concave polygons alike.
+        lv1lua.core.fillPolygon(v, fillSpan, lv1lua.current.color)
     else
         for i = 1, #v-2, 2 do
             Graphics.drawLine(v[i], v[i+2], v[i+1], v[i+3], lv1lua.current.color)

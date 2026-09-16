@@ -11,6 +11,7 @@ end
 lv1lua.loadOnce("LOVE-WrapLua/core/util.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/transform.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/textwrap.lua")
+lv1lua.loadOnce("LOVE-WrapLua/core/polyfill.lua")
 
 local GRAPHICS = "LOVE-WrapLua/lpp-vita/graphics/"
 

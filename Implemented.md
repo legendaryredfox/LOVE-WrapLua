@@ -54,7 +54,7 @@
 | rectangle(mode, x,y,w,h) | ✓ | ✓ | ✓ | stub |
 | circle(mode, x,y,r) | ✓ | ✓ | ✓ | stub |
 | ellipse(mode, x,y,rx,ry) | ✓ | ✓ | ✓ | stub |
-| polygon(mode, vertices) | ✓ (fill≈line) | ✓ | ✓ | stub |
+| polygon(mode, vertices) | ✓ scanline fill (convex + concave) | ✓ scanline fill | ✓ scanline fill | stub |
 | arc(mode, type, x,y,r,a1,a2) | ✓ | ✓ | ✓ | stub |
 | line(…) | ✓ | ✓ | ✓ | stub |
 | points(…) | ✓ | ✓ | ✓ | stub |

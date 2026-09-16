@@ -62,6 +62,16 @@ T.describe("OneLua native order", function()
         T.eq(c.args[1], 0); T.eq(c.args[2], 0)
         T.eq(c.args[3], 10); T.eq(c.args[4], 20)
     end)
+
+    T.it("polygon fill rasterises spans, not outline lines (T4.2)", function()
+        __rec.reset()
+        love.graphics.polygon("fill", {0,0, 10,0, 10,10, 0,10})
+        T.ok(__rec.count("draw.fillrect") > 0, "fill should emit filled spans")
+        T.eq(__rec.count("draw.line"), 0)  -- not a wireframe
+        local c = __rec.last("draw.fillrect")
+        T.eq(c.args[3], 10)  -- span width across the 10px-wide square
+        T.eq(c.args[4], 1)   -- one scanline tall
+    end)
 end)
 
 -- ── PSP (OneLua on 480x272) ──────────────────────────────────────
@@ -84,6 +94,13 @@ T.describe("PSP native order", function()
 
     T.it("reports the 512px texture limit", function()
         T.eq(love.graphics.getSystemLimits().texturesize, 512)
+    end)
+
+    T.it("polygon fill rasterises spans, not outline lines (T4.2)", function()
+        __rec.reset()
+        love.graphics.polygon("fill", {0,0, 10,0, 10,10, 0,10})
+        T.ok(__rec.count("draw.fillrect") > 0, "fill should emit filled spans")
+        T.eq(__rec.count("draw.line"), 0)
     end)
 end)
 
@@ -183,6 +200,16 @@ T.describe("lpp-vita native order (luaGraphics.cpp)", function()
         T.eq(c.args[2], 40)  -- x2 = x+w
         T.eq(c.args[3], 20)  -- y1
         T.eq(c.args[4], 60)  -- y2 = y+h
+    end)
+
+    T.it("polygon fill rasterises fillRect spans, not lines (T4.2)", function()
+        __rec.reset()
+        love.graphics.polygon("fill", {0,0, 10,0, 10,10, 0,10})
+        T.ok(__rec.count("Graphics.fillRect") > 0, "fill should emit spans")
+        T.eq(__rec.count("Graphics.drawLine"), 0)
+        local c = __rec.last("Graphics.fillRect")
+        T.eq(c.args[2] - c.args[1], 10)  -- span width (x2 - x1)
+        T.eq(c.args[4] - c.args[3], 1)   -- one scanline tall (y2 - y1)
     end)
 end)
 

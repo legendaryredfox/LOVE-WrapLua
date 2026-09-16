@@ -11,12 +11,53 @@ dofile("LOVE-WrapLua/core/loader.lua")
 lv1lua.load("LOVE-WrapLua/core/util.lua")
 lv1lua.load("LOVE-WrapLua/core/transform.lua")
 lv1lua.load("LOVE-WrapLua/core/textwrap.lua")
+lv1lua.load("LOVE-WrapLua/core/polyfill.lua")
 
 local util = lv1lua.util
 local core = lv1lua.core
 
 -- "áéí": 3 glyphs, 6 bytes.
 local MULTIBYTE = "\195\161\195\169\195\173"
+
+-- ── polyfill (scanline polygon fill, T4.2) ───────────────────────
+-- Runs fillPolygon and returns the spans emitted on a given integer row.
+local function spansOnRow(vertices, row)
+    local rows = {}
+    core.fillPolygon(vertices, function(x, y, w)
+        rows[y] = rows[y] or {}
+        table.insert(rows[y], { x = x, w = w })
+    end, nil)
+    return rows[row] or {}
+end
+
+T.describe("core.fillPolygon", function()
+    T.it("fills a convex square with one contiguous span per row", function()
+        local spans = spansOnRow({0,0, 10,0, 10,10, 0,10}, 5)
+        T.eq(#spans, 1)
+        T.eq(spans[1].x, 0)
+        T.eq(spans[1].w, 10)
+    end)
+
+    T.it("splits a concave notch into two spans (even-odd rule)", function()
+        -- A U shape: a hollow notch between x=5 and x=15 below y=5.
+        local u = {0,0, 20,0, 20,20, 15,20, 15,5, 5,5, 5,20, 0,20}
+        -- Above the notch the top bar is solid.
+        local top = spansOnRow(u, 2)
+        T.eq(#top, 1)
+        T.eq(top[1].w, 20)
+        -- Through the notch there are two arms, each 5px wide.
+        local mid = spansOnRow(u, 10)
+        T.eq(#mid, 2)
+        T.eq(mid[1].x, 0);  T.eq(mid[1].w, 5)
+        T.eq(mid[2].x, 15); T.eq(mid[2].w, 5)
+    end)
+
+    T.it("ignores degenerate polygons with fewer than three vertices", function()
+        local called = false
+        core.fillPolygon({0,0, 10,10}, function() called = true end, nil)
+        T.nok(called)
+    end)
+end)
 
 -- ── util ─────────────────────────────────────────────────────────
 T.describe("core.util.round", function()

@@ -60,23 +60,15 @@ function love.graphics.ellipse(mode, x, y, rx, ry, segments)
     love.graphics.polygon(mode, pts)
 end
 
+local function fillSpan(x, y, w, color) draw.fillrect(x, y, w, 1, color) end
+
 function love.graphics.polygon(mode, vertices, ...)
     local v = type(vertices) == "table" and vertices or {vertices, ...}
     if #v < 4 then return end
     if mode == "fill" then
-        -- OneLua has no filled-polygon call; fan out from the centroid, which
-        -- is correct for convex shapes only (documented in Implemented.md).
-        local cx, cy = 0, 0
-        local n = #v / 2
-        for i = 1, #v, 2 do cx = cx + v[i]; cy = cy + v[i+1] end
-        cx, cy = cx / n, cy / n
-        for i = 1, #v - 2, 2 do
-            local x1,y1 = v[i],   v[i+1]
-            local x2,y2 = v[i+2], v[i+3]
-            draw.line(cx, cy, x1, y1, lv1lua.current.color)
-            draw.line(x1, y1, x2, y2, lv1lua.current.color)
-            draw.line(x2, y2, cx, cy, lv1lua.current.color)
-        end
+        -- Scanline fill through the shared even-odd rasteriser, correct for
+        -- convex and concave polygons alike.
+        lv1lua.core.fillPolygon(v, fillSpan, lv1lua.current.color)
     else
         for i = 1, #v - 2, 2 do
             draw.line(v[i], v[i+1], v[i+2], v[i+3], lv1lua.current.color)

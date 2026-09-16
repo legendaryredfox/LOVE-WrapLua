@@ -35,7 +35,7 @@
 |---|---|---|---|---|
 | newImage(filename, settings) | ✓ | ✓ | ✓ | ✓ |
 | newQuad(x,y,w,h,sw,sh or img) | ✓ | ✓ | ✓ | ✓ |
-| draw(drawable, …) | ✓ | ✓ scale/flip via a cached copy, source never mutated | ✓ no quad or rotation yet | ✓ position only |
+| draw(drawable, …) | ✓ | ✓ scale/flip via a cached copy, source never mutated | ✓ quad + rotation + scale via drawImageExtended | ✓ position only |
 | setColor(r,g,b,a) **0–1 range** | ✓ | ✓ | ✓ | ✓ |
 | getColor() | ✓ | ✓ | ✓ | ✓ |
 | setBackgroundColor | ✓ | ✓ | ✓ | ✓ |
@@ -58,13 +58,13 @@
 | arc(mode, type, x,y,r,a1,a2) | ✓ | ✓ | ✓ | stub |
 | line(…) | ✓ | ✓ | ✓ | stub |
 | points(…) | ✓ | ✓ | ✓ | stub |
-| push / pop | ✓ | stub | stub | stub |
-| translate / scale / rotate | ✓ | stub | stub | stub |
+| push / pop | ✓ | stub | ✓ | stub |
+| translate / scale / rotate | ✓ | stub | ✓ | stub |
 | shear | stub | stub | stub | stub |
 | origin / reset | ✓ | ✓ | ✓ | ✓ |
-| applyTransform / replaceTransform | ✓ | — | — | — |
-| transformPoint / inverseTransformPoint | ✓ | — | — | — |
-| setScissor / getScissor / intersectScissor | ✓ | stub | stub | stub |
+| applyTransform / replaceTransform | ✓ | — | ✓ | — |
+| transformPoint / inverseTransformPoint | ✓ | — | ✓ | — |
+| setScissor / getScissor / intersectScissor | ✓ | stub | ✓ software reject | stub |
 | stencil / setStencilTest / getStencilTest | stub | stub | stub | stub |
 | setDefaultFilter / getDefaultFilter | ✓ | ✓ | stub | stub |
 | getDimensions / getWidth / getHeight | ✓ | ✓ | ✓ | ✓ |

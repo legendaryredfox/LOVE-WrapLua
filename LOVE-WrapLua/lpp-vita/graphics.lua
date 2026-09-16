@@ -9,6 +9,7 @@ if not lv1lua.load then
 end
 
 lv1lua.loadOnce("LOVE-WrapLua/core/util.lua")
+lv1lua.loadOnce("LOVE-WrapLua/core/transform.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/textwrap.lua")
 
 local GRAPHICS = "LOVE-WrapLua/lpp-vita/graphics/"

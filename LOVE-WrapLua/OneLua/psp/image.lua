@@ -2,6 +2,9 @@
 
 function love.graphics.newImage(filename, settings)
     local img = image.load(lv1lua.dataloc .. "game/" .. filename)
+    -- PSP textures must be power-of-two and <=512; warn before a scale/blit
+    -- silently corrupts an oversize or NPOT sheet (FIX_PLAN T8.1).
+    lv1lua.core.validateTexture(image.getrealw(img), image.getrealh(img), filename)
     if lv1luaconf.imgscale == true then
         image.scale(img, lv1lua.gfx.scale * 100)
     end
@@ -104,6 +107,7 @@ function love.graphics.newQuad(x, y, width, height, swOrImg, sh)
         sw  = swOrImg
         _sh = sh
     end
+    lv1lua.core.validateTexture(sw, _sh, "spritesheet")
     local q = {
         x = x or 0, y = y or 0,
         width = width or 0, height = height or 0,

@@ -36,5 +36,24 @@ function util.glyphCount(s)
     return n
 end
 
+-- Diagnostic warnings (bad texture size, POT, …). Recorded so tests can assert
+-- one fired, and de-duplicated so a per-frame caller does not spam the console.
+-- `lv1lua.warn` is the public sink; override it to route warnings elsewhere.
+util.warnings = {}
+local _warned = {}
+
+function util.warn(msg)
+    if _warned[msg] then return end
+    _warned[msg] = true
+    util.warnings[#util.warnings + 1] = msg
+    if lv1lua and lv1lua.warn then lv1lua.warn(msg) else print("[LOVE-WrapLua] " .. msg) end
+end
+
+-- Test hook: forget every warning already emitted so the next identical one fires.
+function util.resetWarnings()
+    util.warnings = {}
+    _warned = {}
+end
+
 -- Kept as a global: game code and older platform modules call it directly.
 __mathRound = util.round

@@ -17,6 +17,8 @@ end
 
 function love.graphics.newImage(filename, settings)
     local img = image.load(lv1lua.dataloc .. "game/" .. filename)
+    -- Warn if the sheet exceeds the backend texture limit (FIX_PLAN T8.1).
+    lv1lua.core.validateTexture(image.getrealw(img), image.getrealh(img), filename)
     if lv1luaconf.imgscale == true then
         image.scale(img, lv1lua.gfx.scale * 100)
     end
@@ -66,6 +68,7 @@ function love.graphics.newQuad(x, y, width, height, swOrImg, sh)
     else
         sw, _sh = swOrImg, sh
     end
+    lv1lua.core.validateTexture(sw, _sh, "spritesheet")
     local q = {
         x=x, y=y, width=width, height=height, sw=sw, sh=_sh,
         _savedScaleX=1, _savedScaleY=1, _bufferImage=nil,

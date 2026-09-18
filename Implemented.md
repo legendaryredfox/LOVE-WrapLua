@@ -33,8 +33,8 @@
 
 | Function | OL | PSP | LPP | PS3 |
 |---|---|---|---|---|
-| newImage(filename, settings) | ✓ | ✓ | ✓ | ✓ |
-| newQuad(x,y,w,h,sw,sh or img) | ✓ | ✓ | ✓ | ✓ |
+| newImage(filename, settings) | ✓ | ✓ warns if >512 / NPOT | ✓ warns if >512 | ✓ warns if >1024 |
+| newQuad(x,y,w,h,sw,sh or img) | ✓ warns if >512 | ✓ warns if >512 / NPOT | ✓ warns if >1024 | ✓ |
 | draw(drawable, …) | ✓ | ✓ quad sub-rect + scale/flip via a cached copy, source never mutated | ✓ quad + rotation + scale via drawImageExtended | ✓ position only (quad accepted but ignored) |
 | setColor(r,g,b,a) **0–1 range** | ✓ | ✓ | ✓ | ✓ |
 | getColor() | ✓ | ✓ | ✓ | ✓ |
@@ -252,6 +252,13 @@ Do not write producer/consumer logic that relies on cross-thread blocking.
 - **Shader** is a stub — no programmable pipeline exposed (`getSupported().shader`
   and `glsl3` are `false`). PS3 tiny3D pixel shaders are the first plausible real
   path (T6.6).
+- **Texture limits** — `newImage`/`newQuad` validate the sheet against the
+  backend's `getSystemLimits().texturesize` (512 on OneLua/PSP/PS3, 1024 on
+  lpp-vita) and, on **PSP only**, against the GPU's power-of-two requirement. A
+  violation logs a `[LOVE-WrapLua]` warning (once per distinct problem) instead
+  of silently corrupting the texture — split an oversize spritesheet, and pad PSP
+  sheets so both dimensions are powers of two (≤512). Warnings route through
+  `lv1lua.warn` if you set it.
 - **Mesh** is a stub
 - **love.graphics.rotate/translate/scale/push/pop** work on OneLua/Vita and
   lpp-vita (software transform stack); on PSP and PS3 they are no-ops

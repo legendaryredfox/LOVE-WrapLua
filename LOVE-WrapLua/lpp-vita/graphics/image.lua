@@ -4,7 +4,10 @@
 -- straight through: games treat it as an opaque drawable.
 
 function love.graphics.newImage(filename, settings)
-    return Graphics.loadImage(lv1lua.dataloc .. "game/" .. filename)
+    local tex = Graphics.loadImage(lv1lua.dataloc .. "game/" .. filename)
+    -- Warn if the sheet exceeds the backend texture limit (FIX_PLAN T8.1).
+    lv1lua.core.validateTexture(Graphics.getImageWidth(tex), Graphics.getImageHeight(tex), filename)
+    return tex
 end
 
 function love.graphics.newQuad(x, y, w, h, swOrImg, sh)
@@ -16,6 +19,7 @@ function love.graphics.newQuad(x, y, w, h, swOrImg, sh)
         sw  = swOrImg or w
         _sh = sh or h
     end
+    lv1lua.core.validateTexture(sw, _sh, "spritesheet")
     local q = { x=x, y=y, width=w, height=h, sw=sw, sh=_sh }
     function q:getViewport() return self.x, self.y, self.width, self.height end
     function q:setViewport(x, y, w, h) self.x, self.y, self.width, self.height = x, y, w, h end

@@ -92,7 +92,9 @@ function love.graphics.newQuad(x, y, width, height, swOrImg, sh)
     end
     function q:draw(drawable, x, y, r, sx, sy)
         self:updateBufferScaled(drawable, sx, sy)
-        love.graphics._defaultDraw(self._bufferImage, x, y, r, sx, sy, self:getViewportScaled(sx,sy))
+        -- Half-texel inset keeps linear sampling inside the frame (T8.2).
+        local vx, vy, vw, vh = lv1lua.core.insetQuad(self:getViewportScaled(sx, sy))
+        love.graphics._defaultDraw(self._bufferImage, x, y, r, sx, sy, vx, vy, vw, vh)
     end
     return q
 end

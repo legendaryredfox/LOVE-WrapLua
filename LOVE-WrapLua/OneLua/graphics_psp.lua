@@ -19,6 +19,7 @@ lv1lua.loadOnce("LOVE-WrapLua/core/capabilities.lua")
 local GRAPHICS = "LOVE-WrapLua/OneLua/psp/"
 
 lv1lua.load(GRAPHICS .. "state.lua")
+lv1lua.loadOnce("LOVE-WrapLua/core/texinset.lua")
 lv1lua.load(GRAPHICS .. "transform.lua")
 lv1lua.load(GRAPHICS .. "image.lua")
 lv1lua.load(GRAPHICS .. "font.lua")

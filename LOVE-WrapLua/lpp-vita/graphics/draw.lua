@@ -55,6 +55,8 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx, ky)
     if type(xOrQuad) == "table" and xOrQuad.getViewport then
         -- draw(drawable, quad, x, y, r, sx, sy, ox, oy)
         local qx, qy, qw, qh = xOrQuad:getViewport()
+        -- Half-texel inset keeps linear sampling inside the frame (T8.2).
+        qx, qy, qw, qh = lv1lua.core.insetQuad(qx, qy, qw, qh)
         local dsy = (ox == nil) and sy or ox
         local dx, dy, rad, lsx, lsy, bw, bh =
             compose(y or 0, r or 0, sx or 0, sy or 1, dsy or 1, oy, kx, qw, qh)

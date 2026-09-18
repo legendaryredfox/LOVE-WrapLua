@@ -40,6 +40,8 @@ local function _quadDraw(drawable, quad, x, y, r, sx, sy, ox, oy)
     sx = sx or 1; sy = sy or sx
     ox = ox or 0; oy = oy or 0
     local qx, qy, qw, qh = quad:getViewport()
+    -- Half-texel inset keeps linear sampling inside the frame (T8.2).
+    qx, qy, qw, qh = lv1lua.core.insetQuad(qx, qy, qw, qh)
     x = (x or 0) - ox * math.abs(sx)
     y = (y or 0) - oy * math.abs(sy)
     if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then

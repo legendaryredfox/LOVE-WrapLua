@@ -35,6 +35,7 @@
 |---|---|---|---|---|
 | newImage(filename, settings) | ✓ | ✓ warns if >512 / NPOT | ✓ warns if >512 | ✓ warns if >1024 |
 | newQuad(x,y,w,h,sw,sh or img) | ✓ warns if >512 | ✓ warns if >512 / NPOT | ✓ warns if >1024 | ✓ |
+| setTextureInset / getTextureInset | ✓ | ✓ | ✓ | — |
 | draw(drawable, …) | ✓ | ✓ quad sub-rect + scale/flip via a cached copy, source never mutated | ✓ quad + rotation + scale via drawImageExtended | ✓ position only (quad accepted but ignored) |
 | setColor(r,g,b,a) **0–1 range** | ✓ | ✓ | ✓ | ✓ |
 | getColor() | ✓ | ✓ | ✓ | ✓ |
@@ -259,6 +260,12 @@ Do not write producer/consumer logic that relies on cross-thread blocking.
   of silently corrupting the texture — split an oversize spritesheet, and pad PSP
   sheets so both dimensions are powers of two (≤512). Warnings route through
   `lv1lua.warn` if you set it.
+- **Quad edge-bleed** — `love.graphics.setTextureInset(px)` (wrapper extension,
+  not stock LÖVE; default `0`) shrinks every quad's source rect by `px` texels
+  per side so linear filtering stops sampling the neighbouring frame at a
+  boundary (PPSSPP #14977). Use `0.5` for tightly-packed linear-filtered sheets;
+  pixel art is better served by nearest filtering. Applied on OneLua/PSP/lpp-vita;
+  PS3 draws position-only, so it is a no-op there.
 - **Mesh** is a stub
 - **love.graphics.rotate/translate/scale/push/pop** work on OneLua/Vita and
   lpp-vita (software transform stack); on PSP and PS3 they are no-ops

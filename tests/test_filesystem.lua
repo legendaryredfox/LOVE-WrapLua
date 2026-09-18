@@ -193,6 +193,34 @@ T.describe("love.filesystem.newFile", function()
     end)
 end)
 
+-- ── close-on-quit sweep (T8.3) ───────────────────────────────────
+T.describe("love.filesystem close-on-quit", function()
+    T.it("closeOpenFiles closes a handle left open by the game", function()
+        local f = love.filesystem.newFile("quit_open.txt")
+        T.ok(f:open("w"), "open should succeed")
+        f:write("unsaved")
+        T.ok(f:isOpen(), "handle is open before quit")
+        lv1lua.core.closeOpenFiles()
+        T.nok(f:isOpen(), "handle should be closed by the sweep")
+    end)
+
+    T.it("the flushed data is on disk after the sweep", function()
+        local f = love.filesystem.newFile("quit_flush.txt")
+        f:open("w")
+        f:write("persisted")
+        lv1lua.core.closeOpenFiles()
+        T.eq(love.filesystem.read("quit_flush.txt"), "persisted")
+    end)
+
+    T.it("an already-closed handle is not tracked", function()
+        local f = love.filesystem.newFile("quit_closed.txt")
+        f:open("w"); f:write("x"); f:close()
+        -- Sweeping again must not error on the already-closed handle.
+        lv1lua.core.closeOpenFiles()
+        T.nok(f:isOpen())
+    end)
+end)
+
 -- Cleanup
 os.execute("rm -rf " .. TMPDIR)
 

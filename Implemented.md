@@ -266,6 +266,11 @@ Do not write producer/consumer logic that relies on cross-thread blocking.
   boundary (PPSSPP #14977). Use `0.5` for tightly-packed linear-filtered sheets;
   pixel art is better served by nearest filtering. Applied on OneLua/PSP/lpp-vita;
   PS3 draws position-only, so it is a no-op there.
+- **Save durability** — `write`/`append` open, write and `close()` in one call,
+  so those saves are always flushed. A long-lived `newFile` handle you leave open
+  is tracked and closed automatically at `love.event.quit` (before the process
+  exits), so a save is not lost when the app or emulator closes (Vita3K #3918 /
+  #3659). Still, call `File:close()` yourself when done for the earliest flush.
 - **Mesh** is a stub
 - **love.graphics.rotate/translate/scale/push/pop** work on OneLua/Vita and
   lpp-vita (software transform stack); on PSP and PS3 they are no-ops

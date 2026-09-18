@@ -1,3 +1,20 @@
+lv1lua.core = lv1lua.core or {}
+
+-- Registry of newFile handles that are currently open. Weak-keyed so a forgotten
+-- handle cannot leak (its io finalizer still flushes it), while any handle the
+-- game is still holding at quit gets an explicit close (FIX_PLAN T8.3). write /
+-- append already close immediately, so only long-lived newFile handles matter.
+local _openFiles = setmetatable({}, { __mode = "k" })
+
+-- Closes every still-open newFile handle. Called from love.event.quit before
+-- lv1lua.running goes false, so a save is flushed instead of lost when the app
+-- or emulator exits (Vita3K #3918 / #3659).
+function lv1lua.core.closeOpenFiles()
+    local pending = {}
+    for f in pairs(_openFiles) do pending[#pending + 1] = f end
+    for _, f in ipairs(pending) do f:close() end
+end
+
 if lv1lua.isPSP then
     lv1lua.saveloc = "ms0:/PSP/GAME/LOVE-WrapLua/savedata/"
 elseif lv1lua.mode == "PS3" then
@@ -156,6 +173,7 @@ function love.filesystem.newFile(filename, mode)
             path = lv1lua.dataloc.."game/"..self._name
         end
         self._handle = io.open(path, luaMode)
+        if self._handle then _openFiles[self] = true end
         return self._handle ~= nil
     end
     function file:read(size)
@@ -165,7 +183,10 @@ function love.filesystem.newFile(filename, mode)
     function file:write(data) if self._handle then self._handle:write(data) end end
     function file:seek(pos)   if self._handle then self._handle:seek("set", pos) end end
     function file:tell()      return self._handle and self._handle:seek() or 0 end
-    function file:close()     if self._handle then self._handle:close(); self._handle = nil end end
+    function file:close()
+        if self._handle then self._handle:close(); self._handle = nil end
+        _openFiles[self] = nil
+    end
     function file:getSize()
         if not self._handle then return 0 end
         local cur = self._handle:seek()

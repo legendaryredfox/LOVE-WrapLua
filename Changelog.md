@@ -31,6 +31,13 @@ Backend-independent sprite drawing and the desAnim8 rework.
   `canvas=false`/`glsl3=false` everywhere, the true texture limit per backend
   (512 on OneLua/PSP/PS3, 1024 on lpp-vita), and a wrapper-internal
   `love._backend.features` table (transform/quaddraw/scissor/…) for the docs.
+- Canvas documented honestly per backend (T4.3): `Implemented.md` and `README.md`
+  now state that offscreen rendering is unsupported everywhere today
+  (`canvas=false`), and record the concrete native path for each backend —
+  lpp-vita/vita2d rendertarget bind (small upstream patch), PS3 tiny3D
+  scene-to-texture surfaces (T6.6), OneLua none. Also refreshed stale README/
+  Implemented notes (polygon fill, transforms, lpp-vita quad/line bugs) that the
+  T2.1/T2.2/T4.2 work already resolved.
 
 **Tests**
 - `test_primitives` gained lpp-vita cases for the quad/rotation draw and the

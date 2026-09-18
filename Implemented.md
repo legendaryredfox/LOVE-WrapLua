@@ -70,8 +70,8 @@
 | getDimensions / getWidth / getHeight | ✓ | ✓ | ✓ | ✓ |
 | isActive / present | ✓ | ✓ | ✓ | ✓ |
 | captureScreenshot | stub | stub | stub | stub |
-| newCanvas(w, h) | stub | stub | stub | stub |
-| setCanvas / getCanvas | stub | stub | stub | stub |
+| newCanvas(w, h) | stub (`canvas=false`) | stub | stub | stub |
+| setCanvas / getCanvas | stub (draws to screen) | stub | stub | stub |
 | newShader / setShader / getShader | stub | stub | stub | stub |
 | newSpriteBatch(img, max, usage) | ✓ | ✓ | ✓ | ✓ |
 | newText(font, text) / newTextBatch | ✓ | ✓ | ✓ | ✓ |
@@ -236,11 +236,27 @@ Do not write producer/consumer logic that relies on cross-thread blocking.
 
 ## Known Limitations
 
-- **polygon fill** uses line-fan approximation (not scanline fill)
-- **Canvas** is a stub — no actual offscreen rendering
-- **Shader** is a stub — no GLSL support
+- **Canvas** (offscreen render target) is unsupported on every backend today;
+  `getSupported().canvas` is `false`. `newCanvas`/`setCanvas`/`renderTo` exist so
+  games do not crash, but `renderTo` draws straight to the screen. The native
+  paths, per backend:
+  - **lpp-vita / vita2d:** `createImage` already returns a rendertarget texture
+    and `vita2d_create_empty_texture_rendertarget(w,h,fmt)` exists, but lpp-vita
+    exposes no Lua "bind draw target" (only the fixed rescaler FBO). A real
+    Canvas is a small, concrete native patch upstream — expose a bind around the
+    existing vita2d rendertarget call — not an architectural wall.
+  - **PS3 / tiny3D:** `cloned67/tiny3d` (and `Dnawrkshp/mini2d`) expose
+    scene-to-texture surfaces, so a PS3 Canvas is reachable once the backend
+    moves onto tiny3D (tracked under T6.6).
+  - **OneLua (PSP + Vita):** no render target exposed by the SDK.
+- **Shader** is a stub — no programmable pipeline exposed (`getSupported().shader`
+  and `glsl3` are `false`). PS3 tiny3D pixel shaders are the first plausible real
+  path (T6.6).
 - **Mesh** is a stub
-- **love.graphics.rotate/translate/scale** only fully functional on OneLua/Vita
+- **love.graphics.rotate/translate/scale/push/pop** work on OneLua/Vita and
+  lpp-vita (software transform stack); on PSP and PS3 they are no-ops
+- **polygon fill** is a real even-odd scanline fill on OneLua/PSP/lpp-vita; PS3
+  primitives remain stubs
 - **Audio**: OneLua supports only 2 simultaneous channels; PS3 supports stream only
 - **love.timer.sleep** on lpp-vita busy-waits if `Timer.delay` is unavailable
 - **love.data.hash** returns zeroed bytes (no crypto library)

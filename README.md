@@ -177,9 +177,11 @@ Honest current state. Some items are wrapper stubs (hardware can't do it); a few
 are bugs being tracked for fix.
 
 **Platform stubs (by design):**
-- **Canvas** — stub; `renderTo(fn)` runs `fn()` but there is no offscreen target.
-  lpp-vita exposes render-target textures but no way to bind them as a draw
-  target from Lua, so real RTT isn't possible without a native patch.
+- **Canvas** — stub on every backend (`getSupported().canvas == false`);
+  `renderTo(fn)` runs `fn()` but draws to the screen, not an offscreen target.
+  Native paths exist but are not wired: lpp-vita/vita2d has rendertarget textures
+  with no Lua bind (a small upstream patch), and PS3 tiny3D has scene-to-texture
+  surfaces (reachable via T6.6). OneLua exposes none. See `Implemented.md`.
 - **Shader / Mesh** — stubs; objects exist so call-sites don't crash, nothing renders.
 - **Blend mode** — stub; only the platform default (alpha) is applied. Verify any
   blend-dependent look on real hardware, not on an emulator.
@@ -189,19 +191,20 @@ are bugs being tracked for fix.
 - **love.thread** — pseudo-threads run **synchronously** on a coroutine (no real
   parallelism); a thread body that loops forever will hang the app. Channels
   support push/pop/peek/clear.
-- **Polygon fill** — approximated with a centroid fan; correct only for convex
-  shapes, and currently draws as outline on some backends.
-- **Transforms** — full transform stack is OneLua/Vita only; on lpp-vita and PS3
-  they are currently no-ops/approximations.
+- **Transforms** — full software transform stack on OneLua/Vita and lpp-vita
+  (translate/scale/rotate/push/pop, plus software scissor on lpp-vita); on PSP
+  and PS3 they are no-ops.
 - **love.audio (OneLua)** — ~2 simultaneous channels; **(PS3)** — stream sources only.
 
-**Known bugs (tracked, not yet fixed):**
-- **lpp-vita spritesheets/quads** — the lpp-vita `draw` does not yet accept the
-  quad form or rotation, so `love.graphics.draw(img, quad, ...)` (and thus most
-  animation libraries) does not render correctly on that backend. Use the
-  **OneLua** backend on Vita for spritesheet games until fixed.
+**Resolved (previously known bugs):**
+- **Polygon fill** now uses a real even-odd scanline fill (correct for concave
+  shapes) on OneLua, PSP and lpp-vita.
+- **lpp-vita spritesheets/quads** — `draw` accepts the quad form and rotation via
+  the native `Graphics.drawImageExtended`, so `love.graphics.draw(img, quad, ...)`
+  and animation libraries (anim8, desAnim8) render on that backend. Quads also
+  work on PSP (sub-rect blit) and are accepted on PS3 (whole-surface only).
 - **lpp-vita line primitives** — line/polygon/circle-outline/ellipse/arc use the
-  wrong native argument order and render skewed on that backend.
+  correct native `(x1, x2, y1, y2)` order.
 
 ---
 

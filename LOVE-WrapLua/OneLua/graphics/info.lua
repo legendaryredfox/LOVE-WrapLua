@@ -29,7 +29,7 @@ end
 function love.graphics.present() end  -- the main loop flips the screen
 
 -- ── Debug overlay (internal utility, not part of the LÖVE API) ───
-function ___displaySystemInfo()
+function lv1lua.displaySystemInfo()
     local currRam  = math.floor((os.ram()      / 1000000) * 100) / 100
     local totalRam = math.floor((os.totalram() / 1000000) * 100) / 100
     currRam = totalRam - currRam

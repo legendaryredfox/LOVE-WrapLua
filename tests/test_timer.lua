@@ -13,25 +13,25 @@ end)
 
 -- ── getDelta ─────────────────────────────────────────────────────
 T.describe("love.timer.getDelta", function()
-    T.it("returns current value of global dt", function()
-        dt = 0.016
+    T.it("returns the frame delta the main loop stored on lv1lua.dt", function()
+        lv1lua.dt = 0.016
         T.near(love.timer.getDelta(), 0.016)
-        dt = 0
+        lv1lua.dt = 0
     end)
 end)
 
 -- ── getFPS ───────────────────────────────────────────────────────
 T.describe("love.timer.getFPS", function()
     T.it("returns a positive integer when dt > 0", function()
-        dt = 0.016
+        lv1lua.dt = 0.016
         local fps = love.timer.getFPS()
         T.ok(fps > 0, "fps should be positive")
         T.ok(fps == math.floor(fps), "fps should be integer")
-        dt = 0
+        lv1lua.dt = 0
     end)
 
     T.it("returns 60 when dt == 0 (guard against division by zero)", function()
-        dt = 0
+        lv1lua.dt = 0
         T.eq(love.timer.getFPS(), 60)
     end)
 end)
@@ -39,9 +39,9 @@ end)
 -- ── getAverageDelta ──────────────────────────────────────────────
 T.describe("love.timer.getAverageDelta", function()
     T.it("returns the current dt value", function()
-        dt = 0.033
+        lv1lua.dt = 0.033
         T.near(love.timer.getAverageDelta(), 0.033)
-        dt = 0
+        lv1lua.dt = 0
     end)
 end)
 

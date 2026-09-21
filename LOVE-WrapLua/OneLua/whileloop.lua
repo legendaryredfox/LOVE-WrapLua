@@ -61,7 +61,7 @@ function lv1lua.updatecontrols()
 
     __checkGameRestart()
     if not lv1lua.isPSP then
-        ___updateFrontTouch()
+        lv1lua.updateFrontTouch()
         -- __checkHomePress()
     end
 end
@@ -105,7 +105,7 @@ function __resume()
     end
 end
 
-function ___updateFrontTouch()
+function lv1lua.updateFrontTouch()
     local lastMouseDown = love.mouse.isDown()
     touch.read()
     love.touch.__getFrontTouches(touch)

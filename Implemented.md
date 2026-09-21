@@ -194,8 +194,8 @@ Key implemented: `getDimensions`, `getWidth`, `getHeight`, `getTitle`, `setTitle
 | Function | Notes |
 |---|---|
 | encode / decode | ✓ base64 + hex |
-| hash | stub (zeroed bytes) |
-| compress / decompress | stub (pass-through) |
+| hash | ✓ md5/sha1/sha224/256/384/512 (vendored sha2.lua), raw-byte digest |
+| compress / decompress | ✓ deflate + zlib (vendored LibDeflate); gzip/lz4 fall back to deflate |
 | newByteData / newDataView | ✓ |
 | pack / unpack | ✓ (requires Lua 5.3) |
 | getSize | ✓ |
@@ -278,7 +278,8 @@ Do not write producer/consumer logic that relies on cross-thread blocking.
   primitives remain stubs
 - **Audio**: OneLua supports only 2 simultaneous channels; PS3 supports stream only
 - **love.timer.sleep** on lpp-vita busy-waits if `Timer.delay` is unavailable
-- **love.data.hash** returns zeroed bytes (no crypto library)
-- **love.data.compress/decompress** are pass-through
+- **love.data.hash / compress / decompress** are real (pure-Lua vendored libs,
+  slow on-device — cache results). `gzip`/`lz4` compression fall back to deflate
+  and are not byte-compatible with those two desktop formats; `deflate`/`zlib` are.
 - PS3 graphics primitives (rectangle, circle, etc.) are stubs pending SDK confirmation
 - Color is **0–1 range** (LÖVE 11.x standard) — code written for 0–255 must be updated

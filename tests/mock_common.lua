@@ -60,6 +60,11 @@ lv1lua = {
 
 lv1luaconf = { keyconf = "XB", imgscale = false, resscale = false }
 
+-- Real internal loader (dataloc = "" resolves paths from the repo root), so
+-- tests exercise the same lv1lua.load / loadOnce that modules use on-device —
+-- e.g. data.lua lazily pulling in vendor/sha2 and vendor/LibDeflate.
+dofile("LOVE-WrapLua/core/loader.lua")
+
 -- ── love namespace (fresh each load) ─────────────────────────────
 love = {
     graphics   = {}, timer = {}, audio  = {}, event      = {},

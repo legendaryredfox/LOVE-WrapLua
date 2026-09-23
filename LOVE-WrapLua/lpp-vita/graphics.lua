@@ -17,6 +17,7 @@ lv1lua.loadOnce("LOVE-WrapLua/core/capabilities.lua")
 local GRAPHICS = "LOVE-WrapLua/lpp-vita/graphics/"
 
 lv1lua.load(GRAPHICS .. "state.lua")
+lv1lua.loadOnce("LOVE-WrapLua/core/state.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/texinset.lua")
 lv1lua.load(GRAPHICS .. "transform.lua")
 lv1lua.load(GRAPHICS .. "image.lua")

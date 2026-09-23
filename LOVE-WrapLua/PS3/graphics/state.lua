@@ -1,4 +1,5 @@
--- PS3 graphics: shared state and colour.
+-- PS3 graphics: native bring-up and the platform constants core/state.lua
+-- drives.
 --
 -- The PS3 Lua Player exposes BlitToScreen/DrawText and little else, so most of
 -- this backend is an honest stub. It is the least-supported tier; see
@@ -13,6 +14,9 @@ lv1lua.gfx = {
     scale     = 0.5625,
     yOffset   = 37,
     lineWidth = 1,
+    -- No native hooks: DrawText/BlitToScreen take no colour argument (so colour
+    -- is only tracked), lv1lua.draw owns the frame clear, and there is no
+    -- filter call.
 }
 
 lv1lua.current = {
@@ -24,48 +28,3 @@ lv1lua.current = {
     bgColorRGBA = {0, 0, 0, 1},
     canvas      = nil,
 }
-
--- ── Colour ───────────────────────────────────────────────────────
--- DrawText/BlitToScreen take no colour argument, so colour is only tracked.
-function love.graphics.setColor(r, g, b, a)
-    if type(r) == "table" then r, g, b, a = r[1], r[2], r[3], r[4] end
-    lv1lua.current.colorRGBA = {r, g or 0, b or 0, a or 1}
-end
-
-function love.graphics.getColor()
-    local c = lv1lua.current.colorRGBA
-    return c[1], c[2], c[3], c[4]
-end
-
-function love.graphics.setBackgroundColor(r, g, b, a)
-    if type(r) == "table" then r, g, b, a = r[1], r[2], r[3], r[4] end
-    lv1lua.current.bgColorRGBA = {r, g or 0, b or 0, a or 1}
-end
-
-function love.graphics.getBackgroundColor()
-    local c = lv1lua.current.bgColorRGBA
-    return c[1], c[2], c[3], c[4]
-end
-
-function love.graphics.clear(r, g, b, a)
-    -- The frame clear happens in lv1lua.draw (whileloop.lua).
-end
-
--- ── Line width / style ───────────────────────────────────────────
-function love.graphics.setLineWidth(w) lv1lua.gfx.lineWidth = w or 1 end
-function love.graphics.getLineWidth()  return lv1lua.gfx.lineWidth end
-function love.graphics.setLineStyle()  end
-function love.graphics.getLineStyle()  return "smooth" end
-function love.graphics.setLineJoin()   end
-function love.graphics.getLineJoin()   return "miter" end
-function love.graphics.setPointSize()  end
-function love.graphics.getPointSize()  return 1 end
-
--- ── Not exposed by the native layer ──────────────────────────────
-function love.graphics.setDefaultFilter() end
-function love.graphics.getDefaultFilter() return "linear","linear",1 end
-function love.graphics.setBlendMode()     end
-function love.graphics.getBlendMode()     return "alpha","alphamultiply" end
-function love.graphics.stencil(fn)        if fn then fn() end end
-function love.graphics.setStencilTest()   end
-function love.graphics.getStencilTest()   return "always", 0 end

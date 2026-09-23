@@ -46,8 +46,8 @@
 | getColor() | ✓ | ✓ | ✓ | ✓ |
 | setBackgroundColor | ✓ | ✓ | ✓ | ✓ |
 | getBackgroundColor | ✓ | ✓ | ✓ | ✓ |
-| clear(r,g,b,a) | ✓ | ✓ | stub | stub |
-| setBlendMode / getBlendMode | stub | stub | stub | stub |
+| clear(r,g,b,a) | ✓ | ✓ | no-op (frame loop clears) | no-op (frame loop clears) |
+| setBlendMode / getBlendMode | tracked, never applied | tracked | tracked | tracked |
 | setLineWidth / getLineWidth | ✓ | ✓ | ✓ | ✓ |
 | setLineStyle / getLineStyle | stub | stub | stub | stub |
 | setLineJoin / getLineJoin | stub | stub | stub | stub |
@@ -72,7 +72,7 @@
 | transformPoint / inverseTransformPoint | ✓ | — | ✓ | — |
 | setScissor / getScissor / intersectScissor | ✓ | stub | ✓ software reject | stub |
 | stencil / setStencilTest / getStencilTest | stub | stub | stub | stub |
-| setDefaultFilter / getDefaultFilter | ✓ | ✓ | stub | stub |
+| setDefaultFilter / getDefaultFilter | ✓ reaches the native filter | tracked only | tracked only | tracked only |
 | getDimensions / getWidth / getHeight | ✓ | ✓ | ✓ | ✓ |
 | isActive / present | ✓ | ✓ | ✓ | ✓ |
 | captureScreenshot | stub | stub | stub | stub |

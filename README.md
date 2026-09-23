@@ -454,7 +454,8 @@ index.lua       <- lpp-vita entry point
 app.lua         <- PS3 entry point
 LOVE-WrapLua/
   core/         <- backend-agnostic: loader, util, transform stack, word wrap,
-                   capabilities, polygon fill, texture inset, graphics objects
+                   capabilities, polygon fill, texture inset, graphics state
+                   (colour/line/blend/filter), graphics objects
                    (Canvas/Shader/SpriteBatch/Text), runtime, config, module
                    list, require shim, callbacks
   math.lua      <- entry point over math/{random,noise,transform,geometry,color}

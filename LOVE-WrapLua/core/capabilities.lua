@@ -27,6 +27,20 @@ local function supported(over)
     return s
 end
 
+-- Behaviour that is right on real hardware but varies by emulator renderer, so
+-- it must never be the thing a game's look depends on (FIX_PLAN T8.4). Each
+-- flag is true when the backend's usual emulator gets it wrong or inconsistent:
+--   blendmode        programmable blend / alpha differs per renderer
+--   framebufferread  reading back the framebuffer (screenshots, RTT) is unreliable
+--   texturefilter    filtering at quad edges bleeds neighbouring frames
+--   savepersistence  writes can be lost when the emulator is closed
+local function rendersensitive(over)
+    local r = { blendmode = false, framebufferread = false,
+                texturefilter = false, savepersistence = false }
+    if over then for k, v in pairs(over) do r[k] = v end end
+    return r
+end
+
 local CAPS = {
     -- OneLua on PS Vita.
     ["OneLua"] = {
@@ -35,6 +49,12 @@ local CAPS = {
         supported = supported(),
         features  = { transform = true, quaddraw = true, polygonfill = true,
                       primitives = true, scissor = false, blendmode = false },
+        -- Vita3K: inaccurate programmable blend (#4109) and framebuffer reads
+        -- (#422), both varying GL vs Vulkan vs MoltenVK; saves lost on close
+        -- (#3918, #3659).
+        emulator  = "Vita3K",
+        rendersensitive = rendersensitive({ blendmode = true, framebufferread = true,
+                                            savepersistence = true }),
     },
     -- OneLua on PSP: power-of-two textures, no transform stack.
     ["PSP"] = {
@@ -44,6 +64,10 @@ local CAPS = {
         supported = supported(),
         features  = { transform = false, quaddraw = true, polygonfill = true,
                       primitives = true, scissor = false, blendmode = false },
+        -- PPSSPP: texel bleed at quad edges (#14977) and framebuffer/texture
+        -- sizing differences from hardware (#3085).
+        emulator  = "PPSSPP",
+        rendersensitive = rendersensitive({ texturefilter = true, framebufferread = true }),
     },
     -- lpp-vita (vita2d): quad+rotation draw, software transform stack + scissor.
     ["lpp-vita"] = {
@@ -52,14 +76,22 @@ local CAPS = {
         supported = supported({ fullnpot = true }),
         features  = { transform = true, quaddraw = true, polygonfill = true,
                       primitives = true, scissor = true, blendmode = false },
+        emulator  = "Vita3K",
+        rendersensitive = rendersensitive({ blendmode = true, framebufferread = true,
+                                            savepersistence = true }),
     },
-    -- PS3 Lua Player: least-supported tier — position-only blits, no primitives.
+    -- PS3 Lua Player: least-supported tier, position-only blits, no primitives.
     ["PS3"] = {
         renderer  = "PS3 Lua",
         limits    = { pointsize = 1, texturesize = 512, multicanvas = 1, canvasmsaa = 0 },
         supported = supported(),
         features  = { transform = false, quaddraw = false, polygonfill = false,
                       primitives = false, scissor = false, blendmode = false },
+        -- RPCS3 barely loads homebrew (#18997), so nothing here is emulator
+        -- verifiable: treat every renderer-sensitive area as unconfirmed.
+        emulator  = "RPCS3 (homebrew loading unreliable)",
+        rendersensitive = rendersensitive({ blendmode = true, framebufferread = true,
+                                            texturefilter = true, savepersistence = true }),
     },
 }
 

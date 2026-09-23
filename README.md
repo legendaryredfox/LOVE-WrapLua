@@ -348,13 +348,67 @@ Per-function detail is in [`Implemented.md`](Implemented.md).
 
 ## Testing and validation targets
 
-- **Game logic:** run your game on **desktop LÖVE 11.5** first, fastest iteration.
-- **On device:** real PSP/Vita/PS3 hardware is the source of truth, especially for
-  blend, timing, and save behaviour.
-- **Emulators (dev convenience):** RetroArch (PSP/Vita cores), Vita3K, PPSSPP.
-  Emulator rendering can differ from hardware (blend and framebuffer accuracy vary
-  by OpenGL/Vulkan/MoltenVK backend), and some emulators do not flush saves on
-  close, so confirm blend-critical and save-critical behaviour on real hardware.
+Work in this order: **desktop LÖVE 11.5** for game logic (fastest iteration),
+then an **emulator** for a rough look at the real backend, then **real hardware**,
+which is the only source of truth for blend, timing and save behaviour.
+
+### Dev target matrix
+
+Per target, what you can trust. **works** = matches hardware in practice,
+**emulator-dependent** = varies by graphics backend, recheck on device,
+**unsupported** = not available at all, **unverified** = nobody has confirmed it.
+
+| Area | Real hardware | Vita3K (OpenGL) | Vita3K (Vulkan) | PPSSPP (PSP) | RPCS3 (PS3) |
+|---|---|---|---|---|---|
+| Boot / run the wrapper | works | works | works | works | unverified |
+| Sprite draw, quads, animation | works | works | works | works | unverified |
+| 2D primitives, text | works | works | works | works | unsupported (PS3 stubs) |
+| Alpha blending | works | emulator-dependent | emulator-dependent | emulator-dependent | unverified |
+| Framebuffer readback, screenshots | works | emulator-dependent | emulator-dependent | emulator-dependent | unverified |
+| Quad edge filtering | works | works | works | emulator-dependent | unverified |
+| Save flush on close | works | emulator-dependent | emulator-dependent | works | unverified |
+| Input, gamepad mapping | works | works | works | works | unverified |
+| Audio | works | emulator-dependent | emulator-dependent | works | unverified |
+
+Emulator targets and versions: **Vita3K** for the Vita backends (OneLua and
+lpp-vita), **PPSSPP** for PSP, **RPCS3** for PS3. RetroArch PSP/Vita cores work
+for a smoke test but give you less diagnostic output than the standalone builds.
+
+### Renderer caveats
+
+- **Vita3K** programmable blend and framebuffer reads are inaccurate
+  ([#4109](https://github.com/Vita3K/Vita3K/issues/4109),
+  [#422](https://github.com/Vita3K/Vita3K/issues/422)) and differ between OpenGL,
+  Vulkan and MoltenVK. Never sign off a blend-dependent or readback-dependent
+  look there. This is one reason the wrapper keeps blend modes a stub and Canvas
+  unsupported: the fallback is at least consistent.
+- **Vita3K** can lose writes when the emulator is closed
+  ([#3918](https://github.com/Vita3K/Vita3K/issues/3918),
+  [#3659](https://github.com/Vita3K/Vita3K/issues/3659)). The wrapper closes
+  every open handle at `love.event.quit`, but confirm save-critical flows on a
+  real Vita.
+- **PPSSPP** bleeds a row of texels from the other side of a quad under linear
+  filtering ([#14977](https://github.com/hrydgard/ppsspp/issues/14977)), and its
+  framebuffer/texture sizing can differ from hardware
+  ([#3085](https://github.com/hrydgard/ppsspp/issues/3085)). Use
+  `love.graphics.setTextureInset(0.5)` or nearest filtering.
+- **RPCS3** homebrew loading is minimal
+  ([#18997](https://github.com/RPCS3/rpcs3/issues/18997)), so the PS3 backend is
+  effectively untestable there. Develop PS3 game logic on desktop LÖVE and confirm
+  on hardware.
+
+The same information is machine-readable, so a game can degrade itself instead of
+hardcoding an emulator check:
+
+```lua
+local caps = love._backend
+if caps.rendersensitive.blendmode then
+    -- do not let the look depend on blending; caps.emulator names the emulator
+end
+```
+
+`rendersensitive` fields: `blendmode`, `framebufferread`, `texturefilter`,
+`savepersistence`.
 
 ---
 

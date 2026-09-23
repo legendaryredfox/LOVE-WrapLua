@@ -235,6 +235,34 @@ Do not write producer/consumer logic that relies on cross-thread blocking.
 
 ---
 
+## Emulator and renderer caveats
+
+Emulators are dev convenience, not a validation target. Each backend records the
+emulator it is usually tested on plus the areas that emulator gets wrong, in
+`love._backend.emulator` and `love._backend.rendersensitive`
+(`blendmode`, `framebufferread`, `texturefilter`, `savepersistence`).
+
+| Backend | Emulator | Flagged as renderer-sensitive |
+|---|---|---|
+| OL | Vita3K | blendmode, framebufferread, savepersistence |
+| LPP | Vita3K | blendmode, framebufferread, savepersistence |
+| PSP | PPSSPP | texturefilter, framebufferread |
+| PS3 | RPCS3 (homebrew loading unreliable) | all four, nothing is confirmed |
+
+- **Vita3K:** programmable blend and framebuffer reads are inaccurate and vary
+  between OpenGL, Vulkan and MoltenVK (Vita3K #4109, #422); writes can be lost
+  when the emulator closes (#3918, #3659).
+- **PPSSPP:** linear filtering bleeds a row of texels from the opposite edge of a
+  quad (#14977); framebuffer and texture sizing can differ from hardware (#3085).
+  Use `love.graphics.setTextureInset(0.5)` or nearest filtering.
+- **RPCS3:** homebrew loading is minimal (#18997), so the PS3 backend cannot be
+  validated there. Use desktop LÖVE for logic and real hardware for output.
+
+The full per-area dev target matrix (real hardware vs Vita3K GL/Vulkan vs PPSSPP
+vs RPCS3) is in the README under "Testing and validation targets".
+
+---
+
 ## Known Limitations
 
 - **Canvas** (offscreen render target) is unsupported on every backend today;

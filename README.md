@@ -26,16 +26,30 @@ runs on the handheld or console without a real LÖVE runtime.
 
 ## Supported platforms
 
-| Platform | Backend (`lv1lua.mode`) | Native SDK | Maturity |
+| Platform | Backend (`lv1lua.mode`) | Native SDK | Tier |
 |---|---|---|---|
-| PS Vita | `OneLua` | [OneLua](http://onelua.x10.mx/) | Good |
-| PSP | `OneLua` (PSP sub-mode) | OneLua | Good |
-| PS Vita (alternative) | `lpp-vita` | [lpp-vita](https://github.com/Rinnegatamante/lpp-vita) | Partial |
-| PS3 | `PS3` | Lua Player PS3 | Experimental |
+| PS Vita | `OneLua` | [OneLua](http://onelua.x10.mx/) | 1, supported |
+| PSP | `OneLua` (PSP sub-mode) | OneLua | 1, supported |
+| PS Vita (alternative) | `lpp-vita` | [lpp-vita](https://github.com/Rinnegatamante/lpp-vita) | 2, partial |
+| PS3 | `PS3` | Lua Player PS3 | 3, experimental |
 
 The backend is selected automatically at boot (see [Entry points](#entry-points)).
 PSP is detected at runtime via `os.cfw`, and reports itself as `__MODE = "PSP"`
 to the test harness and the capability table.
+
+### Support tiers
+
+| Tier | Backends | What to expect | How to develop |
+|---|---|---|---|
+| **1, supported** | OneLua on Vita and PSP | The API coverage below holds; tested on hardware and in emulators | Build and run directly; confirm blend, timing and saves on device |
+| **2, partial** | lpp-vita | Draw, quads, rotation, transforms and primitives work; some peripheral calls (global audio volume, `clear`, default filter) are stubs | Same as tier 1, but check [`Implemented.md`](Implemented.md) before relying on a call |
+| **3, experimental** | PS3 | Draws are position only, primitives are stubs, and nothing is emulator-verifiable because RPCS3 homebrew loading is minimal ([#18997](https://github.com/RPCS3/rpcs3/issues/18997)) | Write and test game logic on **desktop LÖVE 11.5**, then confirm output on real hardware. Treat the PS3 backend as a porting target under construction |
+
+Tier 3 is a statement about the backend, not about your game: logic, input,
+filesystem, math and data all behave the same there. It is the graphics layer
+that is thin. Contributions that move PS3 onto tiny3D (see
+[Ecosystem and prior art](#ecosystem-and-prior-art)) are the fastest way to
+promote it.
 
 ---
 
@@ -160,6 +174,7 @@ check.
 | `getSystemLimits().texturesize` | 512 | 512 | 1024 | 512 |
 | `getSystemLimits().pointsize` | 1 | 1 | 1 | 1 |
 | power-of-two textures required | no | **yes** | no | no |
+| `love._backend.tier` (see [Support tiers](#support-tiers)) | 1 | 1 | 2 | 3 |
 
 ```lua
 if love.graphics.getSupported().canvas then
@@ -197,9 +212,12 @@ tell you which entry file and layout the wrapper expects.
 
 ### PS3, Lua Player PS3
 
-- Entry point: **`app.lua`** (loads `script.lua`). Experimental: graphics
-  primitives are largely stubbed pending SDK confirmation, and draws are position
-  only. Use desktop LÖVE plus real hardware to validate game logic.
+- Entry point: **`app.lua`** (loads `script.lua`).
+- **Tier 3, experimental.** Graphics primitives are largely stubbed pending SDK
+  confirmation, and draws are position only (quads are accepted and ignored).
+- RPCS3 cannot be used as a safety net: its homebrew loading is minimal
+  ([#18997](https://github.com/RPCS3/rpcs3/issues/18997)). Develop against
+  **desktop LÖVE 11.5**, then confirm on real hardware.
 
 ### Entry points
 
@@ -455,7 +473,8 @@ AGENTS.md       <- AI agent orientation guide
 
 ## Notes
 
-- Tested primarily on PSP and Vita; PS3 support is least complete.
+- Tested primarily on PSP and Vita; PS3 is the least complete backend, see
+  [Support tiers](#support-tiers).
 - Sample assets are from [Kenney](https://kenney.nl/assets/scribble-dungeons) and
   [game-endeavor](https://game-endeavor.itch.io/mystic-woods), go support them.
 - Hobby project; updated when time allows.

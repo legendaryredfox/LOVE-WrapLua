@@ -41,10 +41,13 @@ local function rendersensitive(over)
     return r
 end
 
+-- `tier` is the support promise documented in the README: 1 supported,
+-- 2 partial, 3 experimental (develop on desktop LOVE, confirm on hardware).
 local CAPS = {
     -- OneLua on PS Vita.
     ["OneLua"] = {
         renderer  = "OneLua",
+        tier      = 1,
         limits    = { pointsize = 1, texturesize = 512, multicanvas = 1, canvasmsaa = 0 },
         supported = supported(),
         features  = { transform = true, quaddraw = true, polygonfill = true,
@@ -59,6 +62,7 @@ local CAPS = {
     -- OneLua on PSP: power-of-two textures, no transform stack.
     ["PSP"] = {
         renderer  = "OneLua PSP",
+        tier      = 1,
         limits    = { pointsize = 1, texturesize = 512, multicanvas = 1, canvasmsaa = 0,
                       potonly = true },
         supported = supported(),
@@ -72,6 +76,7 @@ local CAPS = {
     -- lpp-vita (vita2d): quad+rotation draw, software transform stack + scissor.
     ["lpp-vita"] = {
         renderer  = "lpp-vita",
+        tier      = 2,
         limits    = { pointsize = 1, texturesize = 1024, multicanvas = 1, canvasmsaa = 0 },
         supported = supported({ fullnpot = true }),
         features  = { transform = true, quaddraw = true, polygonfill = true,
@@ -83,6 +88,7 @@ local CAPS = {
     -- PS3 Lua Player: least-supported tier, position-only blits, no primitives.
     ["PS3"] = {
         renderer  = "PS3 Lua",
+        tier      = 3,
         limits    = { pointsize = 1, texturesize = 512, multicanvas = 1, canvasmsaa = 0 },
         supported = supported(),
         features  = { transform = false, quaddraw = false, polygonfill = false,

@@ -34,6 +34,10 @@ for _, mode in ipairs(MODES) do
             T.ok(#love._backend.emulator > 0, "emulator name should not be empty")
         end)
 
+        T.it("declares a support tier", function()
+            T.inrange(love._backend.tier, 1, 3)
+        end)
+
         T.it("answers every renderer-sensitivity flag with a boolean", function()
             local rs = love._backend.rendersensitive
             T.istype(rs, "table")
@@ -87,6 +91,10 @@ end)
 
 load_backend("PS3")
 T.describe("capabilities [PS3 specifics]", function()
+    T.it("is the experimental tier (T8.5)", function()
+        T.eq(love._backend.tier, 3)
+    end)
+
     T.it("treats every renderer-sensitive area as unconfirmed", function()
         for _, flag in ipairs(FLAGS) do
             T.ok(love._backend.rendersensitive[flag], flag.." should be flagged on PS3")

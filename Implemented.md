@@ -1,6 +1,11 @@
 # LOVE-WrapLua — Implemented API (LÖVE 11.5)
 
 > Platform keys: **OL** = OneLua (Vita), **PSP** = PSP (graphics_psp), **LPP** = lpp-vita, **PS3** = PS3
+>
+> Support tiers (`love._backend.tier`): **OL** and **PSP** are tier 1 (supported),
+> **LPP** is tier 2 (partial), **PS3** is tier 3 (experimental: position-only
+> draws, stubbed primitives, and RPCS3 cannot run it, so develop on desktop LÖVE
+> and confirm on hardware). See the README "Support tiers" table.
 
 ---
 

@@ -55,5 +55,22 @@ function util.resetWarnings()
     _warned = {}
 end
 
+-- Drawables written in Lua (SpriteBatch, Text, Mesh, ParticleSystem) replay
+-- themselves through love.graphics.draw instead of hitting a native blit. Each
+-- backend's draw has to tell them apart from a native image, and probing for a
+-- `_draw` field is not enough: some native image objects answer any field
+-- lookup. Registering them keeps the test exact.
+local drawObjects = setmetatable({}, { __mode = "k" })
+
+function util.registerDrawObject(obj)
+    if type(obj) == "table" then drawObjects[obj] = true end
+    return obj
+end
+
+function util.isDrawObject(obj)
+    return type(obj) == "table" and drawObjects[obj] == true
+           and type(obj._draw) == "function"
+end
+
 -- Kept as a global: game code and older platform modules call it directly.
 __mathRound = util.round

@@ -20,5 +20,5 @@ function love.graphics.newMesh(vertices, mode, usage)
     function mesh:detachAttribute() end
     function mesh:flush() end
     function mesh:_draw(x,y,r,sx,sy) end
-    return mesh
+    return lv1lua.util.registerDrawObject(mesh)
 end

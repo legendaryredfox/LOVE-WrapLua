@@ -52,7 +52,7 @@ end
 
 function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx, ky)
     -- SpriteBatch / Text / ParticleSystem objects draw themselves.
-    if type(drawable) == "table" and drawable._draw then
+    if lv1lua.util.isDrawObject(drawable) then
         drawable:_draw(xOrQuad, y, r, sx, sy, ox, oy)
         return
     end

@@ -12,6 +12,14 @@ end
 -- the quad is ignored and the whole surface is drawn at (x, y). Documented in
 -- Implemented.md; PS3 is the least-supported tier (T8.5).
 function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy)
+    if drawable == nil then return end
+    -- SpriteBatch / Text replay themselves through this same entry point
+    -- (core/objects.lua); without this they would reach setRectPos as a plain
+    -- Lua table and error.
+    if lv1lua.util.isDrawObject(drawable) then
+        return drawable:_draw(xOrQuad, y, r, sx, sy, ox, oy)
+    end
+
     local x = xOrQuad
     if type(xOrQuad) == "table" and xOrQuad.getViewport then
         -- draw(drawable, quad, x, y, r, sx, sy, ox, oy): drop the quad, shift.

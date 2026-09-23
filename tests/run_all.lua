@@ -13,6 +13,7 @@ local test_files = {
     "tests/test_filesystem.lua",
     "tests/test_graphics.lua",
     "tests/test_capabilities.lua",
+    "tests/test_objects.lua",
     "tests/test_texture_limits.lua",
     "tests/test_quad_inset.lua",
     "tests/test_desanim8.lua",

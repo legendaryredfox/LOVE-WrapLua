@@ -70,6 +70,12 @@ end
 
 function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy)
     if drawable == nil then return end
+    -- SpriteBatch / Text replay themselves through this same entry point
+    -- (core/objects.lua); without this they would reach the native blit as a
+    -- plain Lua table.
+    if lv1lua.util.isDrawObject(drawable) then
+        return drawable:_draw(xOrQuad, y, r, sx, sy, ox, oy)
+    end
     if type(xOrQuad) == "table" and xOrQuad.getViewport then
         return _quadDraw(drawable, xOrQuad, y, r, sx, sy, ox, oy)
     end

@@ -79,7 +79,7 @@
 | newCanvas(w, h) | stub (`canvas=false`) | stub | stub | stub |
 | setCanvas / getCanvas | stub (draws to screen) | stub | stub | stub |
 | newShader / setShader / getShader | stub | stub | stub | stub |
-| newSpriteBatch(img, max, usage) | ✓ | ✓ | ✓ | ✓ |
+| newSpriteBatch(img, max, usage) | ✓ | ✓ quads honoured, no rotation | ✓ | ✓ position only |
 | newText(font, text) / newTextBatch | ✓ | ✓ | ✓ | ✓ |
 | newMesh | stub | stub | stub | stub |
 | newParticleSystem | ✓ (basic) | — | — | — |

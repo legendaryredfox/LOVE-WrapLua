@@ -68,5 +68,5 @@ function love.graphics.newParticleSystem(image, buffer)
     function ps:clone()
         return love.graphics.newParticleSystem(self._image, self._buffer)
     end
-    return ps
+    return lv1lua.util.registerDrawObject(ps)
 end

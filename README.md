@@ -140,7 +140,7 @@ that backend, so calling it errors.
 | love.graphics (fonts, print, printf) | full | full | full | full | real text metrics per backend |
 | love.graphics (transform stack) | full | stub | full | stub | push/pop/translate/scale/rotate; `shear` is a stub everywhere |
 | love.graphics (scissor) | full | stub | partial | stub | lpp-vita rejects out-of-scissor draws in software |
-| love.graphics (SpriteBatch, Text) | full | full | full | full | |
+| love.graphics (SpriteBatch, Text) | full | full | full | partial | shared implementation (`core/objects.lua`); each backend honours what its own draw supports |
 | love.graphics (ParticleSystem) | partial | none | none | none | basic emitter, OneLua/Vita only |
 | love.graphics (Canvas, Shader, Mesh, blend mode) | stub | stub | stub | stub | `getSupported().canvas` and `.shader` are `false` |
 | love.audio | partial | partial | partial | partial | OneLua about 2 simultaneous channels; PS3 stream sources only; lpp-vita global volume is a stub |
@@ -454,8 +454,9 @@ index.lua       <- lpp-vita entry point
 app.lua         <- PS3 entry point
 LOVE-WrapLua/
   core/         <- backend-agnostic: loader, util, transform stack, word wrap,
-                   capabilities, polygon fill, texture inset, runtime, config,
-                   module list, require shim, callbacks
+                   capabilities, polygon fill, texture inset, graphics objects
+                   (Canvas/Shader/SpriteBatch/Text), runtime, config, module
+                   list, require shim, callbacks
   math.lua      <- entry point over math/{random,noise,transform,geometry,color}
   filesystem.lua / data.lua / window.lua / joystick.lua / system.lua
   love-functions/thread.lua

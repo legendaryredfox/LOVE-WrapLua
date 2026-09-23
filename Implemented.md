@@ -33,8 +33,8 @@
 
 | Function | OL | PSP | LPP | PS3 |
 |---|---|---|---|---|
-| newImage(filename, settings) | ✓ | ✓ warns if >512 / NPOT | ✓ warns if >512 | ✓ warns if >1024 |
-| newQuad(x,y,w,h,sw,sh or img) | ✓ warns if >512 | ✓ warns if >512 / NPOT | ✓ warns if >1024 | ✓ |
+| newImage(filename, settings) | ✓ warns if >512 | ✓ warns if >512 / NPOT | ✓ warns if >1024 | ✓ no validation |
+| newQuad(x,y,w,h,sw,sh or img) | ✓ warns if >512 | ✓ warns if >512 / NPOT | ✓ warns if >1024 | ✓ no validation |
 | setTextureInset / getTextureInset | ✓ | ✓ | ✓ | — |
 | draw(drawable, …) | ✓ | ✓ quad sub-rect + scale/flip via a cached copy, source never mutated | ✓ quad + rotation + scale via drawImageExtended | ✓ position only (quad accepted but ignored) |
 | setColor(r,g,b,a) **0–1 range** | ✓ | ✓ | ✓ | ✓ |

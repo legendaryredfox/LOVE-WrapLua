@@ -19,11 +19,17 @@ end
 -- ── wrapper config ───────────────────────────────────────────────
 if not lv1luaconf then
     lv1luaconf = {
-        keyconf   = "XB",
-        img_scale = false,
-        res_scale = false,
+        keyconf  = "XB",
+        imgscale = false,
+        resscale = false,
     }
 end
+
+-- The draw code reads `imgscale` / `resscale`; older docs and games spell them
+-- `img_scale` / `res_scale`. Accept both so a game written against either name
+-- actually scales instead of being silently ignored.
+if lv1luaconf.imgscale == nil then lv1luaconf.imgscale = lv1luaconf.img_scale or false end
+if lv1luaconf.resscale == nil then lv1luaconf.resscale = lv1luaconf.res_scale or false end
 
 -- ── button layout ────────────────────────────────────────────────
 -- "SE" means "follow the console's own enter-button setting", which differs by

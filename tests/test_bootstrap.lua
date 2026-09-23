@@ -115,6 +115,32 @@ T.describe("core.config", function()
         T.eq(lv1lua.keyset[2], "b")
     end)
 
+    -- The draw code reads imgscale/resscale; the old default table and the docs
+    -- spelled them img_scale/res_scale, so those settings were silently ignored.
+    T.it("accepts the img_scale / res_scale spelling", function()
+        fresh("OneLua")
+        lv1luaconf = { keyconf = "XB", img_scale = true, res_scale = true }
+        lv1lua.load("LOVE-WrapLua/core/config.lua")
+        T.eq(lv1luaconf.imgscale, true)
+        T.eq(lv1luaconf.resscale, true)
+    end)
+
+    T.it("leaves the canonical imgscale / resscale spelling alone", function()
+        fresh("OneLua")
+        lv1luaconf = { keyconf = "XB", imgscale = true, resscale = false }
+        lv1lua.load("LOVE-WrapLua/core/config.lua")
+        T.eq(lv1luaconf.imgscale, true)
+        T.eq(lv1luaconf.resscale, false)
+    end)
+
+    T.it("defaults both scale flags to false", function()
+        fresh("OneLua")
+        lv1luaconf = nil
+        lv1lua.load("LOVE-WrapLua/core/config.lua")
+        T.eq(lv1luaconf.imgscale, false)
+        T.eq(lv1luaconf.resscale, false)
+    end)
+
     T.it("always provides a loveconf table", function()
         fresh("OneLua")
         lv1luaconf = nil

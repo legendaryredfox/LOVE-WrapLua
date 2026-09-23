@@ -47,6 +47,32 @@ local function shared_suite(mode)
         T.it("polygon does not error", function()
             love.graphics.polygon("line", {0,0, 10,0, 10,10})
         end)
+
+        -- Shapes built on top of the native calls by core/primitives.lua.
+        T.it("ellipse, arc and points do not error", function()
+            love.graphics.ellipse("line", 20, 20, 10, 5)
+            love.graphics.ellipse("fill", 20, 20, 10, 5)
+            love.graphics.arc("line", "pie", 30, 30, 10, 0, math.pi)
+            love.graphics.arc("line", "open", 30, 30, 10, 0, math.pi)
+            love.graphics.arc("line", "closed", 30, 30, 10, 0, math.pi)
+            love.graphics.points(1, 2, 3, 4)
+            love.graphics.points({1, 2, 3, 4})
+        end)
+
+        T.it("the old arc(mode, x, y, r, a1, a2) signature still works", function()
+            love.graphics.arc("line", 30, 30, 10, 0, math.pi)
+        end)
+
+        T.it("line and points accept a table or a flat list", function()
+            love.graphics.line({0, 0, 10, 10})
+            love.graphics.line(0, 0, 10, 10)
+        end)
+
+        T.it("a polygon with fewer than two points draws nothing", function()
+            __rec.reset()
+            love.graphics.polygon("fill", {1, 2})
+            T.eq(__rec.count("draw.fillrect") + __rec.count("Graphics.fillRect"), 0)
+        end)
     end)
 end
 

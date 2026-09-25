@@ -6,6 +6,11 @@
 -- LICENSE: MIT (the same license as Lua itself)
 -- URL:     https://github.com/Egor-Skriptunoff/pure_lua_SHA
 --
+-- LOCAL PATCH (LOVE-WrapLua): upstream reassigns for-loop control variables
+-- ("x" in the AND look-up table, "pos" in every *_feed_* function). Lua 5.5
+-- makes the control variable const, so upstream fails to load there. Each site
+-- now writes to a shadow local instead; behaviour is unchanged on 5.1-5.4.
+--
 -- DESCRIPTION:
 --    This module contains functions to calculate SHA digest:
 --       MD5, SHA-1,
@@ -250,11 +255,13 @@ elseif branch == "EMUL" then
    local idx = 0
    for y = 0, 127 * 256, 256 do
       for x = y, y + 127 do
-         x = AND_of_two_bytes[x] * 2
-         AND_of_two_bytes[idx] = x
-         AND_of_two_bytes[idx + 1] = x
-         AND_of_two_bytes[idx + 256] = x
-         AND_of_two_bytes[idx + 257] = x + 1
+         -- Lua 5.5 makes the loop control variable const, so the upstream
+         -- "x = ..." reuse of it is a load-time error there.
+         local v = AND_of_two_bytes[x] * 2
+         AND_of_two_bytes[idx] = v
+         AND_of_two_bytes[idx + 1] = v
+         AND_of_two_bytes[idx + 256] = v
+         AND_of_two_bytes[idx + 257] = v + 1
          idx = idx + 2
       end
       idx = idx + 256
@@ -392,6 +399,7 @@ if branch == "FFI" then
       -- offs >= 0, size >= 0, size is multiple of 64
       local W, K = common_W_FFI_int32, sha2_K_hi
       for pos = offs, offs + size - 1, 64 do
+         local pos = pos
          for j = 0, 15 do
             pos = pos + 4
             local a, b, c, d = byte(str, pos - 3, pos)   -- slow, but doesn't depend on endianness
@@ -471,6 +479,7 @@ if branch == "FFI" then
             -- offs >= 0, size >= 0, size is multiple of 128
             local h1, h2, h3, h4, h5, h6, h7, h8 = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
             for pos = offs, offs + size - 1, 128 do
+               local pos = pos
                if str then
                   for j = 1, 16 do
                      pos = pos + 8
@@ -532,6 +541,7 @@ if branch == "FFI" then
          local RC = sha3_RC_lo
          local qwords_qty = SHR(block_size_in_bytes, 3)
          for pos = offs, offs + size - 1, block_size_in_bytes do
+            local pos = pos
             for j = 0, qwords_qty - 1 do
                pos = pos + 8
                local h, g, f, e, d, c, b, a = byte(str, pos - 7, pos)   -- slow, but doesn't depend on endianness
@@ -579,6 +589,7 @@ if branch == "FFI" then
          -- offs >= 0, size >= 0, size is multiple of 128
          local W, K = common_W_FFI_int64, sha2_K_lo
          for pos = offs, offs + size - 1, 128 do
+            local pos = pos
             for j = 0, 15 do
                pos = pos + 8
                local a, b, c, d, e, f, g, h = byte(str, pos - 7, pos)   -- slow, but doesn't depend on endianness
@@ -779,6 +790,7 @@ if branch == "FFI" then
          -- offs >= 0, size >= 0, size is multiple of 128
          local W, K = common_W_FFI_int64, sha2_K_lo
          for pos = offs, offs + size - 1, 128 do
+            local pos = pos
             for j = 0, 15 do
                pos = pos + 8
                local a, b, c, d, e, f, g, h = byte(str, pos - 7, pos)   -- slow, but doesn't depend on endianness
@@ -849,6 +861,7 @@ if branch == "FFI" then
             -- offs >= 0, size >= 0, size is multiple of 128
             local h1, h2, h3, h4, h5, h6, h7, h8 = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
             for pos = offs, offs + size - 1, 128 do
+               local pos = pos
                if str then
                   for j = 1, 16 do
                      pos = pos + 8
@@ -902,6 +915,7 @@ if branch == "FFI" then
       -- offs >= 0, size >= 0, size is multiple of 64
       local W, K = common_W_FFI_int32, md5_K
       for pos = offs, offs + size - 1, 64 do
+         local pos = pos
          for j = 0, 15 do
             pos = pos + 4
             local a, b, c, d = byte(str, pos - 3, pos)   -- slow, but doesn't depend on endianness
@@ -946,6 +960,7 @@ if branch == "FFI" then
       -- offs >= 0, size >= 0, size is multiple of 64
       local W = common_W_FFI_int32
       for pos = offs, offs + size - 1, 64 do
+         local pos = pos
          for j = 0, 15 do
             pos = pos + 4
             local a, b, c, d = byte(str, pos - 3, pos)   -- slow, but doesn't depend on endianness
@@ -1009,6 +1024,7 @@ if branch == "FFI" and not is_LuaJIT_21 or branch == "LJ" then
       local RC_lo, RC_hi = sha3_RC_lo, sha3_RC_hi
       local qwords_qty = SHR(block_size_in_bytes, 3)
       for pos = offs, offs + size - 1, block_size_in_bytes do
+         local pos = pos
          for j = 1, qwords_qty do
             local a, b, c, d = byte(str, pos + 1, pos + 4)
             lanes_lo[j] = XOR(lanes_lo[j], OR(SHL(d, 24), SHL(c, 16), SHL(b, 8), a))
@@ -1073,6 +1089,7 @@ if branch == "LJ" then
       -- offs >= 0, size >= 0, size is multiple of 64
       local W, K = common_W, sha2_K_hi
       for pos = offs, offs + size - 1, 64 do
+         local pos = pos
          for j = 1, 16 do
             pos = pos + 4
             local a, b, c, d = byte(str, pos - 3, pos)
@@ -1132,6 +1149,7 @@ if branch == "LJ" then
          -- W1_hi, W1_lo, W2_hi, W2_lo, ...   Wk_hi = W[2*k-1], Wk_lo = W[2*k]
          local W, K_lo, K_hi = common_W, sha2_K_lo, sha2_K_hi
          for pos = offs, offs + size - 1, 128 do
+            local pos = pos
             for j = 1, 16*2 do
                pos = pos + 4
                local a, b, c, d = byte(str, pos - 3, pos)
@@ -1189,6 +1207,7 @@ if branch == "LJ" then
          -- W1_hi, W1_lo, W2_hi, W2_lo, ...   Wk_hi = W[2*k-1], Wk_lo = W[2*k]
          local W, K_lo, K_hi = common_W, sha2_K_lo, sha2_K_hi
          for pos = offs, offs + size - 1, 128 do
+            local pos = pos
             for j = 1, 16*2 do
                pos = pos + 4
                local a, b, c, d = byte(str, pos - 3, pos)
@@ -1243,6 +1262,7 @@ if branch == "LJ" then
       -- offs >= 0, size >= 0, size is multiple of 64
       local W, K = common_W, md5_K
       for pos = offs, offs + size - 1, 64 do
+         local pos = pos
          for j = 1, 16 do
             pos = pos + 4
             local a, b, c, d = byte(str, pos - 3, pos)
@@ -1287,6 +1307,7 @@ if branch == "LJ" then
       -- offs >= 0, size >= 0, size is multiple of 64
       local W = common_W
       for pos = offs, offs + size - 1, 64 do
+         local pos = pos
          for j = 1, 16 do
             pos = pos + 4
             local a, b, c, d = byte(str, pos - 3, pos)
@@ -1367,6 +1388,7 @@ if branch == "LJ" then
          local h1_lo, h2_lo, h3_lo, h4_lo, h5_lo, h6_lo, h7_lo, h8_lo = H_lo[1], H_lo[2], H_lo[3], H_lo[4], H_lo[5], H_lo[6], H_lo[7], H_lo[8]
          local h1_hi, h2_hi, h3_hi, h4_hi, h5_hi, h6_hi, h7_hi, h8_hi = H_hi[1], H_hi[2], H_hi[3], H_hi[4], H_hi[5], H_hi[6], H_hi[7], H_hi[8]
          for pos = offs, offs + size - 1, 128 do
+            local pos = pos
             if str then
                for j = 1, 32 do
                   pos = pos + 4
@@ -1455,6 +1477,7 @@ if branch == "FFI" or branch == "LJ" then
          -- offs >= 0, size >= 0, size is multiple of 64
          local h1, h2, h3, h4, h5, h6, h7, h8 = NORM(H[1]), NORM(H[2]), NORM(H[3]), NORM(H[4]), NORM(H[5]), NORM(H[6]), NORM(H[7]), NORM(H[8])
          for pos = offs, offs + size - 1, 64 do
+            local pos = pos
             if str then
                for j = 1, 16 do
                   pos = pos + 4
@@ -1505,6 +1528,7 @@ if branch == "FFI" or branch == "LJ" then
          local h1, h2, h3, h4, h5, h6, h7, h8 = NORM(H_in[1]), NORM(H_in[2]), NORM(H_in[3]), NORM(H_in[4]), NORM(H_in[5]), NORM(H_in[6]), NORM(H_in[7]), NORM(H_in[8])
          H_out = H_out or H_in
          for pos = offs, offs + size - 1, 64 do
+            local pos = pos
             if str then
                for j = 1, 16 do
                   pos = pos + 4
@@ -1584,6 +1608,7 @@ if branch == "INT64" then
          local W, K = common_W, sha2_K_hi
          local h1, h2, h3, h4, h5, h6, h7, h8 = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
          for pos = offs + 1, offs + size, 64 do
+            local pos = pos
             W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16] =
                string_unpack(">I4I4I4I4I4I4I4I4I4I4I4I4I4I4I4I4", str, pos)
             for j = 17, 64 do
@@ -1624,6 +1649,7 @@ if branch == "INT64" then
          local W, K = common_W, sha2_K_lo
          local h1, h2, h3, h4, h5, h6, h7, h8 = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
          for pos = offs + 1, offs + size, 128 do
+            local pos = pos
             W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16] =
                string_unpack(">i8i8i8i8i8i8i8i8i8i8i8i8i8i8i8i8", str, pos)
             for j = 17, 80 do
@@ -1660,6 +1686,7 @@ if branch == "INT64" then
          local W, K, md5_next_shift = common_W, md5_K, md5_next_shift
          local h1, h2, h3, h4 = H[1], H[2], H[3], H[4]
          for pos = offs + 1, offs + size, 64 do
+            local pos = pos
             W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16] =
                string_unpack("<I4I4I4I4I4I4I4I4I4I4I4I4I4I4I4I4", str, pos)
             local a, b, c, d = h1, h2, h3, h4
@@ -1712,6 +1739,7 @@ if branch == "INT64" then
          local W = common_W
          local h1, h2, h3, h4, h5 = H[1], H[2], H[3], H[4], H[5]
          for pos = offs + 1, offs + size, 64 do
+            local pos = pos
             W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16] =
                string_unpack(">I4I4I4I4I4I4I4I4I4I4I4I4I4I4I4I4", str, pos)
             for j = 17, 80 do
@@ -1768,6 +1796,7 @@ if branch == "INT64" then
          local qwords_qty = block_size_in_bytes / 8
          local keccak_format = keccak_format_i8[qwords_qty]
          for pos = offs + 1, offs + size, block_size_in_bytes do
+            local pos = pos
             local qwords_from_message = {string_unpack(keccak_format, str, pos)}
             for j = 1, qwords_qty do
                lanes[j] = lanes[j] ~ qwords_from_message[j]
@@ -1875,6 +1904,7 @@ if branch == "INT64" then
          local W = common_W
          local h1, h2, h3, h4, h5, h6, h7, h8 = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
          for pos = offs + 1, offs + size, 64 do
+            local pos = pos
             if str then
                W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16] =
                   string_unpack("<I4I4I4I4I4I4I4I4I4I4I4I4I4I4I4I4", str, pos)
@@ -2007,6 +2037,7 @@ if branch == "INT64" then
          local W = common_W
          local h1, h2, h3, h4, h5, h6, h7, h8 = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
          for pos = offs + 1, offs + size, 128 do
+            local pos = pos
             if str then
                W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16] =
                   string_unpack("<i8i8i8i8i8i8i8i8i8i8i8i8i8i8i8i8", str, pos)
@@ -2141,6 +2172,7 @@ if branch == "INT64" then
          local h1, h2, h3, h4, h5, h6, h7, h8 = H_in[1], H_in[2], H_in[3], H_in[4], H_in[5], H_in[6], H_in[7], H_in[8]
          H_out = H_out or H_in
          for pos = offs + 1, offs + size, 64 do
+            local pos = pos
             if str then
                W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16] =
                   string_unpack("<I4I4I4I4I4I4I4I4I4I4I4I4I4I4I4I4", str, pos)
@@ -2304,6 +2336,7 @@ if branch == "INT32" then
          local W, K = common_W, sha2_K_hi
          local h1, h2, h3, h4, h5, h6, h7, h8 = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
          for pos = offs + 1, offs + size, 64 do
+            local pos = pos
             W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16] =
                string_unpack(">i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4", str, pos)
             for j = 17, 64 do
@@ -2341,6 +2374,7 @@ if branch == "INT32" then
          local h1_lo, h2_lo, h3_lo, h4_lo, h5_lo, h6_lo, h7_lo, h8_lo = H_lo[1], H_lo[2], H_lo[3], H_lo[4], H_lo[5], H_lo[6], H_lo[7], H_lo[8]
          local h1_hi, h2_hi, h3_hi, h4_hi, h5_hi, h6_hi, h7_hi, h8_hi = H_hi[1], H_hi[2], H_hi[3], H_hi[4], H_hi[5], H_hi[6], H_hi[7], H_hi[8]
          for pos = offs + 1, offs + size, 128 do
+            local pos = pos
             W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16],
                W[17], W[18], W[19], W[20], W[21], W[22], W[23], W[24], W[25], W[26], W[27], W[28], W[29], W[30], W[31], W[32] =
                string_unpack(">i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4", str, pos)
@@ -2410,6 +2444,7 @@ if branch == "INT32" then
          local W, K, md5_next_shift = common_W, md5_K, md5_next_shift
          local h1, h2, h3, h4 = H[1], H[2], H[3], H[4]
          for pos = offs + 1, offs + size, 64 do
+            local pos = pos
             W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16] =
                string_unpack("<i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4", str, pos)
             local a, b, c, d = h1, h2, h3, h4
@@ -2462,6 +2497,7 @@ if branch == "INT32" then
          local W = common_W
          local h1, h2, h3, h4, h5 = H[1], H[2], H[3], H[4], H[5]
          for pos = offs + 1, offs + size, 64 do
+            local pos = pos
             W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16] =
                string_unpack(">i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4", str, pos)
             for j = 17, 80 do
@@ -2518,6 +2554,7 @@ if branch == "INT32" then
          local qwords_qty = block_size_in_bytes / 8
          local keccak_format = keccak_format_i4i4[qwords_qty]
          for pos = offs + 1, offs + size, block_size_in_bytes do
+            local pos = pos
             local dwords_from_message = {string_unpack(keccak_format, str, pos)}
             for j = 1, qwords_qty do
                lanes_lo[j] = lanes_lo[j] ~ dwords_from_message[2*j-1]
@@ -2696,6 +2733,7 @@ if branch == "INT32" then
          local W = common_W
          local h1, h2, h3, h4, h5, h6, h7, h8 = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
          for pos = offs + 1, offs + size, 64 do
+            local pos = pos
             if str then
                W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16] =
                   string_unpack("<i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4", str, pos)
@@ -2832,6 +2870,7 @@ if branch == "INT32" then
          local h1_lo, h2_lo, h3_lo, h4_lo, h5_lo, h6_lo, h7_lo, h8_lo = H_lo[1], H_lo[2], H_lo[3], H_lo[4], H_lo[5], H_lo[6], H_lo[7], H_lo[8]
          local h1_hi, h2_hi, h3_hi, h4_hi, h5_hi, h6_hi, h7_hi, h8_hi = H_hi[1], H_hi[2], H_hi[3], H_hi[4], H_hi[5], H_hi[6], H_hi[7], H_hi[8]
          for pos = offs + 1, offs + size, 128 do
+            local pos = pos
             if str then
                W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16],
                W[17], W[18], W[19], W[20], W[21], W[22], W[23], W[24], W[25], W[26], W[27], W[28], W[29], W[30], W[31], W[32] =
@@ -3056,6 +3095,7 @@ if branch == "INT32" then
          local h1, h2, h3, h4, h5, h6, h7, h8 = H_in[1], H_in[2], H_in[3], H_in[4], H_in[5], H_in[6], H_in[7], H_in[8]
          H_out = H_out or H_in
          for pos = offs + 1, offs + size, 64 do
+            local pos = pos
             if str then
                W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16] =
                   string_unpack("<i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4", str, pos)
@@ -3203,6 +3243,7 @@ if branch == "LIB32" or branch == "EMUL" then
       local W, K = common_W, sha2_K_hi
       local h1, h2, h3, h4, h5, h6, h7, h8 = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
       for pos = offs, offs + size - 1, 64 do
+         local pos = pos
          for j = 1, 16 do
             pos = pos + 4
             local a, b, c, d = byte(str, pos - 3, pos)
@@ -3247,6 +3288,7 @@ if branch == "LIB32" or branch == "EMUL" then
       local h1_lo, h2_lo, h3_lo, h4_lo, h5_lo, h6_lo, h7_lo, h8_lo = H_lo[1], H_lo[2], H_lo[3], H_lo[4], H_lo[5], H_lo[6], H_lo[7], H_lo[8]
       local h1_hi, h2_hi, h3_hi, h4_hi, h5_hi, h6_hi, h7_hi, h8_hi = H_hi[1], H_hi[2], H_hi[3], H_hi[4], H_hi[5], H_hi[6], H_hi[7], H_hi[8]
       for pos = offs, offs + size - 1, 128 do
+         local pos = pos
          for j = 1, 16*2 do
             pos = pos + 4
             local a, b, c, d = byte(str, pos - 3, pos)
@@ -3328,6 +3370,7 @@ if branch == "LIB32" or branch == "EMUL" then
          local W, K, md5_next_shift = common_W, md5_K, md5_next_shift
          local h1, h2, h3, h4 = H[1], H[2], H[3], H[4]
          for pos = offs, offs + size - 1, 64 do
+            local pos = pos
             for j = 1, 16 do
                pos = pos + 4
                local a, b, c, d = byte(str, pos - 3, pos)
@@ -3385,6 +3428,7 @@ if branch == "LIB32" or branch == "EMUL" then
          local W, K, md5_next_shift = common_W, md5_K, md5_next_shift
          local h1, h2, h3, h4 = H[1], H[2], H[3], H[4]
          for pos = offs, offs + size - 1, 64 do
+            local pos = pos
             for j = 1, 16 do
                pos = pos + 4
                local a, b, c, d = byte(str, pos - 3, pos)
@@ -3447,6 +3491,7 @@ if branch == "LIB32" or branch == "EMUL" then
       local W = common_W
       local h1, h2, h3, h4, h5 = H[1], H[2], H[3], H[4], H[5]
       for pos = offs, offs + size - 1, 64 do
+         local pos = pos
          for j = 1, 16 do
             pos = pos + 4
             local a, b, c, d = byte(str, pos - 3, pos)
@@ -3518,6 +3563,7 @@ if branch == "LIB32" or branch == "EMUL" then
       local RC_lo, RC_hi = sha3_RC_lo, sha3_RC_hi
       local qwords_qty = block_size_in_bytes / 8
       for pos = offs, offs + size - 1, block_size_in_bytes do
+         local pos = pos
          for j = 1, qwords_qty do
             local a, b, c, d = byte(str, pos + 1, pos + 4)
             lanes_lo[j] = XOR(lanes_lo[j], ((d * 256 + c) * 256 + b) * 256 + a)
@@ -3699,6 +3745,7 @@ if branch == "LIB32" or branch == "EMUL" then
       local W = common_W
       local h1, h2, h3, h4, h5, h6, h7, h8 = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
       for pos = offs, offs + size - 1, 64 do
+         local pos = pos
          if str then
             for j = 1, 16 do
                pos = pos + 4
@@ -3838,6 +3885,7 @@ if branch == "LIB32" or branch == "EMUL" then
       local h1_lo, h2_lo, h3_lo, h4_lo, h5_lo, h6_lo, h7_lo, h8_lo = H_lo[1], H_lo[2], H_lo[3], H_lo[4], H_lo[5], H_lo[6], H_lo[7], H_lo[8]
       local h1_hi, h2_hi, h3_hi, h4_hi, h5_hi, h6_hi, h7_hi, h8_hi = H_hi[1], H_hi[2], H_hi[3], H_hi[4], H_hi[5], H_hi[6], H_hi[7], H_hi[8]
       for pos = offs, offs + size - 1, 128 do
+         local pos = pos
          if str then
             for j = 1, 32 do
                pos = pos + 4
@@ -4088,6 +4136,7 @@ if branch == "LIB32" or branch == "EMUL" then
       local h1, h2, h3, h4, h5, h6, h7, h8 = H_in[1], H_in[2], H_in[3], H_in[4], H_in[5], H_in[6], H_in[7], H_in[8]
       H_out = H_out or H_in
       for pos = offs, offs + size - 1, 64 do
+         local pos = pos
          if str then
             for j = 1, 16 do
                pos = pos + 4
@@ -4740,6 +4789,7 @@ do
    function bin_to_base64(binary_string)
       local result = {}
       for pos = 1, #binary_string, 3 do
+         local pos = pos
          local c1, c2, c3, c4 = byte(sub(binary_string, pos, pos + 2)..'\0', 1, -1)
          result[#result + 1] =
             base64_symbols[floor(c1 / 4)]

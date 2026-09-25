@@ -1,56 +1,38 @@
--- lpp-vita graphics: Font objects.
+-- lpp-vita graphics: the native font hooks core/font.lua drives.
 
-function love.graphics.newFont(setfont, setsize)
-    if tonumber(setfont) then setsize = setfont; setfont = nil end
-    setsize = setsize or 12
+lv1lua.gfx.fontHooks = {
+    defaultSize = 12,
 
-    local fobj
-    if setfont then
-        fobj = Font.load(lv1lua.dataloc .. "game/" .. setfont)
-    else
-        fobj = lv1lua.gfx.defaultFont
-    end
-    if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then
-        setsize = setsize * 0.825
-    end
-    Font.setPixelSizes(fobj, setsize)
+    load = function(path)
+        if not path then return lv1lua.gfx.defaultFont end
+        return Font.load(lv1lua.dataloc .. "game/" .. path)
+    end,
 
-    local wrap = { _font = fobj, size = setsize }
-    function wrap:getWidth(text)
-        if not text or text == "" then return 0 end
-        -- Native Font.getTextWidth(font, text) returns the real pixel width,
-        -- so multibyte glyphs measure correctly. Fall back to an estimate only
-        -- if the binding is missing.
-        if Font.getTextWidth then return Font.getTextWidth(self._font, text) end
-        return #text * self.size * 0.6
-    end
-    function wrap:getHeight()     return self.size end
-    function wrap:getBaseline()   return self.size end
-    function wrap:getAscent()     return self.size end
-    function wrap:getDescent()    return 0 end
-    function wrap:getLineHeight() return 1.2 end
-    function wrap:setLineHeight() end
-    return wrap
-end
+    sizeAdjust = function(size)
+        if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then
+            return size * 0.825
+        end
+        return size
+    end,
 
-function love.graphics.setFont(setfont, setsize)
-    if setfont then lv1lua.current.font = setfont end
-    local f = lv1lua.current.font
-    if not f then return end
-    if setsize then f.size = setsize end
-    -- Push the *final* size to the native font, so getTextWidth measures at
-    -- the size we actually print with.
-    if f._font then Font.setPixelSizes(f._font, f.size) end
-end
+    applySize = function(f)
+        if f._font then Font.setPixelSizes(f._font, f.size) end
+    end,
 
-function love.graphics.getFont() return lv1lua.current.font end
-
-function love.graphics.setNewFont(setfont, setsize)
-    local newfont = love.graphics.newFont(setfont, setsize)
-    love.graphics.setFont(newfont, setsize)
-    return newfont
-end
-
--- LÖVE ships a usable 12px default font; print/printf and getFont():getWidth
--- must work before the game calls setFont.
-lv1lua.current.font = love.graphics.newFont(nil, 12)
+    measure = function(f, text)
+        -- Native Font.getTextWidth(font, text) gives the real pixel width, so
+        -- multibyte glyphs measure correctly. Without the binding, core/font.lua
+        -- falls back to its glyph-count estimate.
+        if not (f._font and Font.getTextWidth) then return nil end
+        -- Every Font that asked for no specific file shares one native handle,
+        -- and the handle carries the pixel size, so measure at this font's size
+        -- and hand the handle back at the size the current font prints with.
+        Font.setPixelSizes(f._font, f.size)
+        local w = Font.getTextWidth(f._font, text)
+        local cur = lv1lua.current.font
+        if cur and cur ~= f and cur._font == f._font then
+            Font.setPixelSizes(f._font, cur.size)
+        end
+        return w
+    end,
+}

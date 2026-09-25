@@ -52,7 +52,7 @@
 | setLineStyle / getLineStyle | stub | stub | stub | stub |
 | setLineJoin / getLineJoin | stub | stub | stub | stub |
 | setPointSize / getPointSize | stub | stub | stub | stub |
-| newFont(file, size) | ✓ | ✓ | ✓ | ✓ |
+| newFont(file, size) | ✓ TTF, cached per face+size | ✓ PGF system face only, size varies | ✓ TTF, cached per face+size | ✓ no native font, metrics estimated |
 | setFont / getFont | ✓ | ✓ | ✓ | ✓ |
 | setNewFont | ✓ | ✓ | ✓ | ✓ |
 | print(text, x, y) | ✓ | ✓ | ✓ | ✓ |
@@ -86,6 +86,25 @@
 | getStats / getRendererInfo | ✓ | ✓ | ✓ | ✓ |
 | getSystemLimits / getSupported | ✓ | ✓ | ✓ | ✓ (from central capability table) |
 | isGammaCorrect | ✓ | — | — | — |
+
+### Font object methods
+
+One shared Font implementation (`core/font.lua`) on every backend; only
+measuring and face loading are native.
+
+| Method | OL | PSP | LPP | PS3 |
+|---|---|---|---|---|
+| getWidth(text) | ✓ native `screen.textwidth` | ✓ native `screen.textwidth` | ✓ native `Font.getTextWidth` | estimate: glyphs × size × 0.6 |
+| getHeight / getBaseline / getAscent | ✓ = requested size | ✓ | ✓ | ✓ |
+| getDescent | 0 | 0 | 0 | 0 |
+| getLineHeight / setLineHeight | ✓ stored, used by printf | ✓ | ✓ | ✓ |
+| getWrap(text, width) | ✓ | ✓ | ✓ | ✓ |
+| type / typeOf / release | ✓ | ✓ | ✓ | ✓ |
+| hasGlyph / getKerning / setFallbacks / getDPIScale | stub (`true` / `0` / no-op / `1`) | stub | stub | stub |
+| getFilter / setFilter | reports the default filter; set is a no-op | same | same | same |
+
+printf line spacing is LOVE's `getHeight() * getLineHeight()` on all four
+backends, and wrapping is measured with the font itself, never by byte count.
 
 ---
 

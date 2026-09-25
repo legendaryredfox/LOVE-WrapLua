@@ -1,6 +1,5 @@
--- lpp-vita graphics: print and printf.
-
-local core = lv1lua.core
+-- lpp-vita graphics: print. Wrapping, alignment and line spacing are shared
+-- (core/text.lua).
 
 -- Font.print takes the native handle, not our wrapper.
 local function nativeFont()
@@ -16,21 +15,4 @@ function love.graphics.print(text, x, y)
         x = x * s; y = y * s
     end
     Font.print(nativeFont(), x, y, text, lv1lua.current.color)
-end
-
-function love.graphics.printf(text, x, y, wrapWidth, align)
-    if not text or text == "" then return end
-    align = align or "left"
-    wrapWidth = wrapWidth or lv1lua.screenWidth
-
-    local fnt     = lv1lua.current.font
-    local lineH   = (type(fnt) == "table" and fnt.size or 12)
-    -- Measure with the font itself (native pixel width) instead of guessing
-    -- from byte count, so wrapping is correct for multibyte text.
-    local measure = core.fontMeasure(fnt, lineH * 0.6)
-
-    for i, line in ipairs(core.wrapText(text, wrapWidth, measure)) do
-        local ox = core.alignOffset(align, measure(line), wrapWidth)
-        love.graphics.print(line, x + ox, y + (i - 1) * lineH * 1.2)
-    end
 end

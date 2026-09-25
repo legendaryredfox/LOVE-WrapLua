@@ -43,6 +43,11 @@ LOVE-WrapLua/
 │   │   ├── util.lua            ← Rounding, 0-1↔0-255 colour, UTF-8 glyph iteration.
 │   │   ├── transform.lua       ← Software transform stack (push/pop/flatten).
 │   │   ├── textwrap.lua        ← Greedy word wrap, measured by the font itself.
+│   │   ├── font.lua            ← Shared Font prototype + face cache over gfx.fontHooks.
+│   │   ├── text.lua            ← Shared printf: wrap, align, getHeight×getLineHeight.
+│   │   ├── state.lua           ← Shared colour/line/blend/filter state.
+│   │   ├── primitives.lua      ← Shared shapes over the four native prim hooks.
+│   │   ├── objects.lua         ← Shared Canvas/Shader/SpriteBatch/Text objects.
 │   │   ├── input.lua           ← Key edge detection, repeat, setKeyRepeat state.
 │   │   ├── runtime.lua         ← Platform detection, screen size, love namespace.
 │   │   ├── config.lua          ← game/conf.lua, lv1luaconf, button layout.
@@ -110,6 +115,7 @@ LOVE-WrapLua/
     ├── test_input.lua          ← Key edges + repeat, core and all 3 whileloops.
     ├── test_primitives.lua     ← Shared primitive suite across all 4 backends.
     ├── test_text.lua           ← Text metrics + printf across all 4 backends.
+    ├── test_font.lua           ← Shared Font object + printf layout, all 4 backends.
     ├── test_math.lua
     ├── test_data.lua
     ├── test_thread.lua

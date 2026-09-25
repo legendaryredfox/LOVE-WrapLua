@@ -7,13 +7,7 @@ end
 function love.graphics.getWidth()  return lv1lua.screenWidth  end
 function love.graphics.getHeight() return lv1lua.screenHeight end
 
-function love.graphics.getStats()
-    return { drawcalls=0, canvasswitches=0, texturememory=0, images=0,
-             canvases=0, fonts=0, shaderswitches=0, drawcallsbatched=0 }
-end
-
-function love.graphics.isActive()       return true  end
-function love.graphics.isGammaCorrect() return false end
+function love.graphics.isActive() return true end
 
 function love.graphics.getRendererInfo()
     return "OneLua","1.0","",""

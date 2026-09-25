@@ -117,6 +117,17 @@ function love.graphics.getDefaultFilter()
     return f.minName, f.magName, f.anisotropy
 end
 
+-- ── Frame statistics (stub on every backend) ─────────────────────
+-- None of these SDKs counts draw calls, so the shape is what matters: a game
+-- reading `getStats().drawcalls` must find a number on every backend, not a
+-- nil on three of them.
+function love.graphics.getStats()
+    return { drawcalls = 0, canvasswitches = 0, texturememory = 0, images = 0,
+             canvases = 0, fonts = 0, shaderswitches = 0, drawcallsbatched = 0 }
+end
+
+function love.graphics.isGammaCorrect() return false end
+
 -- ── Stencil (stub on every backend) ──────────────────────────────
 function love.graphics.stencil(fn, action, value, keepvalues) if fn then fn() end end
 function love.graphics.setStencilTest(compare, value) end

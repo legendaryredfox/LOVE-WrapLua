@@ -42,13 +42,15 @@ end
 function love.data.encode(containerType, format, data, linelength)
     if format == 'base64' then return b64enc(data) end
     if format == 'hex'    then return hexenc(data) end
-    return data
+    -- LOVE raises here; returning the input unchanged made a misspelled format
+    -- look like it had worked.
+    error("love.data.encode: unsupported format '" .. tostring(format) .. "'", 2)
 end
 
 function love.data.decode(containerType, format, data)
     if format == 'base64' then return b64dec(data) end
     if format == 'hex'    then return hexdec(data) end
-    return data
+    error("love.data.decode: unsupported format '" .. tostring(format) .. "'", 2)
 end
 
 -- ── Vendored pure-Lua crypto / compression ───────────────────────

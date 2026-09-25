@@ -89,11 +89,17 @@ Controls = {
 }
 
 -- ── Keyboard (IME) ───────────────────────────────────────────────
+-- The real IME is modal: it opens on one frame and only reports FINISHED once
+-- the player closes it, so the mock keeps the state a test sets.
+RUNNING  = 1
+FINISHED = 2
 Keyboard = {
-    start    = function(...) end,
-    getState = function() return 0 end,
-    getInput = function() return "" end,
-    clear    = function() end,
+    _state = 0,
+    _text  = "",
+    start    = function(...) Keyboard._state = RUNNING end,
+    getState = function() return Keyboard._state end,
+    getInput = function() return Keyboard._text end,
+    clear    = function() Keyboard._state = 0; Keyboard._text = "" end,
 }
 
 -- ── Timer ────────────────────────────────────────────────────────

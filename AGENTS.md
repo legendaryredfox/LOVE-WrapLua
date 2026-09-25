@@ -49,6 +49,7 @@ LOVE-WrapLua/
 │   │   ├── primitives.lua      ← Shared shapes over the four native prim hooks.
 │   │   ├── objects.lua         ← Shared Canvas/Shader/SpriteBatch/Text objects.
 │   │   ├── input.lua           ← Key edge detection, repeat, setKeyRepeat state.
+│   │   ├── timestep.lua        ← Fixed-timestep accumulator + frame statistics.
 │   │   ├── runtime.lua         ← Platform detection, screen size, love namespace.
 │   │   ├── config.lua          ← game/conf.lua, lv1luaconf, button layout.
 │   │   ├── modules.lua         ← Loads the backend + shared modules.
@@ -113,6 +114,7 @@ LOVE-WrapLua/
     ├── test_core.lua           ← core/util, core/transform, core/textwrap.
     ├── test_bootstrap.lua      ← core/loader, core/runtime, core/config.
     ├── test_input.lua          ← Key edges + repeat, core and all 3 whileloops.
+    ├── test_timestep.lua       ← Fixed-timestep accumulator + the 4 backend loops.
     ├── test_primitives.lua     ← Shared primitive suite across all 4 backends.
     ├── test_text.lua           ← Text metrics + printf across all 4 backends.
     ├── test_font.lua           ← Shared Font object + printf layout, all 4 backends.
@@ -135,7 +137,7 @@ LOVE-WrapLua/
 ## Boot sequence
 
 1. The console OS loads `index.lua` (OneLua/lpp-vita) or `app.lua` (PS3), which sets `lv1lua.dataloc` and `lv1lua.mode` then calls `dofile("script.lua")`.
-2. `script.lua` dofiles `core/loader.lua` (which defines `lv1lua.load`), then runs the core steps in order: `core/util`, `core/transform`, `core/textwrap` → `core/runtime` (platform detection, screen size, `love.*` namespace, `love.getVersion`) → `love-functions/thread` → `core/input` (key edges) → `core/config` (`game/conf.lua`, `lv1luaconf`, `lv1lua.keyset`) → `core/modules` (backend + shared modules) → `core/require`.  It then seeds the RNG, loads `game/main.lua`, calls `love.load()`, wires `core/callbacks`, and enters `while lv1lua.running do … end`.
+2. `script.lua` dofiles `core/loader.lua` (which defines `lv1lua.load`), then runs the core steps in order: `core/util`, `core/transform`, `core/textwrap` → `core/runtime` (platform detection, screen size, `love.*` namespace, `love.getVersion`) → `love-functions/thread` → `core/input` (key edges) → `core/config` (`game/conf.lua`, `lv1luaconf`, `lv1lua.keyset`) → `core/timestep` (fixed-timestep accumulator) → `core/modules` (backend + shared modules) → `core/require`.  It then seeds the RNG, loads `game/main.lua`, calls `love.load()`, wires `core/callbacks`, and enters `while lv1lua.running do … end`.
 3. Each iteration calls `lv1lua.draw()` → `lv1lua.update()` → `lv1lua.updatecontrols()`, all defined in the platform's `whileloop.lua`.
 
 ---
@@ -155,7 +157,8 @@ LOVE-WrapLua/
 | `lv1lua.joystickState` | table | `{axes={lx,ly,rx,ry,l2,r2}, buttons={}, hats={"c"}}` — filled each frame |
 | `lv1lua.keyset` | `{string×6}` | Button name mapping for circle/cross/etc → LÖVE names |
 | `lv1luaconf` | table | Local config: `keyconf`, `imgscale`, `resscale` |
-| `dt` | number | Delta time in seconds (global, set by the timer loop) |
+| `lv1lua.dt` | number | The fixed update slice the current `love.update` was called with |
+| `lv1lua.frameDelta` | number | The real frame time the loop measured (render rate, key repeat) |
 | `love` | table | The entire LÖVE API namespace |
 
 ---
@@ -304,7 +307,7 @@ To add a backend-specific test, dofile `setup.lua` with the right `__MODE`, load
 | Shader / GLSL | Stub — object exists but no code runs |
 | Mesh | Stub — object exists, draw is no-op |
 | PS3 graphics primitives | Stubs — PS3 SDK details unconfirmed |
-| love.timer.step | No-op |
+| love.timer.step | Returns the last measured frame time; the main loop steps (`core/timestep.lua`) |
 | love.audio (OneLua/PSP) | Only 2 simultaneous voices (channel 1 = static, channel 2 = stream) |
 | love.audio (PS3) | One background voice; a `static` source loads nothing |
 | Source:seek / setPitch | Position and rate are tracked in software; the audio itself only seeks where the SDK exposes a seek call |

@@ -150,7 +150,7 @@ that backend, so calling it errors.
 | love.filesystem | full | full | full | full | `mount`/`unmount` are stubs |
 | love.math | full | full | full | full | own RNG, Perlin 1D to 4D, 2D affine transforms, triangulate |
 | love.data | full | full | full | full | real hash and deflate/zlib; `pack`/`unpack` need Lua 5.3 |
-| love.timer | full | full | full | full | `step()` is a no-op |
+| love.timer | full | full | full | full | Fixed-timestep updates (`lv1luaconf.updaterate`); PS3 has no timer, so its frame time is assumed |
 | love.window | partial | partial | partial | partial | always fullscreen, `setMode` is a no-op |
 | love.system | full | full | full | full | `getOS()` returns `"LOVE-WrapLua"`; battery is native on lpp-vita, `nobattery` on PS3, `unknown` on OneLua; clipboard is process-local |
 | love.thread | partial | partial | partial | partial | coroutine pseudo-threads, synchronous by design |
@@ -272,6 +272,14 @@ Define it before the wrapper boots, at the top of `game/main.lua`.
 | `keyconf` | `"XB"`, `"XBA"`, `"PS"`, `"SE"` | `"XB"` | Physical to logical face-button mapping |
 | `imgscale` | boolean | `false` | Draws images at 75% |
 | `resscale` | boolean | `false` | Scales draw coordinates to 75% |
+| `updaterate` | number, or `"variable"` | `60` | Fixed updates per second. `love.update` gets exactly `1/updaterate` as `dt`, whatever the frame took. `"variable"` restores desktop LÖVE's one-update-per-frame with the measured `dt` |
+| `maxframeskip` | number | `5` | Most update slices one frame may run, so a long stall (loading, sleep and resume) cannot queue hundreds of catch-up updates |
+
+**Timing.** Game logic runs on a fixed-timestep accumulator: the real frame time
+is measured, `love.update` is called in fixed slices, and the remainder is
+carried into the next frame. `love.timer.getDelta` reports the update slice,
+while `getFPS` and `getAverageDelta` report the measured render rate, which is a
+different number.
 
 `keyconf` values: `"XB"` is the Xbox layout, `"XBA"` swaps confirm and cancel,
 `"PS"` uses PlayStation names (`circle`, `cross`, `triangle`, `square`, `l`, `r`),

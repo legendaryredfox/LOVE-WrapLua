@@ -1,8 +1,9 @@
 loadstring = load  -- PS3's Lua is 5.2+, where loadstring was removed
 
 -- The PS3 Lua Player exposes no timer, so the frame time is assumed rather
--- than measured. Kept on lv1lua instead of as a global `dt`.
-lv1lua.dt = 1 / 60
+-- than measured: the accumulator runs one fixed slice per frame. Kept on
+-- lv1lua instead of as a global `dt`.
+lv1lua.dt = lv1lua.timestep and lv1lua.timestep.step or 1 / 60
 
 sys.UtilRegisterCallback()
 
@@ -30,7 +31,9 @@ function lv1lua.draw()
 end
 
 function lv1lua.update()
-    if love.update then love.update(lv1lua.dt) end
+    -- No timer to read, so the accumulator is handed nothing and runs exactly
+    -- one fixed slice per frame (core/timestep.lua). lv1lua.dt is set there.
+    lv1lua.core.step()
 
     --Check ingame XMB
     local ret = sys.UtilCheckCallback(g_status)
@@ -61,7 +64,7 @@ function lv1lua.updatecontrols()
         physical[def.id] = down
         lv1lua.key[def.id] = down and 1 or 0
     end
-    keys:update(held, lv1lua.dt)
+    keys:update(held, lv1lua.frameDelta or lv1lua.dt)
     lv1lua.core.syncJoystick(physical)
 
     --force quit

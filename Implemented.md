@@ -113,11 +113,19 @@ backends, and wrapping is measured with the font itself, never by byte count.
 | Function | All platforms |
 |---|---|
 | getTime() | ✓ |
-| getDelta() | ✓ |
-| getFPS() | ✓ |
-| getAverageDelta() | ✓ |
+| getDelta() | ✓ the fixed update slice the current `love.update` was called with |
+| getFPS() | ✓ measured render rate (rolling mean of the last 30 frames) |
+| getAverageDelta() | ✓ mean measured frame time |
 | sleep(seconds) | ✓ |
-| step() | stub (no-op) |
+| step() | ✓ returns the last frame time; the main loop does the measuring |
+
+Updates run on a shared fixed-timestep accumulator (`core/timestep.lua`):
+`love.update` is called in `1/lv1luaconf.updaterate` slices (default 60/s) and
+the leftover time carries into the next frame, so game speed no longer follows
+the render rate. `lv1luaconf.maxframeskip` (default 5) caps the catch-up after a
+stall. `lv1luaconf.updaterate = "variable"` restores desktop LÖVE's
+one-update-per-frame behaviour. The PS3 Lua Player exposes no timer, so that
+backend assumes one slice per frame.
 
 ---
 

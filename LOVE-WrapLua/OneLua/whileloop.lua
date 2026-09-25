@@ -30,17 +30,14 @@ end
 local keys = lv1lua.core.newKeyTracker()
 
 function lv1lua.update()
-    if lv1lua.timer:time() >= 16 then
-        -- Kept on lv1lua rather than as a global, so game code cannot collide
-        -- with it (and so the helpers below can read it).
-        local dt = lv1lua.timer:time() / 1000
-        lv1lua.dt = dt
-        if love.update then
-            love.update(dt)
-        end
-        lv1lua.timer:reset()
-        lv1lua.timer:start()
-    end
+    -- The native timer counts milliseconds since the last reset; the shared
+    -- accumulator (core/timestep.lua) turns that into fixed update slices and
+    -- keeps the remainder, so a frame shorter than one slice is carried over
+    -- instead of discarded. lv1lua.dt is set there.
+    local ms = lv1lua.timer:time()
+    lv1lua.timer:reset()
+    lv1lua.timer:start()
+    lv1lua.core.step(ms / 1000)
 end
 
 function lv1lua.updatecontrols()
@@ -65,7 +62,9 @@ function lv1lua.updatecontrols()
         held[buttonMap[btn] or btn] = down
         physical[btn] = down
     end
-    keys:update(held, lv1lua.dt or 0)
+    -- Key repeat is a wall-clock effect, so it follows the real frame time
+    -- rather than the fixed update slice.
+    keys:update(held, lv1lua.frameDelta or 0)
     lv1lua.core.syncJoystick(physical)
 
     lv1lua.checkGameRestart()

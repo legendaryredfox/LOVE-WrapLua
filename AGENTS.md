@@ -300,17 +300,17 @@ To add a backend-specific test, dofile `setup.lua` with the right `__MODE`, load
 
 | Feature | Status |
 |---|---|
-| Canvas (offscreen rendering) | Stub — `renderTo(fn)` just calls fn(); no actual texture |
+| Canvas (offscreen rendering) | Stub — `renderTo(fn)` just calls fn(); no actual texture (`canvas=false` in the capability table) |
 | Shader / GLSL | Stub — object exists but no code runs |
 | Mesh | Stub — object exists, draw is no-op |
-| love.graphics.polygon fill | Fan approximation (not scanline); wrong for concave polygons |
 | PS3 graphics primitives | Stubs — PS3 SDK details unconfirmed |
-| love.data.hash | Returns zeroed bytes of correct length; no real crypto |
-| love.data.compress/decompress | Pass-through; no compression |
 | love.timer.step | No-op |
-| love.audio (OneLua) | Only 2 simultaneous channels (channel 1 = static, channel 2 = stream) |
-| love.audio (PS3) | Stream only |
-| Transforms (PSP/lpp-vita/PS3) | No-ops or approximations |
+| love.audio (OneLua/PSP) | Only 2 simultaneous voices (channel 1 = static, channel 2 = stream) |
+| love.audio (PS3) | One background voice; a `static` source loads nothing |
+| Source:seek / setPitch | Position and rate are tracked in software; the audio itself only seeks where the SDK exposes a seek call |
+| Source:getDuration | Native where exposed, else read from a WAV header, else 0 |
+| Transforms (PSP/PS3) | No-ops or scale constants; OneLua and lpp-vita carry a real software stack for images, primitives and text |
+| Blend modes | Tracked on every backend, never applied (T6.5) |
 
 ---
 

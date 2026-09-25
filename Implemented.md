@@ -136,16 +136,35 @@ backends, and wrapping is measured with the font itself, never by byte count.
 
 ## love.audio
 
-| Function | OL | LPP | PS3 |
+One shared Source implementation (`core/audio.lua`) on every backend; each
+backend supplies only its native hooks.
+
+| Function | OL / PSP | LPP | PS3 |
 |---|---|---|---|
-| newSource(file, type) | ✓ | ✓ | ✓ (stream only) |
+| newSource(file, type) | ✓ (non-MP3 extensions are mapped to `.mp3`) | ✓ | ✓ stream only; a `static` source loads nothing and stays silent |
 | play / stop / pause / resume | ✓ | ✓ | ✓ |
-| getVolume / setVolume (global) | ✓ | stub | ✓ |
-| getActiveSourceCount | ✓ | ✓ | ✓ |
-| isEffectsSupported | stub | stub | stub |
+| play/stop/pause/resume with no argument | ✓ all sources (`pause()` returns what it paused) | ✓ | ✓ |
+| getVolume / setVolume (global) | ✓ scales every source | ✓ | ✓ |
+| getActiveSourceCount / getSourceCount | ✓ | ✓ | ✓ |
+| isEffectsSupported / getMax*Effects | `false` / `0` | same | same |
+| setPosition / setOrientation / setDistanceModel (listener) | stub (mono output) | stub | stub |
+| Simultaneous voices | 2 (1 static + 1 stream) | 8 | 1 (background voice) |
 
 ### Source object methods
-`play`, `stop`, `pause`, `resume`, `getVolume`, `setVolume`, `setLooping`, `isPlaying`, `isLooping`, `isStopped`, `isPaused`, `clone`, `seek`, `tell`, `getDuration`, `getType`
+
+| Method | Notes |
+|---|---|
+| play / stop / pause / resume | ✓ native on every backend |
+| isPlaying / isStopped / isPaused | ✓ real paused state (was always `false`) |
+| setVolume / getVolume | ✓ 0–1, scaled by the master volume |
+| setLooping / isLooping | ✓ (OneLua toggles the native loop flag) |
+| tell(unit) | ✓ timed from `love.timer.getTime` across play/pause/resume/seek (no SDK here reports a position); `"samples"` assumes 44100 Hz |
+| seek(position, unit) | moves the reported position; only lpp-vita builds that expose `Sound.setPosition` really jump, so audio keeps playing where it was |
+| setPitch / getPitch | tracked and applied to the timed position; only used natively where the SDK exposes a pitch call (probed) |
+| getDuration | native where exposed, else read from a WAV header, else `0` |
+| clone | ✓ copies volume, pitch and looping |
+| type / typeOf / release | ✓ |
+| getChannelCount / setPosition / setRelative | stub (mono console output) |
 
 ---
 

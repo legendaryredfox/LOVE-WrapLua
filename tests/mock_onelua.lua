@@ -71,9 +71,20 @@ sound = {
         _sndState[h] = { playing=false, looping=false, vol=100 }
         return h
     end,
-    play    = function(s)    if _sndState[s] then _sndState[s].playing=true  end end,
-    stop    = function(s)    if _sndState[s] then _sndState[s].playing=false end end,
-    pause   = function(s, m) if _sndState[s] then _sndState[s].playing=(m==0) end end,
+    -- play takes the channel (1 = static/sfx, 2 = stream/bgm), so the channel
+    -- choice is recorded, not just the state change.
+    play    = function(s, ch)
+        __rec.log("sound.play", s, ch)
+        if _sndState[s] then _sndState[s].playing = true end
+    end,
+    stop    = function(s)
+        __rec.log("sound.stop", s)
+        if _sndState[s] then _sndState[s].playing = false end
+    end,
+    pause   = function(s, m)
+        __rec.log("sound.pause", s, m)
+        if _sndState[s] then _sndState[s].playing = (m == 0) end
+    end,
     vol     = function(s, v)
         if not _sndState[s] then return 100 end
         if v then _sndState[s].vol = v end

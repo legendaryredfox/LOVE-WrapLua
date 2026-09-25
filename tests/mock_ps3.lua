@@ -26,6 +26,17 @@ StopVoice        = nop
 SetVoice         = nop
 SetVolumeBGMusic = nop
 
+-- Audio namespace: one background voice bound per channel, re-issued each
+-- frame by PlayVoice, as the PS3 Lua Player does.
+snd = {
+    Init             = nop,
+    SetVoice         = function(...) __rec.log("snd.SetVoice", ...) end,
+    PlayVoice        = function(...) __rec.log("snd.PlayVoice", ...) end,
+    StopVoice        = function(...) __rec.log("snd.StopVoice", ...) end,
+    FreeVoice        = function(...) __rec.log("snd.FreeVoice", ...) end,
+    SetVolumeBGMusic = function(...) __rec.log("snd.SetVolumeBGMusic", ...) end,
+}
+
 -- Graphics namespace (PS3 exposes only fillRect natively).
 Graphics = { fillRect = function(...) __rec.log("Graphics.fillRect", ...) end }
 

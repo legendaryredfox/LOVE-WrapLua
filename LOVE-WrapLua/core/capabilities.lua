@@ -53,6 +53,16 @@ local function systemcaps(over)
     return s
 end
 
+-- What love.audio can do per target (FIX_PLAN T6.2). `voices` is how many
+-- sounds can be audible at once, `seek`/`pitch` say whether the SDK really
+-- seeks or resamples (where false, the shared layer only moves the position it
+-- reports), and `formats` is what the decoder accepts.
+local function audiocaps(over)
+    local a = { voices = 1, seek = false, pitch = false, formats = "mp3" }
+    if over then for k, v in pairs(over) do a[k] = v end end
+    return a
+end
+
 -- `tier` is the support promise documented in the README: 1 supported,
 -- 2 partial, 3 experimental (develop on desktop LOVE, confirm on hardware).
 local CAPS = {
@@ -71,6 +81,7 @@ local CAPS = {
         rendersensitive = rendersensitive({ blendmode = true, framebufferread = true,
                                             savepersistence = true }),
         system    = systemcaps({ cores = 4 }),
+        audio     = audiocaps({ voices = 2 }),
     },
     -- OneLua on PSP: power-of-two textures, no transform stack.
     ["PSP"] = {
@@ -86,6 +97,7 @@ local CAPS = {
         emulator  = "PPSSPP",
         rendersensitive = rendersensitive({ texturefilter = true, framebufferread = true }),
         system    = systemcaps({ cores = 1 }),
+        audio     = audiocaps({ voices = 2 }),
     },
     -- lpp-vita (vita2d): quad+rotation draw, software transform stack + scissor.
     ["lpp-vita"] = {
@@ -99,6 +111,7 @@ local CAPS = {
         rendersensitive = rendersensitive({ blendmode = true, framebufferread = true,
                                             savepersistence = true }),
         system    = systemcaps({ cores = 4 }),
+        audio     = audiocaps({ voices = 8, formats = "mp3, ogg, wav" }),
     },
     -- PS3 Lua Player: least-supported tier, position-only blits, no primitives.
     ["PS3"] = {
@@ -115,6 +128,8 @@ local CAPS = {
                                             texturefilter = true, savepersistence = true }),
         -- A home console: there is no battery to report.
         system    = systemcaps({ cores = 2, battery = false }),
+        -- One background voice: no binding for one-shot effects.
+        audio     = audiocaps({ voices = 1 }),
     },
 }
 

@@ -163,6 +163,106 @@ T.describe("love.filesystem.getInfo", function()
         T.istype(info.size, "number")
         T.istype(info.modtime, "number")
     end)
+
+    -- T6.3: size used to be hardcoded 0, so a game could not tell an empty
+    -- save from a full one.
+    T.it("size is the real byte count", function()
+        love.filesystem.write("size_12.txt", "123456789012")
+        T.eq(love.filesystem.getInfo("size_12.txt").size, 12)
+    end)
+
+    T.it("an empty file has size 0 and is still a file", function()
+        love.filesystem.write("size_0.txt", "")
+        local info = love.filesystem.getInfo("size_0.txt")
+        T.eq(info.size, 0)
+        T.eq(info.type, "file")
+    end)
+
+    T.it("a directory is reported as a directory, not a file", function()
+        os.execute("mkdir -p " .. TMPDIR .. "adir")
+        local info = love.filesystem.getInfo("adir")
+        T.istype(info, "table")
+        T.eq(info.type, "directory")
+    end)
+
+    T.it("the filtertype argument rejects the wrong kind", function()
+        love.filesystem.write("filt.txt", "x")
+        T.ok(love.filesystem.getInfo("filt.txt", "file") ~= nil)
+        T.ok(love.filesystem.getInfo("filt.txt", "directory") == nil)
+        T.ok(love.filesystem.getInfo("adir", "directory") ~= nil)
+        T.ok(love.filesystem.getInfo("adir", "file") == nil)
+    end)
+end)
+
+-- ── isFile / isDirectory (T6.3) ──────────────────────────────────
+T.describe("love.filesystem.isFile / isDirectory", function()
+    T.it("a file is a file and not a directory", function()
+        love.filesystem.write("plain.txt", "x")
+        T.ok(love.filesystem.isFile("plain.txt"))
+        T.nok(love.filesystem.isDirectory("plain.txt"))
+    end)
+
+    T.it("a directory is a directory and not a file", function()
+        os.execute("mkdir -p " .. TMPDIR .. "bdir")
+        T.ok(love.filesystem.isDirectory("bdir"))
+        T.nok(love.filesystem.isFile("bdir"))
+    end)
+
+    T.it("a missing path is neither", function()
+        T.nok(love.filesystem.isFile("__ghost_dir__"))
+        T.nok(love.filesystem.isDirectory("__ghost_dir__"))
+    end)
+end)
+
+-- ── getDirectoryItems merges both roots (T6.3) ───────────────────
+T.describe("love.filesystem.getDirectoryItems", function()
+    -- The mock `files` VFS stands in for the console's native listing; the game
+    -- root and the save root are separate directories there.
+    local function seed(dir, names)
+        files.mkdir(dir)
+        for _, n in ipairs(names) do files.mkdir(dir .. "/" .. n) end
+    end
+
+    T.it("lists the shipped files and the saved ones together", function()
+        lv1lua.dataloc = ""
+        lv1lua.saveloc = "SAVE/"
+        seed("game/assets", { "ship.png", "level.map" })
+        seed("SAVE/assets", { "slot1.sav" })
+
+        local items = love.filesystem.getDirectoryItems("assets")
+        local found = {}
+        for _, n in ipairs(items) do found[n] = true end
+        T.ok(found["ship.png"],  "shipped file missing")
+        T.ok(found["level.map"], "shipped file missing")
+        T.ok(found["slot1.sav"], "saved file missing from the listing")
+    end)
+
+    T.it("a name present in both roots appears once", function()
+        lv1lua.dataloc = ""
+        lv1lua.saveloc = "SAVE/"
+        seed("game/both", { "config.lua" })
+        seed("SAVE/both", { "config.lua" })
+
+        local items = love.filesystem.getDirectoryItems("both")
+        local count = 0
+        for _, n in ipairs(items) do
+            if n == "config.lua" then count = count + 1 end
+        end
+        T.eq(count, 1)
+    end)
+
+    T.it("the listing is sorted", function()
+        lv1lua.dataloc = ""
+        lv1lua.saveloc = "SAVE/"
+        seed("game/sorted", { "c.txt", "a.txt" })
+        seed("SAVE/sorted", { "b.txt" })
+
+        local items = love.filesystem.getDirectoryItems("sorted")
+        T.eq(items[1], "a.txt")
+        T.eq(items[2], "b.txt")
+        T.eq(items[3], "c.txt")
+        lv1lua.saveloc = TMPDIR
+    end)
 end)
 
 -- ── newFile (constructor only) ───────────────────────────────────

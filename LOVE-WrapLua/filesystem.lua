@@ -34,15 +34,69 @@ elseif lv1lua.mode == "lpp-vita" then
     end
 end
 
-function love.filesystem.read(file, size)
-    local path
-    if lv1lua.exists(lv1lua.saveloc..file) then
-        path = lv1lua.saveloc..file
-    elseif lv1lua.exists(lv1lua.dataloc.."game/"..file) then
-        path = lv1lua.dataloc.."game/"..file
-    else
-        return nil, "File not found: "..file
+-- ── Paths, stat and listing (FIX_PLAN T6.3) ─────────────────────
+-- A game-relative name lives in one of two places: the writable save directory
+-- (checked first, so a saved file shadows the shipped one, as LOVE does) or the
+-- read-only game directory.
+local function savePath(file) return lv1lua.saveloc .. file end
+local function gamePath(file) return lv1lua.dataloc .. "game/" .. file end
+
+local function resolve(file)
+    if lv1lua.exists(savePath(file)) then return savePath(file), true end
+    if lv1lua.exists(gamePath(file)) then return gamePath(file), false end
+    return nil
+end
+
+-- Directory test. Each SDK exposes a different subset, so the native call is
+-- probed; the fallback is "it exists but cannot be opened as a byte stream",
+-- which is what a directory looks like through the console io layers.
+local function isDirPath(path)
+    if lv1lua.mode == "lpp-vita" and type(System) == "table"
+       and type(System.doesDirExist) == "function" then
+        return System.doesDirExist(path) and true or false
     end
+    if lv1lua.mode == "OneLua" and type(files) == "table"
+       and type(files.isdir) == "function" then
+        return files.isdir(path) and true or false
+    end
+    local f = io.open(path, "rb")
+    -- A path that exists (the caller checked) but will not open is a directory
+    -- on the console io layers.
+    if not f then return true end
+    -- Where it does open, a directory still refuses to be read: the read fails
+    -- with an error, while an empty file just reports end of data.
+    local byte, err = f:read(1)
+    f:close()
+    return byte == nil and err ~= nil
+end
+
+-- Byte size of a real file, or nil when it cannot be measured.
+local function fileSize(path)
+    local f = io.open(path, "rb")
+    if not f then return nil end
+    local ok, size = pcall(f.seek, f, "end")
+    f:close()
+    if ok and type(size) == "number" then return size end
+    return nil
+end
+
+local function listNative(dir)
+    if lv1lua.mode == "OneLua" and type(files) == "table" and files.list then
+        return files.list(dir)
+    end
+    if lv1lua.mode == "lpp-vita" and type(System) == "table" and System.listDirectory then
+        local out = {}
+        for _, entry in ipairs(System.listDirectory(dir) or {}) do
+            out[#out + 1] = (type(entry) == "table" and entry.name) or entry
+        end
+        return out
+    end
+    return nil
+end
+
+function love.filesystem.read(file, size)
+    local path = resolve(file)
+    if not path then return nil, "File not found: "..file end
     local f = io.open(path, "rb")
     if not f then return nil, "Cannot open "..path end
     local contents = size and f:read(size) or f:read("*a")
@@ -70,42 +124,32 @@ function love.filesystem.append(file, data, size)
 end
 
 function love.filesystem.isFile(file)
-    return lv1lua.exists(lv1lua.saveloc..file)
-        or lv1lua.exists(lv1lua.dataloc.."game/"..file)
+    local path = resolve(file)
+    return path ~= nil and not isDirPath(path)
 end
 
 function love.filesystem.isDirectory(path)
-    if lv1lua.mode == "OneLua" then
-        return files.exists(lv1lua.saveloc..path)
-    elseif lv1lua.mode == "lpp-vita" then
-        return System.doesDirExist(lv1lua.saveloc..path)
-            or System.doesDirExist(lv1lua.dataloc.."game/"..path)
-    end
-    return false
+    local full = resolve(path)
+    return full ~= nil and isDirPath(full)
 end
 
+-- LOVE's getInfo. `size` is the real byte count for a file; `modtime` stays 0
+-- because no SDK here exposes a file date, and inventing one would break the
+-- "newer than" comparisons games use it for.
 function love.filesystem.getInfo(file, filtertype)
-    local inSave = lv1lua.exists(lv1lua.saveloc..file)
-    local inGame = lv1lua.exists(lv1lua.dataloc.."game/"..file)
-    if not inSave and not inGame then return nil end
-    -- Determine type (file vs directory) when possible
-    local ftype = "file"
-    if lv1lua.mode == "lpp-vita" then
-        local fullpath = inSave and (lv1lua.saveloc..file) or (lv1lua.dataloc.."game/"..file)
-        if System.doesDirExist(fullpath) then ftype = "directory" end
-    end
+    local path = resolve(file)
+    if not path then return nil end
+
+    local ftype = isDirPath(path) and "directory" or "file"
     if filtertype and filtertype ~= ftype then return nil end
-    return { type = ftype, size = 0, modtime = 0 }
+
+    return { type    = ftype,
+             size    = ftype == "file" and (fileSize(path) or 0) or 0,
+             modtime = 0 }
 end
 
 function love.filesystem.load(file)
-    local path
-    if lv1lua.exists(lv1lua.saveloc..file) then
-        path = lv1lua.saveloc..file
-    else
-        path = lv1lua.dataloc.."game/"..file
-    end
-    return loadfile(path)
+    return loadfile(resolve(file) or gamePath(file))
 end
 
 function love.filesystem.remove(file)
@@ -129,23 +173,21 @@ function love.filesystem.createDirectory(path)
     return false
 end
 
+-- Both roots are listed and merged: a game writes into the save directory and
+-- then expects to find those files next to the ones it shipped. Duplicates
+-- collapse (the save copy shadows the shipped one, as in read), and the result
+-- is sorted so a game that renders a file list gets a stable order.
 function love.filesystem.getDirectoryItems(path)
-    local items = {}
-    if lv1lua.mode == "OneLua" then
-        local list = files.list(lv1lua.dataloc.."game/"..path)
-        if list then
-            for _, entry in ipairs(list) do
-                items[#items+1] = entry
-            end
-        end
-    elseif lv1lua.mode == "lpp-vita" then
-        local list = System.listDirectory(lv1lua.dataloc.."game/"..path)
-        if list then
-            for _, entry in ipairs(list) do
-                items[#items+1] = entry.name or entry
+    local seen, items = {}, {}
+    for _, dir in ipairs({ gamePath(path), savePath(path) }) do
+        for _, name in ipairs(listNative(dir) or {}) do
+            if name ~= "" and name ~= "." and name ~= ".." and not seen[name] then
+                seen[name] = true
+                items[#items + 1] = name
             end
         end
     end
+    table.sort(items)
     return items
 end
 
@@ -229,7 +271,8 @@ function love.filesystem.getWorkingDirectory()
 end
 
 function love.filesystem.getRealDirectory(file)
-    if lv1lua.exists(lv1lua.saveloc..file) then return lv1lua.saveloc end
+    local _, inSave = resolve(file)
+    if inSave then return lv1lua.saveloc end
     return lv1lua.dataloc.."game/"
 end
 

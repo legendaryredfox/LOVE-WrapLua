@@ -172,13 +172,13 @@ backend supplies only its native hooks.
 
 | Function | Notes |
 |---|---|
-| read / write / append | ✓ |
-| isFile / isDirectory | ✓ |
-| getInfo(file, filtertype) | ✓ |
+| read / write / append | ✓ save directory first, then the game directory |
+| isFile / isDirectory | ✓ a directory is no longer reported as a file (native probe, else "exists but cannot be read as bytes") |
+| getInfo(file, filtertype) | ✓ real `size` in bytes; `type` distinguishes file and directory; `modtime` is always 0 (no SDK here exposes a file date) |
 | load | ✓ |
 | remove | ✓ |
 | createDirectory | ✓ |
-| getDirectoryItems | ✓ |
+| getDirectoryItems | ✓ merges the game and save directories, drops duplicates, sorted |
 | lines | ✓ |
 | newFile | ✓ |
 | newFileData | ✓ |

@@ -51,15 +51,18 @@ function lv1lua.updatecontrols()
     js.axes[4] = (pad.ry(0)  - 128) / 128
 
     -- Sample the pad, then let the shared tracker produce the edges.
-    -- lv1lua.key stays in step because love.keyboard.isDown reads it.
-    local held = {}
+    -- lv1lua.key stays in step because love.keyboard.isDown reads it, and
+    -- `physical` (the console's own button names) drives love.joystick.
+    local held, physical = {}, {}
     for i = 1, #buttonDefs do
         local def  = buttonDefs[i]
         local down = pad[def.fn](0) > 0
         held[def.key] = down
+        physical[def.id] = down
         lv1lua.key[def.id] = down and 1 or 0
     end
     keys:update(held, lv1lua.dt)
+    lv1lua.core.syncJoystick(physical)
 
     --force quit
     if pad.L3(0) > 0 and pad.R3(0) > 0 then

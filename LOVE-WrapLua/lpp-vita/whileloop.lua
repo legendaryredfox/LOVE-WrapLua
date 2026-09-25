@@ -1,12 +1,16 @@
 function lv1lua.draw()
+    local w, h = lv1lua.screenWidth, lv1lua.screenHeight
     Graphics.initBlend()
     Screen.clear()
     Screen.waitVblankStart()
-    Graphics.fillRect(0, 960, 0, 544, lv1lua.current.bgcolor)
+    -- Native order is (x1, x2, y1, y2): both x values before both y values.
+    Graphics.fillRect(0, w, 0, h, lv1lua.current.bgcolor)
     if love.draw then
         love.draw()
     end
-    Graphics.fillRect(0, 960, 540, 544, Color.new(0,0,0,255))
+    -- vita2d leaves the last few scanlines of the framebuffer undefined, which
+    -- shows as noise along the bottom edge; paint them out before the flip.
+    Graphics.fillRect(0, w, h - 4, h, Color.new(0, 0, 0, 255))
     Graphics.termBlend()
     Screen.flip()
 end
@@ -38,11 +42,19 @@ function lv1lua.updatecontrols()
 
     -- Sample the pad, then let the shared tracker produce the edges.
     -- lv1lua.keymask stays in step because love.keyboard.isDown reads it.
-    local held = {}
+    -- `physical` carries the console's own button names, which love.joystick
+    -- needs because the LOVE key names change with the configured layout.
+    local held, physical = {}, {}
     for i = 1, #lv1lua.keyenum do
         local down = Controls.check(lv1lua.pad, lv1lua.keyenum[i]) and true or false
         held[lv1lua.keyname[i]] = down
+        physical[lv1lua.padname[i]] = down
         lv1lua.keymask[i] = down
     end
     keys:update(held, lv1lua.dt or 0)
+    lv1lua.core.syncJoystick(physical)
+
+    -- The on-screen keyboard closes on some later frame than the one that
+    -- opened it, so its result has to be collected here.
+    if love.keyboard.pollTextInput then love.keyboard.pollTextInput() end
 end

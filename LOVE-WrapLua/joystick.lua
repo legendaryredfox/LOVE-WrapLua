@@ -5,7 +5,9 @@ love.joystick = {}
 --   buttons = { [1]=bool, ... },        -- raw button indices
 --   hats = { [1] = "c"|"u"|"d"|"l"|"r"|"lu"|"ld"|"ru"|"rd" } }
 
-lv1lua.joystickState = {
+-- core/input.lua creates this table and fills buttons/hats each frame; keep
+-- whatever is already there so a frame's state is not wiped at load time.
+lv1lua.joystickState = lv1lua.joystickState or {
     axes    = {0, 0, 0, 0, 0, 0},
     buttons = {},
     hats    = {"c"},

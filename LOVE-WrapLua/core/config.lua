@@ -31,6 +31,16 @@ end
 if lv1luaconf.imgscale == nil then lv1luaconf.imgscale = lv1luaconf.img_scale or false end
 if lv1luaconf.resscale == nil then lv1luaconf.resscale = lv1luaconf.res_scale or false end
 
+-- ── Vita-only input modules ──────────────────────────────────────
+-- The front touchscreen exists on the Vita whatever the button layout is, and
+-- the frame loop calls into love.touch / love.mouse every frame, so these are
+-- loaded here rather than inside the keyconf branch below (where they used to
+-- sit, leaving every non-"SE" Vita build to die on its first frame).
+if lv1lua.mode == "OneLua" and not lv1lua.isPSP then
+    lv1lua.load("LOVE-WrapLua/OneLua/touch.lua")
+    lv1lua.load("LOVE-WrapLua/OneLua/mouse.lua")
+end
+
 -- ── button layout ────────────────────────────────────────────────
 -- "SE" means "follow the console's own enter-button setting", which differs by
 -- region: circle-to-confirm on Japanese units, cross elsewhere.
@@ -41,11 +51,6 @@ if lv1luaconf.keyconf == "SE" then
         if Controls.getEnterButton() == SCE_CTRL_CIRCLE then lv1lua.confirm = true end
     elseif lv1lua.mode == "OneLua" then
         if buttons.assign() == 0 then lv1lua.confirm = true end
-        if not lv1lua.isPSP then
-            -- Vita-only input modules.
-            lv1lua.load("LOVE-WrapLua/" .. lv1lua.mode .. "/touch.lua")
-            lv1lua.load("LOVE-WrapLua/" .. lv1lua.mode .. "/mouse.lua")
-        end
     end
 
     lv1luaconf.keyconf = lv1lua.confirm and "XBA" or "XB"

@@ -93,6 +93,47 @@ function Tracker:update(held, dt)
     end
 end
 
+-- ── Joystick state ───────────────────────────────────────────────
+-- love.joystick reads lv1lua.joystickState every frame. The backends used to
+-- fill its `axes` only, so Joystick:isDown / isGamepadDown / getHat answered
+-- false and "c" forever; a game polling the pad (instead of using the
+-- callbacks) saw nothing at all.
+--
+-- The table below is keyed by the *physical* console button, not by the LOVE
+-- key name, because the key names change with lv1luaconf.keyconf while the
+-- pad does not. Indices match love.joystick's gamepad mapping.
+lv1lua.joystickState = lv1lua.joystickState or {
+    axes    = {0, 0, 0, 0, 0, 0},
+    buttons = {},
+    hats    = {"c"},
+}
+
+local PAD_BUTTON = {
+    cross = 1, circle = 2, square = 3, triangle = 4,
+    select = 5, back = 5, start = 7,
+    l = 10, l1 = 10, r = 11, r1 = 11,
+    up = 12, down = 13, left = 14, right = 15,
+}
+
+-- LOVE reports a hat as the compass direction of the d-pad, vertical first.
+local function hatOf(held)
+    local h = ""
+    if held.left  then h = h .. "l" elseif held.right then h = h .. "r" end
+    if held.up    then h = h .. "u" elseif held.down  then h = h .. "d" end
+    if h == "" then return "c" end
+    return h
+end
+
+-- `held` maps a physical button name to whether it is down this frame.
+function lv1lua.core.syncJoystick(held)
+    local js = lv1lua.joystickState
+    local buttons = js.buttons
+    for name, index in pairs(PAD_BUTTON) do
+        buttons[index] = held[name] and true or false
+    end
+    js.hats[1] = hatOf(held)
+end
+
 function lv1lua.core.newKeyTracker()
     return setmetatable({
         down     = {},

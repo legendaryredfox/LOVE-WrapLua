@@ -20,8 +20,6 @@ function love.keyboard.isScancodeDown(scancode)
     return love.keyboard.isDown(scancode)
 end
 
-function love.keyboard.hasKeyRepeat()     return false end
-function love.keyboard.setKeyRepeat(b)    end
 function love.keyboard.hasTextInput()     return false end
 
 function love.keyboard.getKeyFromScancode(sc)  return sc end
@@ -39,3 +37,6 @@ end
 function love.keyboard.setTextInput(tbl)
     love.keyboard.showTextInput(tbl)
 end
+
+-- setKeyRepeat / hasKeyRepeat live in core/input.lua, which owns the repeat
+-- state the key tracker reads.

@@ -1,4 +1,108 @@
 ## Changelog
+
+### 2026-09-16, branch `fix/phase0-1-correctness`
+
+Backend-independent sprite drawing and the desAnim8 rework.
+
+**Fixes / features**
+- lpp-vita `draw` now handles the quad form and rotation through the native
+  `Graphics.drawImageExtended`, keeping `drawScaleImage` as the unrotated fast
+  path (T2.1). SpriteBatch/Text objects that draw themselves are dispatched too.
+- lpp-vita joined the shared software transform stack: translate/scale/rotate/
+  push/pop/origin, applyTransform/replaceTransform and transformPoint compose
+  into every draw; `setScissor` is enforced by rejecting draws whose box falls
+  outside the region (T2.2).
+- PSP `draw` gained a real quad sub-rect blit (source stays immutable; scale and
+  flip reuse the cached copy). PS3 `draw` accepts a quad so quad-based libraries
+  run, but ignores it and draws the whole surface (least-supported tier).
+- `desAnim8` rewritten (T9.1): a modular, backend-independent library (Grid +
+  Animation) that draws only through `love.graphics.draw(image, quad, …)`, with
+  no reach into native image data. Adds per-frame durations, flipH/flipV, clone,
+  pause/resume/gotoFrame, play-once with a one-shot completion callback, and a
+  current-frame query. The old `desAnim8.new` single-strip constructor still
+  works via a shim. Upstream `anim8` now runs on all four backends too.
+- `polygon('fill', …)` actually fills (T4.2). A shared even-odd scanline
+  rasteriser (`core/polyfill.lua`) replaces the convex-only centroid fan, so
+  concave shapes fill correctly on OneLua, PSP and lpp-vita; each backend just
+  supplies a one-row `fillSpan`. `ellipse`/`arc` fills ride the same path.
+- Honest capabilities (T4.5): a central `core/capabilities.lua` records each
+  backend's real caps, and `getSupported`/`getSystemLimits` now come from it on
+  all four backends (lpp-vita and PS3 previously exposed neither). Reports
+  `canvas=false`/`glsl3=false` everywhere, the true texture limit per backend
+  (512 on OneLua/PSP/PS3, 1024 on lpp-vita), and a wrapper-internal
+  `love._backend.features` table (transform/quaddraw/scissor/…) for the docs.
+- Canvas documented honestly per backend (T4.3): `Implemented.md` and `README.md`
+  now state that offscreen rendering is unsupported everywhere today
+  (`canvas=false`), and record the concrete native path for each backend —
+  lpp-vita/vita2d rendertarget bind (small upstream patch), PS3 tiny3D
+  scene-to-texture surfaces (T6.6), OneLua none. Also refreshed stale README/
+  Implemented notes (polygon fill, transforms, lpp-vita quad/line bugs) that the
+  T2.1/T2.2/T4.2 work already resolved.
+
+**Tests**
+- `test_primitives` gained lpp-vita cases for the quad/rotation draw and the
+  transform-stack + scissor behaviour.
+- New `test_desanim8`: the library runs under all four backend mocks —
+  integer-dt frame advance, independent `clone():flipH()`, one-shot play-once
+  callback, and the source image is never resized.
+
+---
+
+### 2026-09-15, branch `fix/phase0-1-correctness`
+
+Correctness work from `CODE_REVIEW.md` / `FIX_PLAN.md`, plus a modular
+restructure. Every behavioural change landed with a test that fails before it
+and passes after; the suite runs on lua5.1, lua5.4 and luajit.
+
+**Fixes**
+- Default font is a real Font object on all four backends, so `print` before
+  any `setFont` no longer dies on nil arithmetic (#9).
+- Real text metrics (#10): lpp-vita uses the native `Font.getTextWidth` (the
+  "not exposed" comment was wrong), OneLua and PSP measure whole UTF-8 glyphs
+  instead of bytes, and `printf` wraps and aligns on measured width. PS3 still
+  estimates, but per glyph.
+- `RandomGenerator` replaced with L'Ecuyer's combined generator (#11): the old
+  LCG lost its low bits past 2^53 from the second draw on and ignored `seed2`.
+  Output is now identical on lua5.1, lua5.4 and luajit.
+- PSP `draw` no longer mutates the source image (#6, previously fixed only on
+  the Vita path), and a negative scale mirrors properly instead of resizing to
+  a negative width.
+- `keypressed` / `keyreleased` are edge-triggered on every backend, with
+  `isrepeat` and a working `setKeyRepeat`; OneLua used to fire every frame a
+  button was held. The `dt` global leak in all three frame loops is gone.
+- `love.math.noise` handles the 4th dimension, and loading it no longer
+  reseeds Lua's global RNG.
+
+**Structure**
+- Each `love.*` module is now an entry point that loads one file per area:
+  `OneLua/graphics/`, `OneLua/psp/`, `lpp-vita/graphics/`, `PS3/graphics/`,
+  `math/`. The 1117-line OneLua graphics file and the 328-line PSP fork are
+  gone.
+- New `LOVE-WrapLua/core/`: `loader`, `util`, `transform`, `textwrap`, `input`,
+  `runtime`, `config`, `modules`, `require`, `callbacks`. Backends share state
+  through `lv1lua.gfx`, never through file-locals.
+- `printf` on lpp-vita, PSP and PS3 now shares one wrap implementation, which
+  also gained newline handling and correct treatment of a word wider than the
+  wrap box.
+
+**Tests**
+- PSP went from no coverage to a tested backend (`__MODE = "PSP"`).
+- New suites: `test_core` (util, transform stack, word wrap), `test_bootstrap`
+  (loader, runtime, config), `test_text` (metrics across four backends),
+  `test_input` (key edges and repeat, core plus all three loops).
+- Mocks gained a drivable pad (lpp-vita, PS3), a touch panel (OneLua), and
+  glyph-based text measuring, so a wrapper that measures bytes fails the suite.
+
+**Known gaps after this work**
+- PS3 draws whole surfaces only: no quad sub-rect, scale or rotation (Lua Player
+  limit). Quad-based libraries run but render the full sheet there.
+- PSP quad draw rotates the whole cached copy, so rotating a single frame of a
+  packed sheet is imprecise; document per-frame sheets for rotated sprites.
+- The GitHub CI runs are red for a billing lock on the account, not for a code
+  failure.
+
+---
+
 - By Hipreme/MrcSnm:
 ### OneLua/PS_Vita Only
 - Support most of love.graphics functions 

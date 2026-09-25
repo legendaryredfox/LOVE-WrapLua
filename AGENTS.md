@@ -11,7 +11,7 @@ This document is a complete orientation for AI agents working on this repository
 | Target | SDK | Platform files |
 |---|---|---|
 | PS Vita (native) | **OneLua** | `LOVE-WrapLua/OneLua/` |
-| PSP | **OneLua** (PSP sub-mode) | `LOVE-WrapLua/OneLua/graphics_psp.lua` |
+| PSP | **OneLua** (PSP sub-mode) | `LOVE-WrapLua/OneLua/` + `OneLua/psp/` |
 | PS3 | **PS3 Lua Player** | `LOVE-WrapLua/PS3/` |
 | PS Vita (alternative) | **lpp-vita** | `LOVE-WrapLua/lpp-vita/` |
 
@@ -23,16 +23,39 @@ The wrapper is not executed on a desktop PC.  There is no build step and no pack
 
 ## Repository layout
 
+Every `love.*` module is an **entry point that loads one file per area of the
+API**.  Opening `OneLua/graphics.lua` shows you the load order; the code lives
+in `OneLua/graphics/`.  Backend modules share state through `lv1lua.gfx`
+(transform stack, font cache, platform constants), never through file-locals,
+since each file is a separate `dofile` chunk.
+
 ```
 LOVE-WrapLua/
-├── script.lua                  ← Boot script.  Sets up lv1lua, loads modules, runs the main loop.
+├── script.lua                  ← Boot: ordered core/* steps, then the main loop.
 ├── index.lua / app.lua         ← Platform entry points (loaded by the console OS).
 ├── game/                       ← User game code lives here (main.lua, conf.lua, assets …).
 │   └── libraries/
 │       ├── anim8.lua           ← LÖVE anim8 animation library (standard, unmodified).
 │       └── desAnim8.lua        ← Console port of anim8 (uses imgData field of love.Image).
 ├── LOVE-WrapLua/
-│   ├── math.lua                ← love.math  (shared, pure Lua).
+│   ├── core/                   ← Backend-agnostic, no native calls.
+│   │   ├── loader.lua          ← lv1lua.load / loadOnce: dofile with the data prefix.
+│   │   ├── util.lua            ← Rounding, 0-1↔0-255 colour, UTF-8 glyph iteration.
+│   │   ├── transform.lua       ← Software transform stack (push/pop/flatten).
+│   │   ├── textwrap.lua        ← Greedy word wrap, measured by the font itself.
+│   │   ├── font.lua            ← Shared Font prototype + face cache over gfx.fontHooks.
+│   │   ├── text.lua            ← Shared printf: wrap, align, getHeight×getLineHeight.
+│   │   ├── state.lua           ← Shared colour/line/blend/filter state.
+│   │   ├── primitives.lua      ← Shared shapes over the four native prim hooks.
+│   │   ├── objects.lua         ← Shared Canvas/Shader/SpriteBatch/Text objects.
+│   │   ├── input.lua           ← Key edge detection, repeat, setKeyRepeat state.
+│   │   ├── runtime.lua         ← Platform detection, screen size, love namespace.
+│   │   ├── config.lua          ← game/conf.lua, lv1luaconf, button layout.
+│   │   ├── modules.lua         ← Loads the backend + shared modules.
+│   │   ├── require.lua         ← Redirects the game's require into game/.
+│   │   └── callbacks.lua       ← Gamepad↔key bridging + callback stubs.
+│   ├── math.lua                ← love.math entry → math/{random,noise,transform,
+│   │                             geometry,color}.lua (shared, pure Lua).
 │   ├── filesystem.lua          ← love.filesystem (shared, uses io.* or platform VFS).
 │   ├── data.lua                ← love.data  (shared, pure Lua — base64/hex/ByteData).
 │   ├── window.lua              ← love.window (shared, stubs for always-fullscreen console).
@@ -41,8 +64,13 @@ LOVE-WrapLua/
 │   ├── love-functions/
 │   │   └── thread.lua          ← love.thread (coroutine-based pseudo-threads + channels).
 │   ├── OneLua/
-│   │   ├── graphics.lua        ← love.graphics for Vita (OneLua SDK).
-│   │   ├── graphics_psp.lua    ← love.graphics for PSP (OneLua SDK, simpler).
+│   │   ├── graphics.lua        ← Entry: love.graphics for Vita (OneLua SDK).
+│   │   ├── graphics/           ← state, transform, image, draw, font, text,
+│   │   │                         primitives, canvas, spritebatch, textobject,
+│   │   │                         mesh, particles, info.
+│   │   ├── graphics_psp.lua    ← Entry: love.graphics for PSP.
+│   │   ├── psp/                ← state, transform, image, font, text,
+│   │   │                         primitives, objects, info.
 │   │   ├── audio.lua           ← love.audio (OneLua sound.* API, 2 channels).
 │   │   ├── keyboard.lua        ← love.keyboard (OneLua buttons.* API).
 │   │   ├── timer.lua           ← love.timer (OneLua timer.* API).
@@ -54,14 +82,18 @@ LOVE-WrapLua/
 │   │   ├── font.lua            ← Font helper utilities.
 │   │   └── shader.lua          ← Pixel-cache shader stub.
 │   ├── lpp-vita/
-│   │   ├── graphics.lua        ← love.graphics (lpp-vita Graphics.* API).
+│   │   ├── graphics.lua        ← Entry: love.graphics (lpp-vita Graphics.* API).
+│   │   ├── graphics/           ← state, transform, image, draw, font, text,
+│   │   │                         primitives, objects, info.
 │   │   ├── audio.lua           ← love.audio (lpp-vita Sound.* API).
 │   │   ├── keyboard.lua        ← love.keyboard (lpp-vita Controls.* API).
 │   │   ├── timer.lua           ← love.timer (lpp-vita Timer.* API).
 │   │   ├── whileloop.lua       ← Per-frame hooks.
 │   │   └── event.lua           ← love.event.
 │   └── PS3/
-│       ├── graphics.lua        ← love.graphics (PS3 Lua Player API, many stubs).
+│       ├── graphics.lua        ← Entry: love.graphics (PS3 Lua Player, many stubs).
+│       ├── graphics/           ← state, transform, image, font, text,
+│       │                         primitives, objects, info.
 │       ├── audio.lua           ← love.audio (snd.* PS3 API, stream only).
 │       ├── keyboard.lua        ← love.keyboard (pad.* API).
 │       ├── timer.lua           ← love.timer (sys.TimerUsleep).
@@ -70,7 +102,22 @@ LOVE-WrapLua/
 └── tests/
     ├── run_all.lua             ← Entry point: lua tests/run_all.lua (from project root).
     ├── runner.lua              ← Minimal test framework (dofile it for a fresh instance).
-    ├── mock_platform.lua       ← Stubs all console globals (OneLua Vita mode).
+    ├── mock_common.lua         ← Backend-agnostic mock + __rec native-call recorder.
+    ├── mock_onelua.lua         ← OneLua native API (lowercase image/screen/draw/…).
+    ├── mock_lppvita.lua        ← lpp-vita native API — encodes real arg orders.
+    ├── mock_ps3.lua            ← PS3 native API (permissive stubs).
+    ├── setup.lua               ← Loads common + backend mock per __MODE
+    │                             ("OneLua" | "PSP" | "lpp-vita" | "PS3").
+    ├── mock_platform.lua       ← Back-compat shim (OneLua mode) for legacy tests.
+    ├── fixtures/               ← Small files loaded by tests.
+    ├── test_core.lua           ← core/util, core/transform, core/textwrap.
+    ├── test_bootstrap.lua      ← core/loader, core/runtime, core/config.
+    ├── test_input.lua          ← Key edges + repeat, core and all 3 whileloops.
+    ├── test_primitives.lua     ← Shared primitive suite across all 4 backends.
+    ├── test_text.lua           ← Text metrics + printf across all 4 backends.
+    ├── test_font.lua           ← Shared Font object + printf layout, all 4 backends.
+    ├── test_prim_transform.lua ← Primitives vs the transform stack, per backend.
+    ├── test_system.lua         ← love.system across all 4 backends.
     ├── test_math.lua
     ├── test_data.lua
     ├── test_thread.lua
@@ -88,7 +135,7 @@ LOVE-WrapLua/
 ## Boot sequence
 
 1. The console OS loads `index.lua` (OneLua/lpp-vita) or `app.lua` (PS3), which sets `lv1lua.dataloc` and `lv1lua.mode` then calls `dofile("script.lua")`.
-2. `script.lua` initialises `lv1lua.*`, creates the `love.*` namespace, loads platform modules via `dofile`, loads shared modules (`math.lua`, `filesystem.lua`, `window.lua`, `joystick.lua`, `data.lua`, `system.lua`, `thread.lua`), sets `love.getVersion()`, loads and runs `game/conf.lua` (optional), loads `game/main.lua`, calls `love.load()`, then enters `while lv1lua.running do … end`.
+2. `script.lua` dofiles `core/loader.lua` (which defines `lv1lua.load`), then runs the core steps in order: `core/util`, `core/transform`, `core/textwrap` → `core/runtime` (platform detection, screen size, `love.*` namespace, `love.getVersion`) → `love-functions/thread` → `core/input` (key edges) → `core/config` (`game/conf.lua`, `lv1luaconf`, `lv1lua.keyset`) → `core/modules` (backend + shared modules) → `core/require`.  It then seeds the RNG, loads `game/main.lua`, calls `love.load()`, wires `core/callbacks`, and enters `while lv1lua.running do … end`.
 3. Each iteration calls `lv1lua.draw()` → `lv1lua.update()` → `lv1lua.updatecontrols()`, all defined in the platform's `whileloop.lua`.
 
 ---
@@ -151,10 +198,29 @@ _transformStack.transform  -- accumulated result (recomputed when _dirty=true)
 ```
 
 `love.graphics.push()` appends a new Transform; `pop()` removes it.
-`translate/scale/rotate` modify the **top** entry of the stack (SET, not accumulate).
-`updateTransform()` is called lazily before any draw operation.
+`translate/scale/rotate` modify the **top** entry of the stack and **compose in
+local space** (accumulate): `translate` adds `scale*delta` to the offset, `scale`
+multiplies the existing scale, `rotate` adds to the angle. (This was fixed in the
+Phase 1 work — do **not** revert to plain assignment; `translate(10,0)` then
+`translate(5,0)` must equal `translate(15,0)`.) `updateTransform()` is called
+lazily before any draw operation and multiplies the stack levels together.
 
-PSP and lpp-vita transform functions are no-ops; PS3 uses scale constants.
+lpp-vita shares the same stack (T2.2) and folds it into both images and
+primitives. PSP transform functions are still no-ops; PS3 uses scale constants.
+
+Primitives reach the stack through two hooks on `lv1lua.gfx.prims`:
+`mapPoint(x,y)` for every emitted vertex and `mapScale(w,h)` for every size
+(T5.2). A backend with no stack installs neither, and its coordinates pass
+through untouched. Shapes built from other shapes (circle outline, ellipse,
+arc) must emit **LOVE-space** vertices and let `polygon` map them once, never
+pre-map a radius.
+
+> **lpp-vita native arg-order gotcha.** `Graphics.drawLine`, `Graphics.fillRect`
+> and `Graphics.fillEmptyRect` take **`(x1, x2, y1, y2, color)`** — the two X
+> coordinates first, then the two Y — not `(x1,y1,x2,y2)`. This is verified
+> against `lpp-vita/source/luaGraphics.cpp`. Passing love-order coordinates
+> silently mis-renders on device; the `tests/mock_lppvita.lua` mock encodes the
+> real order so a mistake fails in tests.
 
 ---
 
@@ -212,16 +278,21 @@ lua tests/test_graphics.lua
 # etc.
 ```
 
-### Test architecture
+### Test architecture (multi-backend)
 
 - `tests/runner.lua` — Returns a fresh test-runner table each time it is `dofile`d.  Methods: `describe(name, fn)`, `it(desc, fn)`, `eq/near/ok/nok/istype/inrange`, `summary() → failcount`.
-- `tests/mock_platform.lua` — Stubs all console globals (`image`, `screen`, `draw`, `font`, `sound`, `buttons`, `timer`, `files`, `color`, `os.*` extensions, `touch`, `osk`) and initialises `lv1lua` and `love` to a clean Vita/OneLua state.  Must be `dofile`d before the module under test.
-- Each test file: `dofile("tests/runner.lua")`, then `dofile("tests/mock_platform.lua")`, then the module under test, then test cases, then `return T.summary()`.
-- `tests/run_all.lua` — `dofile`s each test file in sequence and accumulates failure counts.  Exits `0` on all-pass, `1` otherwise.
+- `tests/mock_common.lua` — Backend-agnostic mock: `lv1lua`, `lv1luaconf`, a **fresh** `love` namespace, the VFS `files`, `os.*` extensions, input stubs, and the **native-call recorder** `__rec` (`__rec.reset()`, `__rec.log(name,...)`, `__rec.last(name)`, `__rec.all/count(name)`). Re-dofile'ing it resets all state, so one process can exercise every backend.
+- `tests/mock_onelua.lua` / `tests/mock_lppvita.lua` / `tests/mock_ps3.lua` — Per-backend native APIs. **The lpp-vita mock encodes the real native arg orders** (see the gotcha above), and records draw/primitive calls into `__rec` so wrong-order bugs fail.
+- `tests/setup.lua` — Loads `mock_common` then the backend mock for the global `__MODE` (default `"OneLua"`). Set `__MODE` before dofiling it to target a backend.
+- `tests/mock_platform.lua` — Back-compat shim: `dofile("tests/setup.lua")` in OneLua mode. Existing single-backend tests keep using it.
+- Each test file: `dofile("tests/runner.lua")`, then `dofile("tests/mock_platform.lua")` (or `setup.lua` with a chosen `__MODE`), then the module under test, then cases, then `return T.summary()`.
+- `tests/test_primitives.lua` — Runs the shared primitive suite under **all three backends** and asserts the lpp-vita native arg order. Model for future backend-parametrised tests.
+- `tests/run_all.lua` — `dofile`s each test file in sequence, accumulates failures, exits `0`/`1`.
+- **CI:** `.github/workflows/ci.yml` runs `lua tests/run_all.lua` on lua 5.1 / 5.3 / 5.4 / luajit.
 
-Tests currently cover: `love.math`, `love.data`, `love.thread`, `love.window`, `love.joystick`, `love.filesystem`, `love.graphics` (OneLua), `love.keyboard` (OneLua), `love.timer` (OneLua), `love.audio` (OneLua).
+Coverage: `love.math`, `love.data`, `love.thread`, `love.window`, `love.joystick`, `love.filesystem`, `love.graphics`/`keyboard`/`timer`/`audio` (OneLua), plus multi-backend primitives (OneLua + lpp-vita + PS3).
 
-**Platform-specific modules (lpp-vita, PS3) are not covered by unit tests** because their SDK APIs differ too much from the OneLua mocks.  If you add lpp-vita or PS3 tests, add a corresponding `mock_lpp_vita.lua` / `mock_ps3.lua`.
+To add a backend-specific test, dofile `setup.lua` with the right `__MODE`, load that backend's module, and assert against `__rec`. Extend the per-backend mock if a native call is missing.
 
 ---
 
@@ -229,17 +300,19 @@ Tests currently cover: `love.math`, `love.data`, `love.thread`, `love.window`, `
 
 | Feature | Status |
 |---|---|
-| Canvas (offscreen rendering) | Stub — `renderTo(fn)` just calls fn(); no actual texture |
+| Canvas (offscreen rendering) | Stub — `renderTo(fn)` just calls fn(); no actual texture (`canvas=false` in the capability table) |
 | Shader / GLSL | Stub — object exists but no code runs |
 | Mesh | Stub — object exists, draw is no-op |
-| love.graphics.polygon fill | Fan approximation (not scanline); wrong for concave polygons |
 | PS3 graphics primitives | Stubs — PS3 SDK details unconfirmed |
-| love.data.hash | Returns zeroed bytes of correct length; no real crypto |
-| love.data.compress/decompress | Pass-through; no compression |
 | love.timer.step | No-op |
-| love.audio (OneLua) | Only 2 simultaneous channels (channel 1 = static, channel 2 = stream) |
-| love.audio (PS3) | Stream only |
-| Transforms (PSP/lpp-vita/PS3) | No-ops or approximations |
+| love.audio (OneLua/PSP) | Only 2 simultaneous voices (channel 1 = static, channel 2 = stream) |
+| love.audio (PS3) | One background voice; a `static` source loads nothing |
+| Source:seek / setPitch | Position and rate are tracked in software; the audio itself only seeks where the SDK exposes a seek call |
+| Source:getDuration | Native where exposed, else read from a WAV header, else 0 |
+| Transforms (PSP/PS3) | Identity stubs from `core/transform_stub.lua` (never nil); OneLua and lpp-vita carry a real software stack for images, primitives and text |
+| love.touch / love.mouse | Vita (OneLua) only; the mouse is the last touch position and a touch is button 1 |
+| Source:seek | Moves the reported position; the audio only really seeks where the SDK exposes a seek call |
+| Blend modes | Tracked on every backend, never applied (T6.5) |
 
 ---
 
@@ -255,26 +328,69 @@ Tests currently cover: `love.math`, `love.data`, `love.thread`, `love.window`, `
 
 ---
 
+## Rules for AI agents
+
+Read before committing anything.
+
+- **Commit authorship is fixed.** Every commit and push must be authored solely by
+  `Legendary Redfox <legendaryredfox.dev@gmail.com>`. Set it explicitly:
+  `git commit --author="Legendary Redfox <legendaryredfox.dev@gmail.com>"`.
+- **No AI trailer (no-ai-trailing).** Never add `Co-Authored-By: Claude`, "Generated
+  with", or any AI attribution line to commit messages, PR bodies, or code.
+- **No em-dashes.** Do not use the em-dash character in prose, docs, code comments,
+  or commit messages. Use a comma, parentheses, a colon, or reword the sentence.
+- **Never commit on `master` directly.** Branch first (`fix/...`, `feat/...`).
+- **Test-first for behaviour changes.** Add a test that fails before the fix and
+  passes after. Run the full suite (`lua tests/run_all.lua`) before every commit;
+  it must be green on lua 5.1 and 5.4 at minimum.
+- **LuaJIT / Lua 5.1 compatible.** The wrapper runs on the console SDKs' Lua. No
+  5.3+ integer ops (`//`, `&`, `|`, `<<`, `>>`), no `<const>`/`<close>`, no
+  `math.type`. Use `table.unpack or unpack`.
+- **Keep backends independent.** Shared modules never touch platform globals;
+  platform modules never import from each other.
+- **Update `Implemented.md`** whenever you change API coverage or a documented
+  limitation.
+- One logical change per commit, Conventional Commits subject
+  (`fix(scope): …`, `feat(scope): …`, `test: …`).
+
+---
+
 ## Common tasks
 
 ### Adding a new love.graphics function
-1. Add it to all three platform graphics files (and/or the PSP file).
+1. Put it in the submodule that owns that area (`graphics/primitives.lua`,
+   `graphics/font.lua`, …) for all four backends: `OneLua/graphics/`,
+   `OneLua/psp/`, `lpp-vita/graphics/`, `PS3/graphics/`.
 2. If it is a stub, make it return the correct type so call-sites don't crash.
-3. Update `Implemented.md`.
+3. If the logic is pure Lua and backend-independent, put it in `core/` instead
+   and have each backend call it (that is what `core/textwrap.lua` is).
+4. Update `Implemented.md`.
+
+### Adding a new submodule to a backend
+1. Create `LOVE-WrapLua/<backend>/graphics/<area>.lua`.
+2. Add an `lv1lua.load` line to that backend's `graphics.lua`, in dependency
+   order (`state` first, `font` before `text`).
+3. Share state through `lv1lua.gfx`, never through file-locals: each file is a
+   separate `dofile` chunk and cannot see another's locals.
 
 ### Adding a new shared module
-1. Create `LOVE-WrapLua/<module>.lua`.
-2. Initialise its namespace in `script.lua` (`love.<module> = {}`).
-3. Add a `dofile` line in `script.lua` after `system.lua` and before `game/main.lua`.
+1. Create `LOVE-WrapLua/<module>.lua` (an entry point if it needs more than one
+   file, with the parts in `LOVE-WrapLua/<module>/`).
+2. Initialise its namespace in `core/runtime.lua` (`love.<module> = {}`).
+3. Add an `lv1lua.load` line in `core/modules.lua`.
 4. Add unit tests in `tests/test_<module>.lua` and register in `tests/run_all.lua`.
 
 ### Adding a new platform
-1. Create `LOVE-WrapLua/<platform>/` with `graphics.lua`, `audio.lua`, `keyboard.lua`, `timer.lua`, `whileloop.lua`, `event.lua`.
-2. Extend `lv1lua.mode` detection in `script.lua`.
-3. Add screen dimensions to the platform detection block in `script.lua`.
+1. Create `LOVE-WrapLua/<platform>/` with `graphics.lua` (entry) plus its
+   `graphics/` submodules, and `audio.lua`, `keyboard.lua`, `timer.lua`,
+   `whileloop.lua`, `event.lua`.
+2. Extend `lv1lua.mode` detection and the screen-size block in
+   `core/runtime.lua`.
+3. Add a mock in `tests/mock_<platform>.lua`, register it in `tests/setup.lua`,
+   and add the backend to the shared suites (`test_primitives`, `test_text`).
 
 ### Changing the key layout
-Edit `lv1lua.keyset` in `script.lua`.  The six entries map to: circle, cross, triangle, square, L, R.  `lv1lua.keyset[1]` is always the confirm button.
+Edit `lv1lua.keyset` in `core/config.lua`.  The six entries map to: circle, cross, triangle, square, L, R.  `lv1lua.keyset[1]` is always the confirm button.
 
 ---
 

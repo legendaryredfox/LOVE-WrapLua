@@ -1,6 +1,9 @@
 local T = dofile("tests/runner.lua")
 dofile("tests/mock_platform.lua")
--- keyboard.lua depends on lv1lua.keyset (set in mock_platform)
+-- keyboard.lua depends on lv1lua.keyset (set in mock_platform); key repeat
+-- lives in core/input.lua, which every backend shares.
+dofile("LOVE-WrapLua/core/loader.lua")
+lv1lua.load("LOVE-WrapLua/core/input.lua")
 dofile("LOVE-WrapLua/OneLua/keyboard.lua")
 
 -- ── isDown ───────────────────────────────────────────────────────
@@ -46,13 +49,21 @@ end)
 
 -- ── hasKeyRepeat / setKeyRepeat ──────────────────────────────────
 T.describe("love.keyboard hasKeyRepeat / setKeyRepeat", function()
-    T.it("hasKeyRepeat returns false", function()
+    T.it("hasKeyRepeat is false by default, as in LOVE", function()
         T.nok(love.keyboard.hasKeyRepeat())
     end)
 
-    T.it("setKeyRepeat does not crash", function()
+    T.it("setKeyRepeat toggles the reported state", function()
         love.keyboard.setKeyRepeat(true)
+        T.ok(love.keyboard.hasKeyRepeat())
         love.keyboard.setKeyRepeat(false)
+        T.nok(love.keyboard.hasKeyRepeat())
+    end)
+
+    T.it("treats a nil argument as off", function()
+        love.keyboard.setKeyRepeat(true)
+        love.keyboard.setKeyRepeat(nil)
+        T.eq(love.keyboard.hasKeyRepeat(), false)
     end)
 end)
 

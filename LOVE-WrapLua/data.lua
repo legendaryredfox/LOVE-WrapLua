@@ -42,29 +42,95 @@ end
 function love.data.encode(containerType, format, data, linelength)
     if format == 'base64' then return b64enc(data) end
     if format == 'hex'    then return hexenc(data) end
-    return data
+    -- LOVE raises here; returning the input unchanged made a misspelled format
+    -- look like it had worked.
+    error("love.data.encode: unsupported format '" .. tostring(format) .. "'", 2)
 end
 
 function love.data.decode(containerType, format, data)
     if format == 'base64' then return b64dec(data) end
     if format == 'hex'    then return hexdec(data) end
-    return data
+    error("love.data.decode: unsupported format '" .. tostring(format) .. "'", 2)
 end
 
+-- ── Vendored pure-Lua crypto / compression ───────────────────────
+-- sha2.lua (MIT) and LibDeflate.lua (zlib) are loaded lazily and cached: a
+-- game that never hashes or compresses pays no parse cost, and both libraries
+-- are pure Lua and slow on-device, so callers should cache their own results.
+local _sha, _deflate
+local function sha()
+    _sha = _sha or lv1lua.loadOnce('LOVE-WrapLua/vendor/sha2.lua')
+    return _sha
+end
+local function deflate()
+    _deflate = _deflate or lv1lua.loadOnce('LOVE-WrapLua/vendor/LibDeflate.lua')
+    return _deflate
+end
+
+-- Coerce a ByteData/string argument down to a plain Lua string.
+local function tostr(v)
+    if type(v) == 'string' then return v end
+    if type(v) == 'table' and v.getString then return v:getString() end
+    return tostring(v)
+end
+
+local HASH = {
+    md5 = 'md5', sha1 = 'sha1', sha224 = 'sha224',
+    sha256 = 'sha256', sha384 = 'sha384', sha512 = 'sha512',
+}
+
+-- love.data.hash(hashFunction, data) → raw-byte digest (LÖVE returns the raw
+-- message digest, not hex). sha2.lua emits lowercase hex, so unhex it.
 function love.data.hash(hashfunc, data)
-    -- Full cryptographic hashes require C bindings not available here.
-    -- Return a zeroed string of the expected length as a placeholder.
-    local lens = { md5=16, sha1=20, sha224=28, sha256=32, sha384=48, sha512=64 }
-    return string.rep('\0', lens[hashfunc] or 32)
+    local fn = HASH[hashfunc]
+    if not fn then
+        error("love.data.hash: unsupported hash '" .. tostring(hashfunc) .. "'", 2)
+    end
+    return hexdec(sha()[fn](tostr(data)))
 end
 
+local _warnedFmt = {}
+local function warnFmt(format)
+    if _warnedFmt[format] then return end
+    _warnedFmt[format] = true
+    if lv1lua.util and lv1lua.util.warn then
+        lv1lua.util.warn("love.data.compress: format '" .. tostring(format)
+            .. "' has no encoder on this backend; using 'deflate'")
+    end
+end
+
+-- Boxes a result string as a ByteData when the caller asked for a 'data'
+-- container, matching LÖVE's return-type contract; otherwise returns the string.
+local function box(containerType, s)
+    if containerType == 'data' then return love.data.newByteData(s) end
+    return s
+end
+
+-- love.data.compress(container, format, rawstring, level)
+-- Real DEFLATE/zlib via LibDeflate. LÖVE's 'gzip' and 'lz4' formats have no
+-- encoder here; they fall back to 'deflate' (round-trips within this wrapper,
+-- but is not byte-compatible with those two desktop formats — see vendor notes).
 function love.data.compress(containerType, format, rawstring, level)
-    -- No compression library available; pass-through.
-    return rawstring
+    format = format or 'deflate'
+    local D, cfg = deflate(), nil
+    if type(level) == 'number' and level >= 1 and level <= 9 then
+        cfg = { level = level }
+    end
+    if format == 'zlib' then
+        return box(containerType, D:CompressZlib(tostr(rawstring), cfg))
+    end
+    if format ~= 'deflate' then warnFmt(format) end
+    return box(containerType, D:CompressDeflate(tostr(rawstring), cfg))
 end
 
+-- love.data.decompress(container, format, data). `format` must match what
+-- compress produced ('zlib' or 'deflate'/'gzip'/'lz4' → deflate here).
 function love.data.decompress(containerType, format, data)
-    return data
+    local D = deflate()
+    local raw = tostr(data)
+    local out = (format == 'zlib') and D:DecompressZlib(raw)
+                                    or  D:DecompressDeflate(raw)
+    return box(containerType, out or '')
 end
 
 -- ByteData object

@@ -63,10 +63,60 @@ T.describe("love.math.noise", function()
         T.eq(a, b)
     end)
 
-    T.it("different inputs generally produce different output", function()
-        local a = love.math.noise(0.1, 0.1)
-        local b = love.math.noise(10.1, 10.1)
-        T.ok(a ~= b, "noise should differ for far-apart inputs")
+    T.it("varies across inputs", function()
+        -- Sampling a sweep rather than two fixed points: any two chosen points
+        -- can collide by chance in a gradient field, which says nothing about
+        -- whether the noise varies.
+        local seen, distinct = {}, 0
+        for i = 0, 15 do
+            local v = love.math.noise(i * 0.37, i * 0.71)
+            if not seen[v] then seen[v] = true; distinct = distinct + 1 end
+        end
+        T.ok(distinct > 12, "expected mostly distinct values, got " .. distinct)
+    end)
+
+    T.it("4D noise returns value in [0,1]", function()
+        T.inrange(love.math.noise(1.2, 3.4, 5.6, 7.8), 0, 1)
+    end)
+
+    T.it("4D noise reacts to the w axis", function()
+        local a = love.math.noise(1.5, 2.5, 3.5, 0.25)
+        local b = love.math.noise(1.5, 2.5, 3.5, 0.75)
+        T.ok(a ~= b, "w must affect the result")
+    end)
+
+    T.it("4D noise is continuous along w", function()
+        -- Neighbouring w values must be close: this catches a lookup that
+        -- hashes w instead of interpolating along it.
+        local a = love.math.noise(1.5, 2.5, 3.5, 0.50)
+        local b = love.math.noise(1.5, 2.5, 3.5, 0.51)
+        T.near(a, b, 0.05)
+    end)
+
+    T.it("4D noise is deterministic", function()
+        T.eq(love.math.noise(0.3, 0.4, 0.5, 0.6),
+             love.math.noise(0.3, 0.4, 0.5, 0.6))
+    end)
+
+    T.it("stays in range over a sweep of all four axes", function()
+        for i = 0, 40 do
+            local k = i / 7
+            T.inrange(love.math.noise(k, k * 2, k * 3, k * 5), 0, 1)
+        end
+    end)
+
+    T.it("loading the module does not disturb Lua's global RNG", function()
+        -- Game code may call math.random directly, so building the permutation
+        -- table must not reseed it. Compare the stream's next value against a
+        -- control run that did not reload the module.
+        math.randomseed(4242)
+        math.random()
+        local control = math.random()
+
+        math.randomseed(4242)
+        math.random()
+        lv1lua.load("LOVE-WrapLua/math/noise.lua")
+        T.eq(math.random(), control)
     end)
 end)
 
@@ -98,6 +148,35 @@ T.describe("love.math.newTransform", function()
         local x, y = tf:transformPoint(1, 0)
         T.near(x, 0, 1e-5)
         T.near(y, 1, 1e-5)
+    end)
+
+    T.it("rotate 90° maps (0,1) to (-1,0)", function()
+        local tf = love.math.newTransform(0, 0, math.pi / 2)
+        local x, y = tf:transformPoint(0, 1)
+        T.near(x, -1, 1e-5)
+        T.near(y, 0, 1e-5)
+    end)
+
+    T.it("two rotations compose additively", function()
+        local a = love.math.newTransform(); a:rotate(0.3); a:rotate(0.4)
+        local b = love.math.newTransform(); b:rotate(0.7)
+        local ax, ay = a:transformPoint(1, 2)
+        local bx, by = b:transformPoint(1, 2)
+        T.near(ax, bx, 1e-6); T.near(ay, by, 1e-6)
+    end)
+
+    T.it("rotate then translate composes in local space", function()
+        local tf = love.math.newTransform()
+        tf:rotate(math.pi / 2); tf:translate(1, 0)
+        local x, y = tf:transformPoint(0, 0)
+        T.near(x, 0, 1e-5); T.near(y, 1, 1e-5)
+    end)
+
+    T.it("shear does not corrupt the second axis", function()
+        local tf = love.math.newTransform()
+        tf:shear(0.5, 0.4)  -- x' = x + 0.5y ; y' = y + 0.4x
+        local x, y = tf:transformPoint(0, 1)
+        T.near(x, 0.5, 1e-6); T.near(y, 1, 1e-6)
     end)
 
     T.it("inverseTransformPoint undoes transformPoint", function()
@@ -168,6 +247,106 @@ T.describe("love.math.newRandomGenerator", function()
         local r1 = love.math.newRandomGenerator(7)
         local r2 = love.math.newRandomGenerator(7)
         T.eq(r1:random(), r2:random())
+    end)
+
+    -- Golden vector: the L'Ecuyer recurrence computed independently here.
+    -- Every product stays under 2^53, so these values must be identical on
+    -- Lua 5.1, 5.3, 5.4 and LuaJIT (#11).
+    T.it("matches the reference recurrence for a fixed seed", function()
+        local M1, M2 = 2147483563, 2147483399
+        local s1 = (12345 % (M1 - 1)) + 1
+        local s2 = ((12345 + 131071) % (M2 - 1)) + 1
+        local expected = {}
+        for i = 1, 3 do
+            s1 = (s1 * 40014) % M1
+            s2 = (s2 * 40692) % M2
+            expected[i] = ((s1 - s2) % (M1 - 1)) / (M1 - 1)
+        end
+
+        local rng = love.math.newRandomGenerator(12345)
+        T.near(rng:random(), expected[1], 1e-12)
+        T.near(rng:random(), expected[2], 1e-12)
+        T.near(rng:random(), expected[3], 1e-12)
+    end)
+
+    T.it("setSeed uses the second seed too", function()
+        local a = love.math.newRandomGenerator()
+        local b = love.math.newRandomGenerator()
+        a:setSeed(1, 1)
+        b:setSeed(1, 2)
+        T.ok(a:random() ~= b:random(), "seed2 must affect the stream")
+    end)
+
+    T.it("setSeed with one argument is reproducible", function()
+        local rng = love.math.newRandomGenerator()
+        rng:setSeed(2024)
+        local first = { rng:random(), rng:random(), rng:random() }
+        rng:setSeed(2024)
+        T.eq(rng:random(), first[1])
+        T.eq(rng:random(), first[2])
+        T.eq(rng:random(), first[3])
+    end)
+
+    T.it("getState / setState round-trips both state words", function()
+        local rng = love.math.newRandomGenerator(4321)
+        rng:random(); rng:random()
+        local saved = rng:getState()
+        local expected = { rng:random(), rng:random() }
+        rng:setState(saved)
+        T.eq(rng:random(), expected[1])
+        T.eq(rng:random(), expected[2])
+    end)
+
+    T.it("random(a,b) stays in range over many draws", function()
+        local rng = love.math.newRandomGenerator(555)
+        for _ = 1, 500 do
+            local v = rng:random(3, 7)
+            T.ok(v >= 3 and v <= 7, "value out of range: " .. tostring(v))
+            T.eq(v, math.floor(v), "should be an integer")
+        end
+    end)
+
+    T.it("draws spread over all buckets", function()
+        -- 4000 draws into 10 buckets: every bucket should get roughly 400.
+        -- A generator losing precision collapses into a few buckets.
+        local rng = love.math.newRandomGenerator(8675309)
+        local buckets = {}
+        for i = 1, 10 do buckets[i] = 0 end
+        for _ = 1, 4000 do
+            local b = math.floor(rng:random() * 10) + 1
+            buckets[b] = buckets[b] + 1
+        end
+        for i = 1, 10 do
+            T.ok(buckets[i] > 250 and buckets[i] < 550,
+                 "bucket " .. i .. " had " .. buckets[i])
+        end
+    end)
+
+    T.it("does not repeat within a long run", function()
+        local rng = love.math.newRandomGenerator(31337)
+        local seen, n = {}, 2000
+        for _ = 1, n do
+            local v = rng:random()
+            T.nok(seen[v], "value repeated: " .. tostring(v))
+            seen[v] = true
+        end
+    end)
+end)
+
+T.describe("love.math.random (global generator)", function()
+    T.it("is reproducible after setRandomSeed", function()
+        love.math.setRandomSeed(777)
+        local first = { love.math.random(), love.math.random() }
+        love.math.setRandomSeed(777)
+        T.eq(love.math.random(), first[1])
+        T.eq(love.math.random(), first[2])
+    end)
+
+    T.it("setRandomSeed accepts a second seed", function()
+        love.math.setRandomSeed(5, 1)
+        local a = love.math.random()
+        love.math.setRandomSeed(5, 2)
+        T.ok(love.math.random() ~= a, "seed2 must affect the global stream")
     end)
 end)
 

@@ -1,5 +1,9 @@
 lv1lua.keyenum = {16,64,128,32,8,1,8192,16384,4096,32768,256,512}
 lv1lua.keyname = {"up","down","left","right","start","back"}
+-- The console's own button names, in the same order as keyenum. love.joystick
+-- is mapped from these because keyname changes with lv1luaconf.keyconf.
+lv1lua.padname = {"up","down","left","right","start","select",
+                  "circle","cross","triangle","square","l","r"}
 lv1lua.keymask = {}
 
 for i = 1, #lv1lua.keyset do
@@ -18,24 +22,38 @@ function love.keyboard.isDown(key)
 end
 
 function love.keyboard.isScancodeDown(sc) return love.keyboard.isDown(sc) end
-function love.keyboard.hasKeyRepeat()     return false end
-function love.keyboard.setKeyRepeat(b)    end
 function love.keyboard.hasTextInput()     return false end
 function love.keyboard.getKeyFromScancode(sc)  return sc end
 function love.keyboard.getScancodeFromKey(key) return key end
 
+-- The IME is modal and asynchronous: it is still opening on the frame that
+-- starts it, so reading its state immediately (as this used to) always found it
+-- unfinished and silently dropped whatever the player typed. The frame loop
+-- polls lv1lua.pollTextInput instead, and love.textinput fires when the on-screen
+-- keyboard closes.
+local imeOpen = false
+
 function love.keyboard.showTextInput(tbl)
-    if tbl then
-        local h1 = tbl["header"]    or ""
-        local h2 = tbl["subheader"] or ""
-        Keyboard.start(h1, h2)
-        if Keyboard.getState() == FINISHED then
-            local text = Keyboard.getInput()
-            if text and text ~= "" and love.textinput then love.textinput(text) end
-        end
-    end
+    if not tbl then return end
+    Keyboard.start(tbl["header"] or "", tbl["subheader"] or "")
+    imeOpen = true
 end
+
+function love.keyboard.pollTextInput()
+    if not imeOpen then return end
+    if Keyboard.getState() ~= FINISHED then return end
+
+    local text = Keyboard.getInput()
+    imeOpen = false
+    if Keyboard.clear then Keyboard.clear() end
+    if text and text ~= "" and love.textinput then love.textinput(text) end
+end
+
+function love.keyboard.isTextInputActive() return imeOpen end
 
 function love.keyboard.setTextInput(tbl)
     love.keyboard.showTextInput(tbl)
 end
+
+-- setKeyRepeat / hasKeyRepeat live in core/input.lua, which owns the repeat
+-- state the key tracker reads.

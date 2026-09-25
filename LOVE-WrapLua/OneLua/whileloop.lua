@@ -19,13 +19,22 @@ local buttonMap = {
 }
 
 function lv1lua.draw()
+    -- LOVE's own loop clears before every draw; without this a game that does
+    -- not clear itself smears on OneLua while looking right on the other
+    -- backends, which do clear.
+    screen.clear(lv1lua.current.bgcolor)
     if love.draw then love.draw() end
     screen.flip()
 end
 
+local keys = lv1lua.core.newKeyTracker()
+
 function lv1lua.update()
     if lv1lua.timer:time() >= 16 then
-        dt = lv1lua.timer:time() / 1000
+        -- Kept on lv1lua rather than as a global, so game code cannot collide
+        -- with it (and so the helpers below can read it).
+        local dt = lv1lua.timer:time() / 1000
+        lv1lua.dt = dt
         if love.update then
             love.update(dt)
         end
@@ -45,63 +54,64 @@ function lv1lua.updatecontrols()
     js.axes[3] = ((buttons.analogrx or 128) - 128) / 128
     js.axes[4] = ((buttons.analogry or 128) - 128) / 128
 
+    -- Sample every button's held state, then let the tracker work out the
+    -- edges. buttons.held is the SDK's "down right now" table. `physical` keeps
+    -- the console's own button names, which love.joystick needs because the
+    -- LOVE key names change with the configured layout.
+    local held, physical = {}, {}
     for i = 1, #mask do
-        local btn = mask[i]
-        local key = buttonMap[btn] or btn
-        if buttons[btn] then
-            love.keypressed(key)
-        end
-        if buttons.released[btn] then
-            love.keyreleased(key)
-        end
+        local btn  = mask[i]
+        local down = buttons.held[btn] and true or false
+        held[buttonMap[btn] or btn] = down
+        physical[btn] = down
     end
-    __checkGameRestart()
-    if not lv1lua.isPSP then
-        ___updateFrontTouch()
-        -- __checkHomePress()
+    keys:update(held, lv1lua.dt or 0)
+    lv1lua.core.syncJoystick(physical)
+
+    lv1lua.checkGameRestart()
+    if not lv1lua.isPSP and love.touch.__getFrontTouches then
+        lv1lua.updateFrontTouch()
+        -- lv1lua.checkHomePress()
     end
 end
 
-function __checkGameRestart()
-    if buttons.start and buttons.held.l and buttons.held.r and buttons.held.down
-    then
-        print("RESTART")
+function lv1lua.checkGameRestart()
+    if buttons.held.start and buttons.held.l and buttons.held.r
+       and buttons.held.down then
         os.restart()
     end
 end
 
 --WIP
-function __checkHomePress()
+function lv1lua.checkHomePress()
     --When all analogs are 0 and not flicking, it means that home is pressed
     if(buttons.analoglx == 0 and buttons.analogly == 0 and buttons.analogrx == 0 and buttons.analogry == 0) then
-        homeHeldtime = homeHeldtime + dt
+        homeHeldtime = homeHeldtime + (lv1lua.dt or 0)
     else
         if(homeHeldtime>= homeCallbackThreshold and homeHeldtime < homeCallbackCancel) then
-            __goLiveArea()
+            lv1lua.goLiveArea()
         end
-        __resume()
+        lv1lua.resumeFromLiveArea()
     end
 end
 
-function __goLiveArea()
-    print("Live Area")
-    onLiveArea()
+function lv1lua.goLiveArea()
+    lv1lua.onLiveArea()
     os.golivearea()
     os.delay(homeTime)
 end
 
-function __resume()
+function lv1lua.resumeFromLiveArea()
     if(homeHeldtime>= homeCallbackThreshold and homeHeldtime < homeCallbackCancel) then
         while(buttons.waitforkey(__HOME)) do
             os.delay(1)
         end
-        print("Resume")
         homeHeldtime = 0
-        onResume()
+        lv1lua.onResume()
     end
 end
 
-function ___updateFrontTouch()
+function lv1lua.updateFrontTouch()
     local lastMouseDown = love.mouse.isDown()
     touch.read()
     love.touch.__getFrontTouches(touch)

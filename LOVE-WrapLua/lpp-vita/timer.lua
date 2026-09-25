@@ -1,22 +1,24 @@
 lv1lua.timer = Timer.new()
 local gtimer  = Timer.new()
-dt = 0
+-- The main loop stores the frame delta on lv1lua.dt (see whileloop.lua); the
+-- old file-global `dt` was never updated, so getDelta always read 0.
+lv1lua.dt = lv1lua.dt or 0
 
 function love.timer.getTime()
     return Timer.getTime(gtimer) / 1000
 end
 
 function love.timer.getDelta()
-    return dt
+    return lv1lua.dt
 end
 
 function love.timer.getFPS()
-    if dt > 0 then return math.floor(1 / dt + 0.5) end
+    if lv1lua.dt > 0 then return math.floor(1 / lv1lua.dt + 0.5) end
     return 60
 end
 
 function love.timer.getAverageDelta()
-    return dt
+    return lv1lua.dt
 end
 
 function love.timer.step() end

@@ -13,15 +13,16 @@ lv1lua.gfx.prims = {
     line        = function(x1, y1, x2, y2, c) draw.line(x1, y1, x2, y2, c) end,
     fillCircle  = function(x, y, r, c, segments) draw.circle(x, y, r, c, segments) end,
 
-    -- The transform stack's scale reaches a rectangle's size and a circle's
-    -- radius (its translation does not; see T5.2).
-    mapRect = function(x, y, w, h)
+    -- Primitives ride the same transform stack as images (T5.2): every vertex
+    -- through mapPoint, every size through mapScale.
+    mapPoint = function(x, y)
         stack:updateTransform()
         local t = stack.transform
-        return x, y, w * t._scaleX, h * t._scaleY
+        return x * t._scaleX + t._offsetX, y * t._scaleY + t._offsetY
     end,
-    mapRadius = function(r)
+    mapScale = function(w, h)
         stack:updateTransform()
-        return r * stack.transform._scaleX
+        local t = stack.transform
+        return w * t._scaleX, h * t._scaleY
     end,
 }

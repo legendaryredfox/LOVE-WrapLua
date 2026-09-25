@@ -9,17 +9,19 @@
 --   rectOutline(x, y, w, h, color)       required
 --   line(x1, y1, x2, y2, color)          required
 --   fillCircle(x, y, r, color, segments) optional; falls back to a filled polygon
---   mapRect(x, y, w, h) -> x, y, w, h    optional device mapping (transform scale)
---   mapRadius(r) -> r                    optional device mapping for a radius
+--   mapPoint(x, y) -> x, y               optional: point through the transform
+--   mapScale(w, h) -> w, h               optional: size through the transform
 --
 -- The hooks take LOVE's argument order, so a backend whose native call wants a
 -- different one (lpp-vita passes both x values before both y values) adapts in
 -- its own one-line hook instead of in every shape.
 --
--- Note on transforms: only the scale part of the transform stack reaches a
--- primitive, and only where the backend maps it. Translating and then drawing a
--- rectangle is still unscoped work, tracked as T5.2, and is deliberately not
--- changed by this refactor.
+-- Transforms (T5.2): every vertex a shape emits goes through `mapPoint` once,
+-- so translate/scale move primitives exactly as they move images. Backends
+-- without a transform stack (PSP, PS3) install no hook and their coordinates
+-- pass through untouched. Shapes built out of other shapes (circle outline,
+-- ellipse, arc) generate their vertices in LOVE space and let `polygon` do the
+-- single mapping; the native emit calls are already in device space.
 
 local TWO_PI = math.pi * 2
 
@@ -42,10 +44,25 @@ local function configScale(x, y, w, h)
     return x, y, w, h
 end
 
+-- A point in LOVE space to a point on the device.
+local function mapPoint(x, y)
+    local m = prims().mapPoint
+    if m then return m(x, y) end
+    return x, y
+end
+
+-- A size in LOVE space to a size on the device (no translation).
+local function mapScale(w, h)
+    local m = prims().mapScale
+    if m then return m(w, h) end
+    return w, h
+end
+
 function love.graphics.rectangle(mode, x, y, w, h, rx, ry)
     local p = prims()
+    x, y = mapPoint(x, y)
+    w, h = mapScale(w, h)
     x, y, w, h = configScale(x, y, w, h)
-    if p.mapRect then x, y, w, h = p.mapRect(x, y, w, h) end
     if mode == "fill" then
         p.fillRect(x, y, w, h, color())
     elseif mode == "line" then
@@ -56,20 +73,29 @@ end
 function love.graphics.line(...)
     local c, p = coords(...), prims()
     for i = 1, #c - 2, 2 do
-        p.line(c[i], c[i+1], c[i+2], c[i+3], color())
+        local x1, y1 = mapPoint(c[i], c[i+1])
+        local x2, y2 = mapPoint(c[i+2], c[i+3])
+        p.line(x1, y1, x2, y2, color())
     end
 end
 
 function love.graphics.points(...)
     local c, p = coords(...), prims()
     for i = 1, #c - 1, 2 do
-        p.fillRect(c[i], c[i+1], 1, 1, color())
+        local x, y = mapPoint(c[i], c[i+1])
+        p.fillRect(x, y, 1, 1, color())
     end
 end
 
 function love.graphics.polygon(mode, vertices, ...)
-    local v, p = (type(vertices) == "table" and vertices or {vertices, ...}), prims()
-    if #v < 4 then return end
+    local src = (type(vertices) == "table" and vertices or {vertices, ...})
+    local p   = prims()
+    if #src < 4 then return end
+    -- Mapped once, here: the emit calls below are already device coordinates.
+    local v = {}
+    for i = 1, #src - 1, 2 do
+        v[i], v[i+1] = mapPoint(src[i], src[i+1])
+    end
     if mode == "fill" then
         -- Scanline fill through the shared even-odd rasteriser, correct for
         -- convex and concave polygons alike.
@@ -87,16 +113,18 @@ end
 function love.graphics.circle(mode, x, y, radius, segments)
     local p = prims()
     segments = segments or 32
-    local r = p.mapRadius and p.mapRadius(radius) or radius
     if mode == "fill" and p.fillCircle then
-        p.fillCircle(x, y, r, color(), segments)
+        local cx, cy = mapPoint(x, y)
+        local r = mapScale(radius, radius)
+        p.fillCircle(cx, cy, r, color(), segments)
         return
     end
+    -- Vertices stay in LOVE space; polygon maps them.
     local pts = {}
     for i = 0, segments - 1 do
         local a = i / segments * TWO_PI
-        pts[#pts+1] = x + r * math.cos(a)
-        pts[#pts+1] = y + r * math.sin(a)
+        pts[#pts+1] = x + radius * math.cos(a)
+        pts[#pts+1] = y + radius * math.sin(a)
     end
     love.graphics.polygon(mode, pts)
 end

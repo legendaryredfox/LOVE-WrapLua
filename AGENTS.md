@@ -203,8 +203,15 @@ Phase 1 work — do **not** revert to plain assignment; `translate(10,0)` then
 `translate(5,0)` must equal `translate(15,0)`.) `updateTransform()` is called
 lazily before any draw operation and multiplies the stack levels together.
 
-PSP and lpp-vita transform functions are still no-ops (parity work pending); PS3
-uses scale constants.
+lpp-vita shares the same stack (T2.2) and folds it into both images and
+primitives. PSP transform functions are still no-ops; PS3 uses scale constants.
+
+Primitives reach the stack through two hooks on `lv1lua.gfx.prims`:
+`mapPoint(x,y)` for every emitted vertex and `mapScale(w,h)` for every size
+(T5.2). A backend with no stack installs neither, and its coordinates pass
+through untouched. Shapes built from other shapes (circle outline, ellipse,
+arc) must emit **LOVE-space** vertices and let `polygon` map them once, never
+pre-map a radius.
 
 > **lpp-vita native arg-order gotcha.** `Graphics.drawLine`, `Graphics.fillRect`
 > and `Graphics.fillEmptyRect` take **`(x1, x2, y1, y2, color)`** — the two X

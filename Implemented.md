@@ -65,7 +65,7 @@
 | line(…) | ✓ | ✓ | ✓ | stub |
 | points(…) | ✓ | ✓ | ✓ | stub |
 | push / pop | ✓ | stub | ✓ | stub |
-| translate / scale / rotate | ✓ | stub | ✓ | stub |
+| translate / scale / rotate | ✓ images **and** primitives | stub | ✓ images **and** primitives | stub |
 | shear | stub | stub | stub | stub |
 | origin / reset | ✓ | ✓ | ✓ | ✓ |
 | applyTransform / replaceTransform | ✓ | — | ✓ | — |

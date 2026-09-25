@@ -5,6 +5,7 @@ local test_files = {
     "tests/test_core.lua",
     "tests/test_bootstrap.lua",
     "tests/test_primitives.lua",
+    "tests/test_prim_transform.lua",
     "tests/test_math.lua",
     "tests/test_data.lua",
     "tests/test_thread.lua",

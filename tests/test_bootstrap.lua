@@ -149,6 +149,15 @@ T.describe("core.config", function()
         T.eq(type(lv1lua.loveconf.window), "table")
     end)
 
+    T.it("sets a save identity even with no game/conf.lua", function()
+        -- love.filesystem builds the save path from this; a game shipped
+        -- without a conf.lua used to reach a nil there on its first save.
+        fresh("OneLua")
+        lv1luaconf = nil
+        lv1lua.load("LOVE-WrapLua/core/config.lua")
+        T.eq(lv1lua.loveconf.identity, "LOVE-WrapLua")
+    end)
+
     T.it("does not leak the conf table as a global", function()
         fresh("OneLua")
         lv1luaconf = nil

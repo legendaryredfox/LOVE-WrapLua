@@ -11,9 +11,13 @@ if lv1lua.exists(lv1lua.dataloc .. "game/conf.lua") then
     dofile(lv1lua.dataloc .. "game/conf.lua")
     love.conf(conf)
     lv1lua.loveconf = conf
-    if not lv1lua.loveconf.identity then
-        lv1lua.loveconf.identity = "LOVE-WrapLua"
-    end
+end
+
+-- Outside the branch on purpose: love.filesystem builds the save path from the
+-- identity, so a game shipped without a conf.lua used to hit a nil there the
+-- first time it saved.
+if not lv1lua.loveconf.identity then
+    lv1lua.loveconf.identity = "LOVE-WrapLua"
 end
 
 -- ── wrapper config ───────────────────────────────────────────────

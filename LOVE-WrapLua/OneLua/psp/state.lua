@@ -21,6 +21,24 @@ lv1lua.gfx = {
     clearScreen = function(native) screen.clear(native) end,
 }
 
+-- Blend modes (FIX_PLAN T6.5). OSLib's additive and subtractive draw effects
+-- reach Lua as image.blitadd / image.blitsub, both of which take an effect
+-- coefficient instead of a source rect. So the mode picks the blit here rather
+-- than setting GPU state, and a quad draw (which needs the rect form) stays on
+-- image.blit. Probed rather than assumed: the Vita port of ONElua ships neither.
+local BLIT = {
+    add      = "blitadd",
+    subtract = "blitsub",
+}
+
+function lv1lua.gfx.blitWithBlend(img, x, y, alpha)
+    local native = BLIT[lv1lua.current.blendMode]
+    if native and type(image[native]) == "function" then
+        return image[native](img, x, y, alpha)
+    end
+    return image.blit(img, x, y, alpha)
+end
+
 lv1lua.current = {
     -- Font object, assigned in psp/font.lua once newFont exists.
     font        = nil,

@@ -53,6 +53,24 @@ local function systemcaps(over)
     return s
 end
 
+-- Which LOVE blend modes actually change compositing on each target
+-- (FIX_PLAN T6.5). `native` says a blend call exists at all; `modes` lists the
+-- ones that reach it. Everything else is tracked and renders as alpha, which is
+-- what the platform default is on all four.
+local function blendcaps(over)
+    local b = { native = false, modes = { alpha = true } }
+    if over then
+        for k, v in pairs(over) do
+            if k == "modes" then
+                for m in pairs(v) do b.modes[m] = true end
+            else
+                b[k] = v
+            end
+        end
+    end
+    return b
+end
+
 -- What love.audio can do per target (FIX_PLAN T6.2). `voices` is how many
 -- sounds can be audible at once, `seek`/`pitch` say whether the SDK really
 -- seeks or resamples (where false, the shared layer only moves the position it
@@ -82,6 +100,9 @@ local CAPS = {
                                             savepersistence = true }),
         system    = systemcaps({ cores = 4 }),
         audio     = audiocaps({ voices = 2 }),
+        -- The Vita port of ONElua kept blit / blitsprite / blittint and dropped
+        -- the PSP's additive and subtractive blits, so alpha is all there is.
+        blend     = blendcaps(),
     },
     -- OneLua on PSP: power-of-two textures, no transform stack.
     ["PSP"] = {
@@ -91,13 +112,18 @@ local CAPS = {
                       potonly = true },
         supported = supported(),
         features  = { transform = false, quaddraw = true, polygonfill = true,
-                      primitives = true, scissor = false, blendmode = false },
+                      primitives = true, scissor = false, blendmode = true },
         -- PPSSPP: texel bleed at quad edges (#14977) and framebuffer/texture
         -- sizing differences from hardware (#3085).
         emulator  = "PPSSPP",
         rendersensitive = rendersensitive({ texturefilter = true, framebufferread = true }),
         system    = systemcaps({ cores = 1 }),
         audio     = audiocaps({ voices = 2 }),
+        -- OSLib's OSL_FX_ADD / OSL_FX_SUB reach Lua as image.blitadd /
+        -- image.blitsub. Whole images only: neither takes a source rect, so a
+        -- quad draw falls back to alpha.
+        blend     = blendcaps({ native = true, imagesonly = true,
+                                modes = { add = true, subtract = true } }),
     },
     -- lpp-vita (vita2d): quad+rotation draw, software transform stack + scissor.
     ["lpp-vita"] = {
@@ -112,15 +138,20 @@ local CAPS = {
                                             savepersistence = true }),
         system    = systemcaps({ cores = 4 }),
         audio     = audiocaps({ voices = 8, formats = "mp3, ogg, wav" }),
+        -- Graphics_functions[] has no blend entry: initBlend / termBlend are
+        -- the drawing-phase begin/end (vita2d_start_drawing / end_drawing).
+        blend     = blendcaps(),
     },
     -- PS3 Lua Player: least-supported tier, position-only blits, no primitives.
     ["PS3"] = {
         renderer  = "PS3 Lua",
         tier      = 3,
         limits    = { pointsize = 1, texturesize = 512, multicanvas = 1, canvasmsaa = 0 },
-        supported = supported(),
+        -- tiny3d's blend function reaches Lua, which is what LOVE's `lighten`
+        -- feature flag means (the lighten/darken blend equations).
+        supported = supported({ lighten = true }),
         features  = { transform = false, quaddraw = false, polygonfill = false,
-                      primitives = false, scissor = false, blendmode = false },
+                      primitives = false, scissor = false, blendmode = true },
         -- RPCS3 barely loads homebrew (#18997), so nothing here is emulator
         -- verifiable: treat every renderer-sensitive area as unconfirmed.
         emulator  = "RPCS3 (homebrew loading unreliable)",
@@ -130,6 +161,12 @@ local CAPS = {
         system    = systemcaps({ cores = 2, battery = false }),
         -- One background voice: no binding for one-shot effects.
         audio     = audiocaps({ voices = 1 }),
+        -- The player binds tiny3d's tiny3d_BlendFunc as gfx.BlendFunction and
+        -- puts the whole constant set on the gfx table, so every LOVE mode maps.
+        blend     = blendcaps({ native = true,
+                                modes = { add = true, subtract = true, multiply = true,
+                                          replace = true, screen = true,
+                                          lighten = true, darken = true } }),
     },
 }
 

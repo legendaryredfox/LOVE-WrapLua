@@ -72,15 +72,57 @@ function love.graphics.clear(r, g, b, a)
 end
 
 -- ── Blend mode ───────────────────────────────────────────────────
--- Tracked only: no backend exposes blend state, so the platform default (alpha)
--- is what actually renders. getBlendMode still answers with what the game set,
--- as LOVE does. See getSupported / Implemented.md.
+-- What actually reaches the hardware differs per backend and is recorded in
+-- core/capabilities.lua (FIX_PLAN T6.5): the PSP has additive and subtractive
+-- image blits, the PS3 player binds tiny3d's blend function, and neither Vita
+-- backend exposes blend state to Lua at all. A backend with something native to
+-- call installs gfx.blendHooks.apply(mode, alphamode); where there is no hook
+-- the mode is still tracked, because getBlendMode must answer with what the
+-- game set either way.
+--
+-- The names are validated here rather than passed through, so a typo fails
+-- where LOVE would fail instead of silently rendering with the old mode.
+local BLEND_MODES = {
+    alpha = true, add = true, subtract = true, multiply = true,
+    replace = true, screen = true, lighten = true, darken = true,
+}
+
+local ALPHA_MODES = { alphamultiply = true, premultiplied = true }
+
+-- LOVE's own restriction: these three read the destination in a way that only
+-- makes sense with premultiplied source colour.
+local PREMULTIPLIED_ONLY = { multiply = true, lighten = true, darken = true }
+
 function love.graphics.setBlendMode(mode, alphamode)
-    lv1lua.current.blendMode = mode or "alpha"
+    mode      = mode or "alpha"
+    alphamode = alphamode or "alphamultiply"
+
+    if not BLEND_MODES[mode] then
+        error("Invalid blend mode: " .. tostring(mode), 2)
+    end
+    if not ALPHA_MODES[alphamode] then
+        error("Invalid blend alpha mode: " .. tostring(alphamode), 2)
+    end
+    if PREMULTIPLIED_ONLY[mode] and alphamode ~= "premultiplied" then
+        error("The '" .. mode .. "' blend mode must be used with premultiplied alpha.", 2)
+    end
+
+    lv1lua.current.blendMode      = mode
+    lv1lua.current.blendAlphaMode = alphamode
+
+    local hooks = lv1lua.gfx.blendHooks
+    if hooks and hooks.apply then hooks.apply(mode, alphamode) end
 end
 
 function love.graphics.getBlendMode()
-    return lv1lua.current.blendMode, "alphamultiply"
+    return lv1lua.current.blendMode, lv1lua.current.blendAlphaMode or "alphamultiply"
+end
+
+-- Not a LOVE function (desktop LOVE supports every mode), but a game that wants
+-- to degrade gracefully on these consoles has no other way to ask.
+function love.graphics.isBlendModeSupported(mode)
+    local caps = love._backend or lv1lua.core.capabilities(lv1lua.mode)
+    return caps.blend.modes[mode or "alpha"] == true
 end
 
 -- ── Line width / style ───────────────────────────────────────────

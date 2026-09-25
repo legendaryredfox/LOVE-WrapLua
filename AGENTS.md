@@ -316,7 +316,7 @@ To add a backend-specific test, dofile `setup.lua` with the right `__MODE`, load
 | Transforms (PSP/PS3) | Identity stubs from `core/transform_stub.lua` (never nil); OneLua and lpp-vita carry a real software stack for images, primitives and text |
 | love.touch / love.mouse | Vita (OneLua) only; the mouse is the last touch position and a touch is button 1 |
 | Source:seek | Moves the reported position; the audio only really seeks where the SDK exposes a seek call |
-| Blend modes | Tracked on every backend, never applied (T6.5) |
+| Blend modes | Real where the SDK exposes one (T6.5): PSP `add`/`subtract` on whole-image draws, PS3 all eight via `gfx.BlendFunction`. Both Vita backends have no blend call, so the mode is tracked and alpha renders |
 
 ---
 

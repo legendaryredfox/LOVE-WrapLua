@@ -46,11 +46,21 @@ for _, mode in ipairs(MODES) do
             end
         end)
 
-        -- Blending is a stub everywhere, so no backend may claim it works.
-        T.it("never advertises canvas, shader or blend mode", function()
+        T.it("never advertises canvas or shader", function()
             T.nok(love.graphics.getSupported().canvas)
             T.nok(love.graphics.getSupported().shader)
-            T.nok(love._backend.features.blendmode)
+        end)
+
+        -- Since T6.5 blending is real where the SDK exposes it (PSP, PS3) and
+        -- still a stub on both Vita backends, so the flag has to agree with the
+        -- mode list rather than being false everywhere.
+        T.it("the blend feature flag matches the mode list", function()
+            local blend = love._backend.blend
+            T.istype(blend, "table")
+            T.eq(love._backend.features.blendmode, blend.native)
+            if not blend.native then
+                T.nok(blend.modes.add, "a backend with no blend call supports alpha only")
+            end
         end)
     end)
 end

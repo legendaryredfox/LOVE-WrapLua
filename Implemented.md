@@ -47,7 +47,8 @@
 | setBackgroundColor | ✓ | ✓ | ✓ | ✓ |
 | getBackgroundColor | ✓ | ✓ | ✓ | ✓ |
 | clear(r,g,b,a) | ✓ | ✓ | no-op (frame loop clears) | no-op (frame loop clears) |
-| setBlendMode / getBlendMode | tracked, never applied | tracked | tracked | tracked |
+| setBlendMode / getBlendMode | tracked, never applied | ✓ `add` / `subtract` on whole-image draws (`image.blitadd` / `blitsub`); quads and primitives stay alpha | tracked, never applied | ✓ all eight modes via tiny3d `gfx.BlendFunction` |
+| isBlendModeSupported(mode) *(wrapper extra)* | ✓ | ✓ | ✓ | ✓ |
 | setLineWidth / getLineWidth | ✓ | ✓ | ✓ | ✓ |
 | setLineStyle / getLineStyle | stub | stub | stub | stub |
 | setLineJoin / getLineJoin | stub | stub | stub | stub |

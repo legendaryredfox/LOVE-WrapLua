@@ -7,7 +7,8 @@ lv1lua.mode  = "OneLua"
 -- ── color ────────────────────────────────────────────────────────
 color = {
     new = function(r, g, b, a) return { r=r, g=g, b=b, a=a or 255 } end,
-    a   = function(c) return c end,
+    -- The real color.a returns the 0-255 alpha component, not the colour.
+    a   = function(c) return type(c) == "table" and c.a or c end,
 }
 
 -- ── image ────────────────────────────────────────────────────────
@@ -20,6 +21,11 @@ image = {
     getrealw  = function(h)   return type(h)=="table" and h._w or 64 end,
     getrealh  = function(h)   return type(h)=="table" and h._h or 64 end,
     blit      = function(...) __rec.log("image.blit", ...) end,
+    -- PSP only: OSLib's additive and subtractive draw effects. setup.lua
+    -- removes them in Vita mode, where the ONElua port does not ship them.
+    blitadd   = function(...) __rec.log("image.blitadd", ...) end,
+    blitsub   = function(...) __rec.log("image.blitsub", ...) end,
+    blittint  = function(...) __rec.log("image.blittint", ...) end,
     scale     = function(...) __rec.log("image.scale", ...) end,
     resize    = function(h, w, ht) __rec.log("image.resize", h, w, ht)
                     if type(h)=="table" then h._w = w or h._w; h._h = ht or h._h end end,

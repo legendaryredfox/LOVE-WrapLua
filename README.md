@@ -142,7 +142,8 @@ that backend, so calling it errors.
 | love.graphics (scissor) | full | stub | partial | stub | lpp-vita rejects out-of-scissor draws in software |
 | love.graphics (SpriteBatch, Text) | full | full | full | partial | shared implementation (`core/objects.lua`); each backend honours what its own draw supports |
 | love.graphics (ParticleSystem) | partial | none | none | none | basic emitter, OneLua/Vita only |
-| love.graphics (Canvas, Shader, Mesh, blend mode) | stub | stub | stub | stub | `getSupported().canvas` and `.shader` are `false` |
+| love.graphics (Canvas, Shader, Mesh) | stub | stub | stub | stub | `getSupported().canvas` and `.shader` are `false` |
+| love.graphics (blend mode) | tracked | partial | tracked | full | PSP: `add`/`subtract` on whole images. PS3: all eight modes. Both Vita backends expose no blend call, so the mode is tracked and alpha renders. Ask `love.graphics.isBlendModeSupported(mode)` |
 | love.audio | partial | partial | partial | partial | shared Source (`core/audio.lua`); 2 simultaneous voices on OneLua/PSP, 1 background voice on PS3; position and pitch are timed in software, `seek` moves the reported position only |
 | love.keyboard | full | full | full | full | edge-triggered press/release, optional key repeat |
 | love.joystick | full | full | full | full | one virtual gamepad: axes, buttons and the d-pad hat are filled every frame |
@@ -249,7 +250,10 @@ A practical checklist, roughly in the order things bite:
    silently.
 5. **Remove Canvas, Shader and Mesh dependencies.** They are stubs: calls succeed,
    nothing renders offscreen. Gate them on `love.graphics.getSupported()`.
-6. **Do not rely on blend modes.** Only the platform default (alpha) is applied.
+6. **Check blend modes before relying on one.** `love.graphics.isBlendModeSupported`
+   answers per backend: PSP applies `add` and `subtract` to whole-image draws,
+   PS3 applies all eight, and both Vita backends have no blend call at all, so
+   the mode is remembered and alpha is what renders.
 7. **Make threads optional.** `love.thread` runs synchronously on a coroutine, so
    a thread body with an infinite loop hangs the app, and `Channel:demand` never
    blocks.
@@ -346,8 +350,15 @@ Per-function detail is in [`Implemented.md`](Implemented.md).
   scene-to-texture surfaces. OneLua exposes none.
 - **Shader and Mesh** are stubs. The objects exist so call sites do not crash,
   nothing renders.
-- **Blend mode** is a stub; only the platform default (alpha) is applied. Verify
-  any blend-dependent look on real hardware, not on an emulator.
+- **Blend mode** depends on the backend, because only two of the four expose a
+  blend call to Lua. PSP maps `add` and `subtract` onto OSLib's `image.blitadd`
+  / `image.blitsub`, which take whole images (a quad draw or a primitive stays
+  alpha). PS3 maps all eight LOVE modes onto tiny3d's `gfx.BlendFunction`.
+  ONElua on Vita dropped the PSP's additive blits, and lpp-vita has no blend
+  entry point at all (`Graphics.initBlend` / `termBlend` are the drawing-phase
+  begin/end), so on both the mode is tracked and alpha is what renders. Ask
+  `love.graphics.isBlendModeSupported(mode)`, and verify any blend-dependent
+  look on real hardware, not on an emulator.
 - **love.thread** pseudo-threads run **synchronously** on a coroutine (no real
   parallelism). A thread body that loops forever hangs the app. `Channel:supply`
   is an immediate push and `Channel:demand` is a non-blocking pop.

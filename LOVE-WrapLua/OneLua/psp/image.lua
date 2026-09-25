@@ -103,7 +103,7 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy)
     -- cannot leave this image tilted on a later upright one.
     image.rotate(img, ((r or 0) / math.pi) * 180)
 
-    image.blit(img, x, y, color.a(lv1lua.current.color))
+    lv1lua.gfx.blitWithBlend(img, x, y, color.a(lv1lua.current.color))
 end
 
 function love.graphics.newQuad(x, y, width, height, swOrImg, sh)

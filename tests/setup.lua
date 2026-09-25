@@ -31,4 +31,8 @@ if MODE == "PSP" then
     lv1lua.mode  = "OneLua"
     lv1lua.isPSP = true
     lv1lua.screenWidth, lv1lua.screenHeight = 480, 272
+elseif MODE == "OneLua" then
+    -- The Vita port of ONElua dropped OSLib's additive and subtractive blits
+    -- (FIX_PLAN T6.5); a wrapper that calls them there must fail here too.
+    image.blitadd, image.blitsub = nil, nil
 end

@@ -64,12 +64,12 @@
 | arc(mode, type, x,y,r,a1,a2) | ✓ | ✓ | ✓ | stub |
 | line(…) | ✓ | ✓ | ✓ | stub |
 | points(…) | ✓ | ✓ | ✓ | stub |
-| push / pop | ✓ | stub | ✓ | stub |
+| push / pop | ✓ | stub (identity, never nil) | ✓ | stub (identity, never nil) |
 | translate / scale / rotate | ✓ images **and** primitives | stub | ✓ images **and** primitives | stub |
 | shear | stub | stub | stub | stub |
 | origin / reset | ✓ | ✓ | ✓ | ✓ |
-| applyTransform / replaceTransform | ✓ | — | ✓ | — |
-| transformPoint / inverseTransformPoint | ✓ | — | ✓ | — |
+| applyTransform / replaceTransform | ✓ | stub | ✓ | stub |
+| transformPoint / inverseTransformPoint | ✓ | identity | ✓ | identity |
 | setScissor / getScissor / intersectScissor | ✓ | stub | ✓ software reject | stub |
 | stencil / setStencilTest / getStencilTest | stub | stub | stub | stub |
 | setDefaultFilter / getDefaultFilter | ✓ reaches the native filter | tracked only | tracked only | tracked only |
@@ -83,7 +83,7 @@
 | newText(font, text) / newTextBatch | ✓ | ✓ | ✓ | ✓ |
 | newMesh | stub | stub | stub | stub |
 | newParticleSystem | ✓ (basic) | — | — | — |
-| getStats / getRendererInfo | ✓ | ✓ | ✓ | ✓ |
+| getStats / getRendererInfo | ✓ shared stat table (all fields present, all zero) | ✓ | ✓ | ✓ |
 | getSystemLimits / getSupported | ✓ | ✓ | ✓ | ✓ (from central capability table) |
 | isGammaCorrect | ✓ | — | — | — |
 
@@ -175,6 +175,7 @@ backend supplies only its native hooks.
 | read / write / append | ✓ save directory first, then the game directory |
 | isFile / isDirectory | ✓ a directory is no longer reported as a file (native probe, else "exists but cannot be read as bytes") |
 | getInfo(file, filtertype) | ✓ real `size` in bytes; `type` distinguishes file and directory; `modtime` is always 0 (no SDK here exposes a file date) |
+| Quad(x, y, w, h, image) | ✓ texture dimensions come from the image on all four backends |
 | load | ✓ |
 | remove | ✓ |
 | createDirectory | ✓ |
@@ -242,6 +243,22 @@ Key implemented: `getDimensions`, `getWidth`, `getHeight`, `getTitle`, `setTitle
 | newByteData / newDataView | ✓ |
 | pack / unpack | ✓ (requires Lua 5.3) |
 | getSize | ✓ |
+
+---
+
+## love.touch / love.mouse (Vita, OneLua only)
+
+Loaded on the Vita whatever button layout is configured; PSP, lpp-vita and PS3
+do not define them.
+
+| Function | Notes |
+|---|---|
+| love.touch.getTouches | ✓ returns the live touch ids |
+| love.touch.getPosition(id) | ✓ front-panel coordinates of that touch; `0, 0` for an id that is not down |
+| love.touch.getPressure(id) | ✓ `1` while the finger is down, else `0` |
+| love.mouse.getX / getY / getPosition | ✓ the last touch position |
+| love.mouse.isDown(button) | ✓ a touch is button 1 |
+| love.mouse.setPosition / setVisible / setGrabbed / setRelativeMode | stub (no pointer to move or hide) |
 
 ---
 

@@ -309,7 +309,9 @@ To add a backend-specific test, dofile `setup.lua` with the right `__MODE`, load
 | love.audio (PS3) | One background voice; a `static` source loads nothing |
 | Source:seek / setPitch | Position and rate are tracked in software; the audio itself only seeks where the SDK exposes a seek call |
 | Source:getDuration | Native where exposed, else read from a WAV header, else 0 |
-| Transforms (PSP/PS3) | No-ops or scale constants; OneLua and lpp-vita carry a real software stack for images, primitives and text |
+| Transforms (PSP/PS3) | Identity stubs from `core/transform_stub.lua` (never nil); OneLua and lpp-vita carry a real software stack for images, primitives and text |
+| love.touch / love.mouse | Vita (OneLua) only; the mouse is the last touch position and a touch is button 1 |
+| Source:seek | Moves the reported position; the audio only really seeks where the SDK exposes a seek call |
 | Blend modes | Tracked on every backend, never applied (T6.5) |
 
 ---

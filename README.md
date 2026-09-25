@@ -136,23 +136,23 @@ that backend, so calling it errors.
 | Module | OL | PSP | LPP | PS3 | Notes |
 |---|---|---|---|---|---|
 | love.graphics (images, quads, draw) | full | partial | full | partial | PSP draws quads as sub-rect blits (no rotation); PS3 is position only |
-| love.graphics (primitives) | full | full | full | stub | rectangle/circle/ellipse/arc/line/points/polygon fill; PS3 pending SDK work |
+| love.graphics (primitives) | full | full | full | stub | rectangle/circle/ellipse/arc/line/points/polygon fill; they follow the transform stack on OL and LPP; PS3 pending SDK work |
 | love.graphics (fonts, print, printf) | full | full | full | full | real text metrics per backend |
 | love.graphics (transform stack) | full | stub | full | stub | push/pop/translate/scale/rotate; `shear` is a stub everywhere |
 | love.graphics (scissor) | full | stub | partial | stub | lpp-vita rejects out-of-scissor draws in software |
 | love.graphics (SpriteBatch, Text) | full | full | full | partial | shared implementation (`core/objects.lua`); each backend honours what its own draw supports |
 | love.graphics (ParticleSystem) | partial | none | none | none | basic emitter, OneLua/Vita only |
 | love.graphics (Canvas, Shader, Mesh, blend mode) | stub | stub | stub | stub | `getSupported().canvas` and `.shader` are `false` |
-| love.audio | partial | partial | partial | partial | OneLua about 2 simultaneous channels; PS3 stream sources only; lpp-vita global volume is a stub |
+| love.audio | partial | partial | partial | partial | shared Source (`core/audio.lua`); 2 simultaneous voices on OneLua/PSP, 1 background voice on PS3; position and pitch are timed in software, `seek` moves the reported position only |
 | love.keyboard | full | full | full | full | edge-triggered press/release, optional key repeat |
-| love.joystick | full | full | full | full | one virtual gamepad, axes and hats |
-| love.touch / love.mouse | full | none | none | none | Vita front touchscreen, OneLua only |
+| love.joystick | full | full | full | full | one virtual gamepad: axes, buttons and the d-pad hat are filled every frame |
+| love.touch / love.mouse | full | none | none | none | Vita front touchscreen, OneLua only; the mouse is the last touch position, and a touch is button 1 |
 | love.filesystem | full | full | full | full | `mount`/`unmount` are stubs |
 | love.math | full | full | full | full | own RNG, Perlin 1D to 4D, 2D affine transforms, triangulate |
 | love.data | full | full | full | full | real hash and deflate/zlib; `pack`/`unpack` need Lua 5.3 |
 | love.timer | full | full | full | full | `step()` is a no-op |
 | love.window | partial | partial | partial | partial | always fullscreen, `setMode` is a no-op |
-| love.system | full | full | full | full | `getOS()` returns `"LOVE-WrapLua"` |
+| love.system | full | full | full | full | `getOS()` returns `"LOVE-WrapLua"`; battery is native on lpp-vita, `nobattery` on PS3, `unknown` on OneLua; clipboard is process-local |
 | love.thread | partial | partial | partial | partial | coroutine pseudo-threads, synchronous by design |
 | love.event | full | full | full | full | `quit` flushes open save handles first |
 

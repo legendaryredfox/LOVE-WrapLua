@@ -231,8 +231,14 @@ Key implemented: `getDimensions`, `getWidth`, `getHeight`, `getTitle`, `setTitle
 | Function | Notes |
 |---|---|
 | getOS() | returns "LOVE-WrapLua" |
-| getLanguage | ✓ |
-| getUsername | ✓ |
+| getLanguage | ✓ native on OneLua (`os.language`) and lpp-vita (`System.getLanguage`); `"en"` elsewhere |
+| getUsername | ✓ native on OneLua (`os.nick`) and lpp-vita (`System.getUsername`); `""` elsewhere |
+| getProcessorCount | ✓ from the capability table: Vita 4, PSP 1, PS3 2 |
+| getPowerInfo | ✓ native on lpp-vita (percentage, charging, minutes→seconds); `"nobattery"` on PS3; `"unknown"` where the SDK exposes no battery call (OneLua) |
+| setClipboardText / getClipboardText | ✓ process-local: no console exposes a system clipboard, so the text is gone on exit |
+| openURL | returns `false` (no SDK here hands a URL to a browser) |
+| vibrate | no-op (no rumble motor on Vita/PSP, none exposed on PS3) |
+| hasBackgroundMusic | returns `false` |
 
 ---
 

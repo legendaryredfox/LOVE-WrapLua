@@ -41,6 +41,18 @@ local function rendersensitive(over)
     return r
 end
 
+-- What love.system can answer on each target (FIX_PLAN T6.1). `cores` is the
+-- CPU count the console actually gives a game, `battery` says whether a power
+-- state exists to read at all, and `vibrate`/`openurl` record that no SDK here
+-- exposes rumble or a browser hand-off. The clipboard is in-memory everywhere:
+-- no console exposes a system one.
+local function systemcaps(over)
+    local s = { cores = 1, battery = true, vibrate = false, openurl = false,
+                clipboard = "memory" }
+    if over then for k, v in pairs(over) do s[k] = v end end
+    return s
+end
+
 -- `tier` is the support promise documented in the README: 1 supported,
 -- 2 partial, 3 experimental (develop on desktop LOVE, confirm on hardware).
 local CAPS = {
@@ -58,6 +70,7 @@ local CAPS = {
         emulator  = "Vita3K",
         rendersensitive = rendersensitive({ blendmode = true, framebufferread = true,
                                             savepersistence = true }),
+        system    = systemcaps({ cores = 4 }),
     },
     -- OneLua on PSP: power-of-two textures, no transform stack.
     ["PSP"] = {
@@ -72,6 +85,7 @@ local CAPS = {
         -- sizing differences from hardware (#3085).
         emulator  = "PPSSPP",
         rendersensitive = rendersensitive({ texturefilter = true, framebufferread = true }),
+        system    = systemcaps({ cores = 1 }),
     },
     -- lpp-vita (vita2d): quad+rotation draw, software transform stack + scissor.
     ["lpp-vita"] = {
@@ -84,6 +98,7 @@ local CAPS = {
         emulator  = "Vita3K",
         rendersensitive = rendersensitive({ blendmode = true, framebufferread = true,
                                             savepersistence = true }),
+        system    = systemcaps({ cores = 4 }),
     },
     -- PS3 Lua Player: least-supported tier, position-only blits, no primitives.
     ["PS3"] = {
@@ -98,6 +113,8 @@ local CAPS = {
         emulator  = "RPCS3 (homebrew loading unreliable)",
         rendersensitive = rendersensitive({ blendmode = true, framebufferread = true,
                                             texturefilter = true, savepersistence = true }),
+        -- A home console: there is no battery to report.
+        system    = systemcaps({ cores = 2, battery = false }),
     },
 }
 

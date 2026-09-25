@@ -118,4 +118,15 @@ System = {
     end,
     exit           = function() lv1lua.running = false end,
     launchEboot    = function(...) end,
+
+    -- Identity + power. getBatteryLife is minutes of charge left, as lpp-vita
+    -- reports it; love.system.getPowerInfo converts to seconds.
+    getLanguage          = function() return "en" end,
+    getUsername          = function() return "VitaPlayer" end,
+    getBatteryPercentage = function() return __battery.percent end,
+    getBatteryLife       = function() return __battery.minutes end,
+    isBatteryCharging    = function() return __battery.charging end,
 }
+
+-- Test hook: drive the battery state the System.* calls report.
+__battery = { percent = 55, minutes = 90, charging = false }

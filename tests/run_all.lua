@@ -11,6 +11,7 @@ local test_files = {
     "tests/test_thread.lua",
     "tests/test_window.lua",
     "tests/test_joystick.lua",
+    "tests/test_system.lua",
     "tests/test_filesystem.lua",
     "tests/test_graphics.lua",
     "tests/test_capabilities.lua",

@@ -116,6 +116,8 @@ LOVE-WrapLua/
     ├── test_primitives.lua     ← Shared primitive suite across all 4 backends.
     ├── test_text.lua           ← Text metrics + printf across all 4 backends.
     ├── test_font.lua           ← Shared Font object + printf layout, all 4 backends.
+    ├── test_prim_transform.lua ← Primitives vs the transform stack, per backend.
+    ├── test_system.lua         ← love.system across all 4 backends.
     ├── test_math.lua
     ├── test_data.lua
     ├── test_thread.lua

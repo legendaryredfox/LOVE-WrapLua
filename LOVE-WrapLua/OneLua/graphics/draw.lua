@@ -71,8 +71,11 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx, ky)
         _sy = (ox == nil) and transform._scaleY  or ox * transform._scaleY
         ox, oy = oy or 0, kx or 0
         local absSx, absSy = math.abs(_sx), math.abs(_sy)
-        _x = util.round((_x - ox * absSx) * absSx)
-        _y = util.round((_y - oy * absSy) * absSy)
+        -- Same destination formula as the plain-image path below: the two used
+        -- to disagree once a scale was active, so the same sprite landed in
+        -- two different places depending on whether a quad was passed.
+        _x = util.round((_x - ox * absSx))
+        _y = util.round((_y - oy * absSy))
         if isNew then
             _x, _y = drawable:__handleNegativeScale(_x, _y, _sx, _sy)
             xOrQuad:draw(drawable.imgData, _x, _y, _r, absSx, absSy)

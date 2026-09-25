@@ -12,12 +12,15 @@ end
 
 function love.graphics.newQuad(x, y, w, h, swOrImg, sh)
     local sw, _sh
-    if type(swOrImg) == "table" then
-        sw  = swOrImg.getDimensions and swOrImg:getDimensions() or w
-        _sh = sh
+    if type(swOrImg) == "number" then
+        sw, _sh = swOrImg, sh or h
+    elseif swOrImg ~= nil then
+        -- A drawable: lpp-vita images are native texture handles with no
+        -- methods, so the size comes from the SDK.
+        sw  = Graphics.getImageWidth(swOrImg)  or w
+        _sh = Graphics.getImageHeight(swOrImg) or h
     else
-        sw  = swOrImg or w
-        _sh = sh or h
+        sw, _sh = w, h
     end
     lv1lua.core.validateTexture(sw, _sh, "spritesheet")
     local q = { x=x, y=y, width=w, height=h, sw=sw, sh=_sh }

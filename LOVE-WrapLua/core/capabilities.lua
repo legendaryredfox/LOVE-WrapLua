@@ -153,6 +153,12 @@ function lv1lua.core.validateTexture(w, h, name)
     local max, ok = caps.limits.texturesize, true
     name = name or "image"
 
+    -- A size the caller could not work out (a native handle the SDK will not
+    -- measure) is skipped rather than compared, which would raise.
+    if type(w) ~= "number" then w = nil end
+    if type(h) ~= "number" then h = nil end
+    if not w and not h then return true end
+
     if (w and w > max) or (h and h > max) then
         ok = false
         lv1lua.util.warn(string.format(

@@ -1,18 +1,16 @@
 -- OneLua graphics: Image and Quad objects.
 
--- Compatibility: OneLua's image.getw/geth expect a raw handle, while our
--- drawables wrap one. Route wrapped drawables to the "real" dimension calls.
-local _oldImageGetW = image.getw
-local _oldImageGetH = image.geth
-
-function image.getw(img)
-    if img and img.imgData then return image.getrealw(img.imgData) end
-    return _oldImageGetW(img)
+-- OneLua's image.getw/geth expect a raw handle, while our drawables wrap one.
+-- These resolve either form without rewriting the SDK's own table, which a
+-- game may still be calling directly.
+local function imageWidth(img)
+    if type(img) == "table" and img.imgData then return image.getrealw(img.imgData) end
+    return image.getw(img)
 end
 
-function image.geth(img)
-    if img and img.imgData then return image.getrealh(img.imgData) end
-    return _oldImageGetH(img)
+local function imageHeight(img)
+    if type(img) == "table" and img.imgData then return image.getrealh(img.imgData) end
+    return image.geth(img)
 end
 
 function love.graphics.newImage(filename, settings)
@@ -26,9 +24,9 @@ function love.graphics.newImage(filename, settings)
         imgData = img,
         flipX   = false,
         flipY   = false,
-        getWidth      = function(self) return image.getw(self) end,
-        getHeight     = function(self) return image.geth(self) end,
-        getDimensions = function(self) return image.getw(self), image.geth(self) end,
+        getWidth      = function(self) return imageWidth(self) end,
+        getHeight     = function(self) return imageHeight(self) end,
+        getDimensions = function(self) return imageWidth(self), imageHeight(self) end,
         getFilter     = function(self) return "linear","linear",1 end,
         setFilter     = function(self) end,
         getWrap       = function(self) return "clamp","clamp" end,
@@ -37,7 +35,7 @@ function love.graphics.newImage(filename, settings)
         setMipmapFilter= function(self) end,
         isCompressed  = function(self) return false end,
         getFormat     = function(self) return "rgba8" end,
-        getPixelDimensions = function(self) return image.getw(self), image.geth(self) end,
+        getPixelDimensions = function(self) return imageWidth(self), imageHeight(self) end,
         getDPIScale   = function(self) return 1 end,
     }, {})
     -- OneLua has no negative scaling: flip the handle instead, tracking the
@@ -85,7 +83,9 @@ function love.graphics.newQuad(x, y, width, height, swOrImg, sh)
     -- keep one per quad and rebuild it only when the scale changes.
     function q:updateBufferScaled(drawable, sx, sy)
         if sx ~= self._savedScaleX or sy ~= self._savedScaleY or not self._bufferImage then
-            if self._bufferImage then image.lost(drawable) end
+            -- Free the stale buffer, never the source: the sheet is shared by
+            -- every quad cut from it.
+            if self._bufferImage then image.lost(self._bufferImage) end
             self._bufferImage = image.copyscale(drawable, self:getTextureDimensionsScaled(sx,sy))
             self._savedScaleX, self._savedScaleY = sx, sy
         end

@@ -35,7 +35,15 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy)
     end
 end
 
-function love.graphics.newQuad(x, y, w, h, sw, sh)
+function love.graphics.newQuad(x, y, w, h, swOrImg, sh)
+    local sw
+    if type(swOrImg) == "number" then
+        sw = swOrImg
+    elseif swOrImg ~= nil then
+        -- A drawable: a PS3 surface answers getWidth/getHeight.
+        sw = swOrImg.getWidth  and swOrImg:getWidth()  or w
+        sh = swOrImg.getHeight and swOrImg:getHeight() or h
+    end
     local q = { x=x, y=y, width=w, height=h, sw=sw or w, sh=sh or h }
     function q:getViewport() return self.x, self.y, self.width, self.height end
     function q:setViewport(x, y, w, h) self.x, self.y, self.width, self.height = x, y, w, h end

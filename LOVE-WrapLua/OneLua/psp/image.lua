@@ -108,12 +108,15 @@ end
 
 function love.graphics.newQuad(x, y, width, height, swOrImg, sh)
     local sw, _sh
-    if type(swOrImg) == "table" then
-        sw  = swOrImg.imageWidth  or width
-        _sh = swOrImg.imageHeight or height
+    if type(swOrImg) == "number" then
+        sw, _sh = swOrImg, sh
+    elseif swOrImg ~= nil then
+        -- A drawable: PSP images are native handles, so their size comes from
+        -- the SDK rather than from a method on a wrapper table.
+        sw  = image.getrealw(swOrImg) or width
+        _sh = image.getrealh(swOrImg) or height
     else
-        sw  = swOrImg
-        _sh = sh
+        sw, _sh = width, height
     end
     lv1lua.core.validateTexture(sw, _sh, "spritesheet")
     local q = {

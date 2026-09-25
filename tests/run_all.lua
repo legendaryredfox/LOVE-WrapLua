@@ -29,6 +29,7 @@ local test_files = {
     "tests/test_input.lua",
     "tests/test_timer.lua",
     "tests/test_timestep.lua",
+    "tests/test_globals.lua",
     "tests/test_audio.lua",
 }
 

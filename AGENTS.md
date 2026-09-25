@@ -115,6 +115,7 @@ LOVE-WrapLua/
     ├── test_bootstrap.lua      ← core/loader, core/runtime, core/config.
     ├── test_input.lua          ← Key edges + repeat, core and all 3 whileloops.
     ├── test_timestep.lua       ← Fixed-timestep accumulator + the 4 backend loops.
+    ├── test_globals.lua        ← _G leak watcher: boot, a frame, the love.* sweep.
     ├── test_primitives.lua     ← Shared primitive suite across all 4 backends.
     ├── test_text.lua           ← Text metrics + printf across all 4 backends.
     ├── test_font.lua           ← Shared Font object + printf layout, all 4 backends.
@@ -323,6 +324,10 @@ To add a backend-specific test, dofile `setup.lua` with the right `__MODE`, load
 
 - **No comments by default.**  Only add a comment when the WHY is non-obvious (a hidden constraint, SDK quirk, or workaround for a specific bug).
 - **No global leaks.** Every temporary variable inside a function must be `local`.
+  The wrapper owns exactly six names in `_G`: `love`, `lv1lua`, `lv1luaconf`,
+  `require` (redirected into `game/`), `__mathRound` (legacy alias) and
+  `loadstring` (PS3 runs Lua 5.2+). `tests/test_globals.lua` fails on a seventh;
+  if a new one is genuinely needed, add it there with the reason.
 - **Color 0–1 everywhere** in the public API.  Convert with `_c255` only at the moment of making a platform draw call.
 - **Drawable protocol**: implement `_draw(self, x, y, r, sx, sy, ox, oy)` for any object that `love.graphics.draw` should accept.
 - **Button maps instead of if-elseif chains**.  See `whileloop.lua` for the pattern.

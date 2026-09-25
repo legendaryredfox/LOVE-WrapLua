@@ -112,7 +112,9 @@ Timer = {
 
 -- ── System (filesystem + process) ────────────────────────────────
 System = {
-    doesFileExist  = function(f) return lv1lua.exists(f) end,
+    -- Reads the mock VFS directly: core/runtime.lua points lv1lua.exists at
+    -- this function on lpp-vita, so delegating back to it recurses forever.
+    doesFileExist  = function(f) return files.exists(f) end,
     doesDirExist   = function(f) return files.exists(f) end,
     createDirectory= function(f) files.mkdir(f) end,
     deleteFile     = function(f) files.delete(f); return true end,

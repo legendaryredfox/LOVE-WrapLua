@@ -111,26 +111,26 @@ LOVE-WrapLua/
     │                             ("OneLua" | "PSP" | "lpp-vita" | "PS3").
     ├── mock_platform.lua       ← Back-compat shim (OneLua mode) for legacy tests.
     ├── fixtures/               ← Small files loaded by tests.
-    ├── test_core.lua           ← core/util, core/transform, core/textwrap.
-    ├── test_bootstrap.lua      ← core/loader, core/runtime, core/config.
-    ├── test_input.lua          ← Key edges + repeat, core and all 3 whileloops.
-    ├── test_timestep.lua       ← Fixed-timestep accumulator + the 4 backend loops.
-    ├── test_globals.lua        ← _G leak watcher: boot, a frame, the love.* sweep.
-    ├── test_primitives.lua     ← Shared primitive suite across all 4 backends.
-    ├── test_text.lua           ← Text metrics + printf across all 4 backends.
-    ├── test_font.lua           ← Shared Font object + printf layout, all 4 backends.
-    ├── test_prim_transform.lua ← Primitives vs the transform stack, per backend.
-    ├── test_system.lua         ← love.system across all 4 backends.
-    ├── test_math.lua
-    ├── test_data.lua
-    ├── test_thread.lua
-    ├── test_window.lua
-    ├── test_joystick.lua
-    ├── test_filesystem.lua
-    ├── test_graphics.lua
-    ├── test_keyboard.lua
-    ├── test_timer.lua
-    └── test_audio.lua
+    ├── core_test.lua           ← core/util, core/transform, core/textwrap.
+    ├── bootstrap_test.lua      ← core/loader, core/runtime, core/config.
+    ├── input_test.lua          ← Key edges + repeat, core and all 3 whileloops.
+    ├── timestep_test.lua       ← Fixed-timestep accumulator + the 4 backend loops.
+    ├── globals_test.lua        ← _G leak watcher: boot, a frame, the love.* sweep.
+    ├── primitives_test.lua     ← Shared primitive suite across all 4 backends.
+    ├── text_test.lua           ← Text metrics + printf across all 4 backends.
+    ├── font_test.lua           ← Shared Font object + printf layout, all 4 backends.
+    ├── prim_transform_test.lua ← Primitives vs the transform stack, per backend.
+    ├── system_test.lua         ← love.system across all 4 backends.
+    ├── math_test.lua
+    ├── data_test.lua
+    ├── thread_test.lua
+    ├── window_test.lua
+    ├── joystick_test.lua
+    ├── filesystem_test.lua
+    ├── graphics_test.lua
+    ├── keyboard_test.lua
+    ├── timer_test.lua
+    └── audio_test.lua
 ```
 
 ---
@@ -277,8 +277,8 @@ lua tests/run_all.lua
 Each test file can also be run in isolation:
 
 ```bash
-lua tests/test_math.lua
-lua tests/test_graphics.lua
+lua tests/math_test.lua
+lua tests/graphics_test.lua
 # etc.
 ```
 
@@ -289,8 +289,9 @@ lua tests/test_graphics.lua
 - `tests/mock_onelua.lua` / `tests/mock_lppvita.lua` / `tests/mock_ps3.lua` — Per-backend native APIs. **The lpp-vita mock encodes the real native arg orders** (see the gotcha above), and records draw/primitive calls into `__rec` so wrong-order bugs fail.
 - `tests/setup.lua` — Loads `mock_common` then the backend mock for the global `__MODE` (default `"OneLua"`). Set `__MODE` before dofiling it to target a backend.
 - `tests/mock_platform.lua` — Back-compat shim: `dofile("tests/setup.lua")` in OneLua mode. Existing single-backend tests keep using it.
+- Test files are named `<area>_test.lua` (suffix, not prefix), so a directory listing groups a suite next to nothing else.
 - Each test file: `dofile("tests/runner.lua")`, then `dofile("tests/mock_platform.lua")` (or `setup.lua` with a chosen `__MODE`), then the module under test, then cases, then `return T.summary()`.
-- `tests/test_primitives.lua` — Runs the shared primitive suite under **all three backends** and asserts the lpp-vita native arg order. Model for future backend-parametrised tests.
+- `tests/primitives_test.lua` — Runs the shared primitive suite under **all three backends** and asserts the lpp-vita native arg order. Model for future backend-parametrised tests.
 - `tests/run_all.lua` — `dofile`s each test file in sequence, accumulates failures, exits `0`/`1`.
 - **CI:** `.github/workflows/ci.yml` runs `lua tests/run_all.lua` on lua 5.1 / 5.3 / 5.4 / luajit.
 
@@ -326,7 +327,7 @@ To add a backend-specific test, dofile `setup.lua` with the right `__MODE`, load
 - **No global leaks.** Every temporary variable inside a function must be `local`.
   The wrapper owns exactly six names in `_G`: `love`, `lv1lua`, `lv1luaconf`,
   `require` (redirected into `game/`), `__mathRound` (legacy alias) and
-  `loadstring` (PS3 runs Lua 5.2+). `tests/test_globals.lua` fails on a seventh;
+  `loadstring` (PS3 runs Lua 5.2+). `tests/globals_test.lua` fails on a seventh;
   if a new one is genuinely needed, add it there with the reason.
 - **Color 0–1 everywhere** in the public API.  Convert with `_c255` only at the moment of making a platform draw call.
 - **Drawable protocol**: implement `_draw(self, x, y, r, sx, sy, ox, oy)` for any object that `love.graphics.draw` should accept.
@@ -386,7 +387,7 @@ Read before committing anything.
    file, with the parts in `LOVE-WrapLua/<module>/`).
 2. Initialise its namespace in `core/runtime.lua` (`love.<module> = {}`).
 3. Add an `lv1lua.load` line in `core/modules.lua`.
-4. Add unit tests in `tests/test_<module>.lua` and register in `tests/run_all.lua`.
+4. Add unit tests in `tests/<module>_test.lua` and register in `tests/run_all.lua`.
 
 ### Adding a new platform
 1. Create `LOVE-WrapLua/<platform>/` with `graphics.lua` (entry) plus its
@@ -395,7 +396,7 @@ Read before committing anything.
 2. Extend `lv1lua.mode` detection and the screen-size block in
    `core/runtime.lua`.
 3. Add a mock in `tests/mock_<platform>.lua`, register it in `tests/setup.lua`,
-   and add the backend to the shared suites (`test_primitives`, `test_text`).
+   and add the backend to the shared suites (`primitives_test`, `text_test`).
 
 ### Changing the key layout
 Edit `lv1lua.keyset` in `core/config.lua`.  The six entries map to: circle, cross, triangle, square, L, R.  `lv1lua.keyset[1]` is always the confirm button.

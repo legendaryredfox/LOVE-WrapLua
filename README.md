@@ -323,7 +323,7 @@ runs the shared suites under all four backends (`OneLua`, `PSP`, `lpp-vita`, `PS
 
 ```bash
 lua tests/run_all.lua           # full suite, exits non-zero on failure
-lua tests/test_math.lua         # a single suite
+lua tests/math_test.lua         # a single suite
 ```
 
 Target a specific backend in a single suite by setting `__MODE` before loading

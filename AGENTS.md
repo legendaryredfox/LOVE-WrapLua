@@ -17,6 +17,12 @@ This document is a complete orientation for AI agents working on this repository
 
 A game author drops their LÖVE project into `game/` and boots the wrapper; the wrapper re-implements the LÖVE 11.5 API surface using each platform's native Lua SDK.
 
+**Platform priority: PSP > PS3 > Vita > 3DS.**  When work could go to more than
+one target, or a fix cannot be finished everywhere at once, the earlier platform
+wins.  The 3DS is not a backend yet (FIX_PLAN T6.4) and is last on purpose:
+adding it comes after the existing four are improved.  Both Vita backends
+(OneLua and lpp-vita) share the Vita slot.
+
 The wrapper is not executed on a desktop PC.  There is no build step and no package manager.  All files are plain `.lua` scripts.
 
 ---
@@ -389,7 +395,17 @@ Read before committing anything.
 3. Add an `lv1lua.load` line in `core/modules.lua`.
 4. Add unit tests in `tests/<module>_test.lua` and register in `tests/run_all.lua`.
 
-### Adding a new platform
+### Changing the key layout
+Edit `lv1lua.keyset` in `core/config.lua`.  The six entries map to: circle, cross, triangle, square, L, R.  `lv1lua.keyset[1]` is always the confirm button.
+
+### Adding a new platform (do this last)
+
+Deliberately the final entry here: a new backend comes after every improvement
+to the existing ones. The only planned new target is the **3DS** (FIX_PLAN
+T6.4), and it sits at the bottom of the platform priority above. Switch /
+Horizon is out of scope: do not start one, and do not list it as a target in
+docs or capability tables.
+
 1. Create `LOVE-WrapLua/<platform>/` with `graphics.lua` (entry) plus its
    `graphics/` submodules, and `audio.lua`, `keyboard.lua`, `timer.lua`,
    `whileloop.lua`, `event.lua`.
@@ -397,9 +413,6 @@ Read before committing anything.
    `core/runtime.lua`.
 3. Add a mock in `tests/mock_<platform>.lua`, register it in `tests/setup.lua`,
    and add the backend to the shared suites (`primitives_test`, `text_test`).
-
-### Changing the key layout
-Edit `lv1lua.keyset` in `core/config.lua`.  The six entries map to: circle, cross, triangle, square, L, R.  `lv1lua.keyset[1]` is always the confirm button.
 
 ---
 

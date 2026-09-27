@@ -42,7 +42,7 @@
 | newQuad(x,y,w,h,sw,sh or img) | ✓ warns if >512 | ✓ warns if >512 / NPOT | ✓ warns if >1024 | ✓ no validation |
 | setTextureInset / getTextureInset | ✓ | ✓ | ✓ | — |
 | draw(drawable, …) | ✓ | ✓ quad sub-rect + scale/flip via a cached copy, source never mutated | ✓ quad + rotation + scale via drawImageExtended | ✓ position only (quad accepted but ignored) |
-| setColor(r,g,b,a) **0–1 range** | ✓ | ✓ | ✓ | ✓ |
+| setColor(r,g,b,a) **0–1 range** | ✓ tints whole-image draws via `image.blittint`; quad sub-rects use alpha only (no native sub-rect tint) | ✓ same as OL | ✓ full tint on all draw forms via `drawImageExtended` color arg | ✓ tracked; no native tint call |
 | getColor() | ✓ | ✓ | ✓ | ✓ |
 | setBackgroundColor | ✓ | ✓ | ✓ | ✓ |
 | getBackgroundColor | ✓ | ✓ | ✓ | ✓ |

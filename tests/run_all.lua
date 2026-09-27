@@ -21,6 +21,7 @@ local test_files = {
     "tests/objects_test.lua",
     "tests/state_test.lua",
     "tests/blend_test.lua",
+    "tests/tint_test.lua",
     "tests/texture_limits_test.lua",
     "tests/quad_inset_test.lua",
     "tests/desanim8_test.lua",

@@ -31,12 +31,17 @@ local BLIT = {
     subtract = "blitsub",
 }
 
-function lv1lua.gfx.blitWithBlend(img, x, y, alpha)
-    local native = BLIT[lv1lua.current.blendMode]
+function lv1lua.gfx.blitWithBlend(img, x, y)
+    local c = lv1lua.current
+    local native = BLIT[c.blendMode]
     if native and type(image[native]) == "function" then
-        return image[native](img, x, y, alpha)
+        return image[native](img, x, y, color.a(c.color))
     end
-    return image.blit(img, x, y, alpha)
+    local rgba = c.colorRGBA
+    if rgba[1] ~= 1 or rgba[2] ~= 1 or rgba[3] ~= 1 then
+        return image.blittint(img, x, y, c.color)
+    end
+    return image.blit(img, x, y, color.a(c.color))
 end
 
 lv1lua.current = {

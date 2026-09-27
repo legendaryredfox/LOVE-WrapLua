@@ -46,7 +46,12 @@ function love.graphics._defaultDraw(drawable, x, y, r, sx, sy, xf, yf, w, h)
     if xf ~= nil then
         image.blit(img, x, y, xf, yf, w, h, color.a(lv1lua.current.color))
     else
-        image.blit(img, x, y, color.a(lv1lua.current.color))
+        local rgba = lv1lua.current.colorRGBA
+        if rgba[1] ~= 1 or rgba[2] ~= 1 or rgba[3] ~= 1 then
+            image.blittint(img, x, y, lv1lua.current.color)
+        else
+            image.blit(img, x, y, color.a(lv1lua.current.color))
+        end
     end
 end
 

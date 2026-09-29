@@ -41,7 +41,43 @@ snd = {
 -- puts its constants on this table; the values below are the ones tiny3d.h
 -- defines (RGB in the low half, alpha in the high half), so a wrapper that
 -- combines the wrong pair fails here.
+-- T6.6 added quad-draw, texture-load, and TTF text functions.
 gfx = {
+    -- Frame mode.
+    Mode2D = function(...) __rec.log("gfx.Mode2D", ...) end,
+    Mode3D = function(...) __rec.log("gfx.Mode3D", ...) end,
+
+    -- Polygon drawing (GX_QUADS = 7 in tiny3d.h).
+    QUADS          = 7,
+    SetPolygon     = function(...) __rec.log("gfx.SetPolygon",     ...) end,
+    VertexPosition = function(...) __rec.log("gfx.VertexPosition", ...) end,
+    VertexTexture  = function(...) __rec.log("gfx.VertexTexture",  ...) end,
+    VertexColor    = function(...) __rec.log("gfx.VertexColor",    ...) end,
+    End            = function(...) __rec.log("gfx.End",            ...) end,
+
+    -- Texture management.
+    LoadTexture = function(path)
+        __rec.log("gfx.LoadTexture", path)
+        local tex = { _path = path, _w = 64, _h = 64 }
+        function tex:getWidth()  return self._w end
+        function tex:getHeight() return self._h end
+        return tex
+    end,
+    SetTexture     = function(...) __rec.log("gfx.SetTexture",     ...) end,
+    SetTextureWrap = function(...) __rec.log("gfx.SetTextureWrap", ...) end,
+
+    -- TTF text.
+    FontAddTTF     = function(path) __rec.log("gfx.FontAddTTF", path); return { _path = path } end,
+    FontDrawString = function(...) __rec.log("gfx.FontDrawString", ...) end,
+    FontSetSize    = function(...) __rec.log("gfx.FontSetSize",    ...) end,
+    FontSetColors  = function(...) __rec.log("gfx.FontSetColors",  ...) end,
+
+    -- Offscreen surfaces.
+    SurfaceNew      = function(w, h) __rec.log("gfx.SurfaceNew", w, h); return { _w=w, _h=h } end,
+    SurfaceClear    = function(...) __rec.log("gfx.SurfaceClear",    ...) end,
+    SurfaceSetPixel = function(...) __rec.log("gfx.SurfaceSetPixel", ...) end,
+    SurfaceFree     = function(...) __rec.log("gfx.SurfaceFree",     ...) end,
+
     BlendFunction = function(...) __rec.log("gfx.BlendFunction", ...) end,
 
     BLEND_FUNC_SRC_RGB_ZERO                  = 0x00000000,

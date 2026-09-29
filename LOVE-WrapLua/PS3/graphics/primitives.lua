@@ -1,13 +1,101 @@
--- PS3 graphics: primitives.
---
--- Filled-shape calls are not available across PS3 Lua players, so these accept
--- their arguments and draw nothing rather than crashing the game. A real
--- implementation needs the tiny3D/Mini2D backend (FIX_PLAN T6.6).
+-- PS3 graphics: primitive hooks for core/primitives.lua (FIX_PLAN T6.6).
+-- Uses tiny3D untextured quads for filled and outlined shapes, and thin
+-- oriented rectangles for lines. Before this task, all prim calls were no-ops.
 
-function love.graphics.rectangle(mode, x, y, w, h)  end
-function love.graphics.line(...)                    end
-function love.graphics.circle(mode, x, y, radius, segments)      end
-function love.graphics.ellipse(mode, x, y, rx, ry, segments)     end
-function love.graphics.polygon(mode, vertices, ...)              end
-function love.graphics.arc(mode, arctype, x, y, radius, a1, a2, segs) end
-function love.graphics.points(...)                  end
+local function gfxTable() return rawget(_G, "gfx") end
+
+-- Emits a solid-color quad with no texture binding. r/g/b/a are 0..1.
+local function solidQuad(g, x, y, w, h, color)
+    local r, gr, b, a
+    if type(color) == "table" and color.r then
+        r, gr, b, a = color.r / 255, color.g / 255, color.b / 255, color.a / 255
+    else
+        local c = lv1lua.current.colorRGBA
+        r, gr, b, a = c[1], c[2], c[3], c[4]
+    end
+    g.SetPolygon(g.QUADS, 0)
+    g.VertexPosition(x,   y,   0); g.VertexColor(r, gr, b, a)
+    g.VertexPosition(x+w, y,   0); g.VertexColor(r, gr, b, a)
+    g.VertexPosition(x+w, y+h, 0); g.VertexColor(r, gr, b, a)
+    g.VertexPosition(x,   y+h, 0); g.VertexColor(r, gr, b, a)
+    g.End()
+end
+
+-- Emits a line of width lineWidth as a thin rotated quad.
+local function thickLine(g, x1, y1, x2, y2, color)
+    local lw = lv1lua.gfx.lineWidth or 1
+    local dx, dy = x2 - x1, y2 - y1
+    local len = math.sqrt(dx*dx + dy*dy)
+    if len == 0 then return end
+    local nx = -dy / len * (lw * 0.5)
+    local ny =  dx / len * (lw * 0.5)
+    local r, gr, b, a
+    if type(color) == "table" and color.r then
+        r, gr, b, a = color.r / 255, color.g / 255, color.b / 255, color.a / 255
+    else
+        local c = lv1lua.current.colorRGBA
+        r, gr, b, a = c[1], c[2], c[3], c[4]
+    end
+    g.SetPolygon(g.QUADS, 0)
+    g.VertexPosition(x1-nx, y1-ny, 0); g.VertexColor(r, gr, b, a)
+    g.VertexPosition(x2-nx, y2-ny, 0); g.VertexColor(r, gr, b, a)
+    g.VertexPosition(x2+nx, y2+ny, 0); g.VertexColor(r, gr, b, a)
+    g.VertexPosition(x1+nx, y1+ny, 0); g.VertexColor(r, gr, b, a)
+    g.End()
+end
+
+-- Converts a LOVE-space coordinate to PS3 screen space.
+-- configScale in core/primitives.lua applies gfx.scale when lv1luaconf.imgscale
+-- is set; when it is not, the hook does the conversion itself.
+local function toScreen(x, y)
+    local s  = (lv1luaconf.imgscale or lv1luaconf.resscale) and 1 or lv1lua.gfx.scale
+    return x * s, y * s + lv1lua.gfx.yOffset
+end
+
+local function sizeToScreen(w, h)
+    local s = (lv1luaconf.imgscale or lv1luaconf.resscale) and 1 or lv1lua.gfx.scale
+    return w * s, h * s
+end
+
+local stack = lv1lua.gfx.transform
+
+lv1lua.gfx.prims = {
+    fillRect = function(x, y, w, h, color)
+        local g = gfxTable()
+        if not (g and g.SetPolygon) then return end
+        local sx, sy = toScreen(x, y)
+        local sw, sh = sizeToScreen(w, h)
+        solidQuad(g, sx, sy, sw, sh, color)
+    end,
+
+    rectOutline = function(x, y, w, h, color)
+        local g = gfxTable()
+        if not (g and g.SetPolygon) then return end
+        local sx, sy = toScreen(x, y)
+        local sw, sh = sizeToScreen(w, h)
+        thickLine(g, sx,    sy,    sx+sw, sy,    color)
+        thickLine(g, sx+sw, sy,    sx+sw, sy+sh, color)
+        thickLine(g, sx+sw, sy+sh, sx,    sy+sh, color)
+        thickLine(g, sx,    sy+sh, sx,    sy,    color)
+    end,
+
+    line = function(x1, y1, x2, y2, color)
+        local g = gfxTable()
+        if not (g and g.SetPolygon) then return end
+        local sx1, sy1 = toScreen(x1, y1)
+        local sx2, sy2 = toScreen(x2, y2)
+        thickLine(g, sx1, sy1, sx2, sy2, color)
+    end,
+
+    -- Primitives ride the transform stack (T5.2).
+    mapPoint = function(x, y)
+        stack:updateTransform()
+        local t = stack.transform
+        return x * t._scaleX + t._offsetX, y * t._scaleY + t._offsetY
+    end,
+    mapScale = function(w, h)
+        stack:updateTransform()
+        local t = stack.transform
+        return w * t._scaleX, h * t._scaleY
+    end,
+}

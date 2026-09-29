@@ -21,7 +21,7 @@ local BLIT = {
     ["OneLua"]   = "image.blit",
     ["PSP"]      = "image.blit",
     ["lpp-vita"] = "Graphics.drawScaleImage",
-    ["PS3"]      = "BlitToScreen",
+    ["PS3"]      = "gfx.SetPolygon",  -- T6.6: textured quad draw
 }
 
 -- The native call each backend makes per printed string.
@@ -29,7 +29,7 @@ local PRINT = {
     ["OneLua"]   = "screen.print",
     ["PSP"]      = "screen.print",
     ["lpp-vita"] = "Font.print",
-    ["PS3"]      = "DrawText",
+    ["PS3"]      = "gfx.FontDrawString",  -- T6.6: TTF text
 }
 
 local function load_backend(mode)

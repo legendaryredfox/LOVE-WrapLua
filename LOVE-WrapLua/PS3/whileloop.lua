@@ -26,6 +26,8 @@ local buttonDefs = {
 
 function lv1lua.draw()
     StartGFX()
+    local _g = rawget(_G, "gfx")
+    if _g and _g.Mode2D then _g.Mode2D() end
     if love.draw then love.draw() end
     FlipGFX()
 end

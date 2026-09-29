@@ -23,7 +23,7 @@ local PRINT_CALL = {
     ["OneLua"]   = { name = "screen.print", x = 2, y = 3 },
     ["PSP"]      = { name = "screen.print", x = 2, y = 3 },
     ["lpp-vita"] = { name = "Font.print",   x = 2, y = 3 },
-    ["PS3"]      = { name = "DrawText",     x = 1, y = 2 },
+    ["PS3"]      = { name = "gfx.FontDrawString", x = 1, y = 2 },  -- T6.6
 }
 
 local function load_backend(mode)

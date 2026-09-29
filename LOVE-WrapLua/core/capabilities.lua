@@ -142,16 +142,17 @@ local CAPS = {
         -- the drawing-phase begin/end (vita2d_start_drawing / end_drawing).
         blend     = blendcaps(),
     },
-    -- PS3 Lua Player: least-supported tier, position-only blits, no primitives.
+    -- PS3 Lua Player: promoted to tier 2 by T6.6 (textured quads, transform
+    -- stack, filled primitives, TTF text via tiny3D). Canvas RTT still deferred.
     ["PS3"] = {
-        renderer  = "PS3 Lua",
-        tier      = 3,
+        renderer  = "PS3 Lua / tiny3D",
+        tier      = 2,
         limits    = { pointsize = 1, texturesize = 512, multicanvas = 1, canvasmsaa = 0 },
         -- tiny3d's blend function reaches Lua, which is what LOVE's `lighten`
         -- feature flag means (the lighten/darken blend equations).
         supported = supported({ lighten = true }),
-        features  = { transform = false, quaddraw = false, polygonfill = false,
-                      primitives = false, scissor = false, blendmode = true },
+        features  = { transform = true, quaddraw = true, polygonfill = true,
+                      primitives = true, scissor = false, blendmode = true },
         -- RPCS3 barely loads homebrew (#18997), so nothing here is emulator
         -- verifiable: treat every renderer-sensitive area as unconfirmed.
         emulator  = "RPCS3 (homebrew loading unreliable)",

@@ -101,8 +101,10 @@ end)
 
 load_backend("PS3")
 T.describe("capabilities [PS3 specifics]", function()
-    T.it("is the experimental tier (T8.5)", function()
-        T.eq(love._backend.tier, 3)
+    -- T6.6 promoted PS3 from tier 3 to tier 2 (textured quads, transforms,
+    -- primitives, TTF text); Canvas RTT still deferred.
+    T.it("is the partial tier after T6.6 (T8.5 + T6.6)", function()
+        T.eq(love._backend.tier, 2)
     end)
 
     T.it("treats every renderer-sensitive area as unconfirmed", function()
@@ -111,9 +113,9 @@ T.describe("capabilities [PS3 specifics]", function()
         end
     end)
 
-    T.it("claims no primitives or quad draw", function()
-        T.nok(love._backend.features.primitives)
-        T.nok(love._backend.features.quaddraw)
+    T.it("reports real primitives and quad draw after T6.6", function()
+        T.ok(love._backend.features.primitives)
+        T.ok(love._backend.features.quaddraw)
     end)
 end)
 

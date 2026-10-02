@@ -13,9 +13,10 @@ local GFX = {
     ["PSP"]      = "LOVE-WrapLua/OneLua/graphics_psp.lua",
     ["lpp-vita"] = "LOVE-WrapLua/lpp-vita/graphics.lua",
     ["PS3"]      = "LOVE-WrapLua/PS3/graphics.lua",
+    ["3DS"]      = "LOVE-WrapLua/3DS/graphics.lua",
 }
 
-local MODES = { "OneLua", "PSP", "lpp-vita", "PS3" }
+local MODES = { "OneLua", "PSP", "lpp-vita", "PS3", "3DS" }
 
 -- Backends whose clear reaches the framebuffer; on the others the frame loop
 -- owns the clear/flip pair, so love.graphics.clear is a documented no-op.

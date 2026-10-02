@@ -19,7 +19,7 @@ lv1lua.gfx = {
     -- filter call.
 }
 
--- Blend modes (FIX_PLAN T6.5). The player binds tiny3d's
+-- Blend modes. The player binds tiny3d's
 -- tiny3d_BlendFunc(enable, srcFunc, dstFunc, func) as gfx.BlendFunction and
 -- exposes the whole constant set on the gfx table, so every LOVE mode maps onto
 -- real GPU state here, unlike on the other three backends.

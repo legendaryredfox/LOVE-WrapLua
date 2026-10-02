@@ -1,4 +1,4 @@
--- PS3 graphics: print (FIX_PLAN T6.6).
+-- PS3 graphics: print.
 -- Uses gfx.FontDrawString / gfx.FontSetColors when tiny3D is available;
 -- falls back to the legacy DrawText global for older player builds.
 -- Wrapping, alignment, and line spacing are shared (core/text.lua).

@@ -5,7 +5,7 @@ local stack = lv1lua.gfx.transform
 
 -- Loaded images are immutable sources. Scaling makes a transient copy keyed by
 -- (source, sx, sy) so the same image can be drawn at different scales in one
--- frame without corrupting the shared drawable (#6). Weak keys let unused
+-- frame without corrupting the shared drawable. Weak keys let unused
 -- copies be collected.
 local _scaledCache = setmetatable({}, { __mode = "k" })
 

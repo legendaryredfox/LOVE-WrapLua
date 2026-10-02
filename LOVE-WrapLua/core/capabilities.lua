@@ -1,8 +1,8 @@
--- Central, honest capability table for every backend (FIX_PLAN T4.5).
+-- Central, honest capability table for every backend.
 --
 -- One place records what each backend can actually do today, so getSupported /
 -- getSystemLimits stop reporting desktop-LÖVE defaults and the README matrix
--- (T7.1) can be generated from a single source. `supported` mirrors the LÖVE
+-- can be generated from a single source. `supported` mirrors the LÖVE
 -- getSupported feature set (plus honest canvas/shader flags); `limits` feeds
 -- getSystemLimits; `features` is wrapper-internal (transform stack, quad draw,
 -- primitives, …) and drives docs, not the LÖVE API.
@@ -28,7 +28,7 @@ local function supported(over)
 end
 
 -- Behaviour that is right on real hardware but varies by emulator renderer, so
--- it must never be the thing a game's look depends on (FIX_PLAN T8.4). Each
+-- it must never be the thing a game's look depends on. Each
 -- flag is true when the backend's usual emulator gets it wrong or inconsistent:
 --   blendmode        programmable blend / alpha differs per renderer
 --   framebufferread  reading back the framebuffer (screenshots, RTT) is unreliable
@@ -41,7 +41,7 @@ local function rendersensitive(over)
     return r
 end
 
--- What love.system can answer on each target (FIX_PLAN T6.1). `cores` is the
+-- What love.system can answer on each target. `cores` is the
 -- CPU count the console actually gives a game, `battery` says whether a power
 -- state exists to read at all, and `vibrate`/`openurl` record that no SDK here
 -- exposes rumble or a browser hand-off. The clipboard is in-memory everywhere:
@@ -53,8 +53,8 @@ local function systemcaps(over)
     return s
 end
 
--- Which LOVE blend modes actually change compositing on each target
--- (FIX_PLAN T6.5). `native` says a blend call exists at all; `modes` lists the
+-- Which LOVE blend modes actually change compositing on each target.
+-- `native` says a blend call exists at all; `modes` lists the
 -- ones that reach it. Everything else is tracked and renders as alpha, which is
 -- what the platform default is on all four.
 local function blendcaps(over)
@@ -71,7 +71,7 @@ local function blendcaps(over)
     return b
 end
 
--- What love.audio can do per target (FIX_PLAN T6.2). `voices` is how many
+-- What love.audio can do per target. `voices` is how many
 -- sounds can be audible at once, `seek`/`pitch` say whether the SDK really
 -- seeks or resamples (where false, the shared layer only moves the position it
 -- reports), and `formats` is what the decoder accepts.
@@ -142,8 +142,8 @@ local CAPS = {
         -- the drawing-phase begin/end (vita2d_start_drawing / end_drawing).
         blend     = blendcaps(),
     },
-    -- PS3 Lua Player: promoted to tier 2 by T6.6 (textured quads, transform
-    -- stack, filled primitives, TTF text via tiny3D). Canvas RTT still deferred.
+    -- PS3 Lua Player: tier 2 (textured quads, transform stack, filled
+    -- primitives, TTF text via tiny3D). Canvas RTT still deferred.
     ["PS3"] = {
         renderer  = "PS3 Lua / tiny3D",
         tier      = 2,
@@ -169,6 +169,22 @@ local CAPS = {
                                           replace = true, screen = true,
                                           lighten = true, darken = true } }),
     },
+    -- lpp-3ds (citro2d): quad+rotation draw, software transform stack + scissor.
+    -- Tier 3 until real-device confirmation.
+    ["3DS"] = {
+        renderer  = "lpp-3ds",
+        tier      = 3,
+        limits    = { pointsize = 1, texturesize = 1024, multicanvas = 1, canvasmsaa = 0 },
+        supported = supported({ fullnpot = true }),
+        features  = { transform = true, quaddraw = true, polygonfill = true,
+                      primitives = true, scissor = true, blendmode = false },
+        emulator  = "Citra / Azahar",
+        rendersensitive = rendersensitive({ blendmode = true, framebufferread = true,
+                                            savepersistence = true }),
+        system    = systemcaps({ cores = 2, battery = true, vibrate = false }),
+        audio     = audiocaps({ voices = 2, formats = "mp3, ogg, wav" }),
+        blend     = blendcaps(),
+    },
 }
 
 function lv1lua.core.capabilities(key)
@@ -185,7 +201,7 @@ end
 -- Validates a texture/spritesheet against the active backend's hardware limits
 -- and warns (once per distinct problem) instead of letting the GPU corrupt it
 -- silently. Reused by newImage and newQuad; the PSP GPU needs power-of-two,
--- <=512x512 textures (FIX_PLAN T8.1). Returns true when the size is safe.
+-- <=512x512 textures. Returns true when the size is safe.
 function lv1lua.core.validateTexture(w, h, name)
     local caps = love._backend or lv1lua.core.capabilities(lv1lua.mode)
     local max, ok = caps.limits.texturesize, true

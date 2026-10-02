@@ -3,7 +3,7 @@
 function love.graphics.newImage(filename, settings)
     local img = image.load(lv1lua.dataloc .. "game/" .. filename)
     -- PSP textures must be power-of-two and <=512; warn before a scale/blit
-    -- silently corrupts an oversize or NPOT sheet (FIX_PLAN T8.1).
+    -- silently corrupts an oversize or NPOT sheet.
     lv1lua.core.validateTexture(image.getrealw(img), image.getrealh(img), filename)
     if lv1luaconf.imgscale == true then
         image.scale(img, lv1lua.gfx.scale * 100)
@@ -13,7 +13,7 @@ end
 
 -- Loaded images are immutable sources. Scaling makes a transient copy keyed by
 -- (source, sx, sy), so the same image drawn twice in one frame at different
--- scales does not have the first draw corrupt the second (#6). Weak keys let
+-- scales does not have the first draw corrupt the second. Weak keys let
 -- unused copies be collected, which matters on a 32MB PSP.
 local _scaledCache = setmetatable({}, { __mode = "k" })
 
@@ -40,7 +40,7 @@ local function _quadDraw(drawable, quad, x, y, r, sx, sy, ox, oy)
     sx = sx or 1; sy = sy or sx
     ox = ox or 0; oy = oy or 0
     local qx, qy, qw, qh = quad:getViewport()
-    -- Half-texel inset keeps linear sampling inside the frame (T8.2).
+    -- Half-texel inset keeps linear sampling inside the frame.
     qx, qy, qw, qh = lv1lua.core.insetQuad(qx, qy, qw, qh)
     x = (x or 0) - ox * math.abs(sx)
     y = (y or 0) - oy * math.abs(sy)

@@ -16,14 +16,16 @@ local GFX = {
     ["PSP"]      = "LOVE-WrapLua/OneLua/graphics_psp.lua",
     ["lpp-vita"] = "LOVE-WrapLua/lpp-vita/graphics.lua",
     ["PS3"]      = "LOVE-WrapLua/PS3/graphics.lua",
+    ["3DS"]      = "LOVE-WrapLua/3DS/graphics.lua",
 }
 
 -- Native call that carries one printed line, and where its y sits in the args.
 local PRINT_CALL = {
-    ["OneLua"]   = { name = "screen.print", x = 2, y = 3 },
-    ["PSP"]      = { name = "screen.print", x = 2, y = 3 },
-    ["lpp-vita"] = { name = "Font.print",   x = 2, y = 3 },
-    ["PS3"]      = { name = "gfx.FontDrawString", x = 1, y = 2 },  -- T6.6
+    ["OneLua"]   = { name = "screen.print",       x = 2, y = 3 },
+    ["PSP"]      = { name = "screen.print",       x = 2, y = 3 },
+    ["lpp-vita"] = { name = "Font.print",         x = 2, y = 3 },
+    ["PS3"]      = { name = "gfx.FontDrawString", x = 1, y = 2 },
+    ["3DS"]      = { name = "Font.print",         x = 2, y = 3 },
 }
 
 local function load_backend(mode)
@@ -164,7 +166,7 @@ local function shared_suite(mode)
     end)
 end
 
-for _, mode in ipairs({"OneLua", "PSP", "lpp-vita", "PS3"}) do
+for _, mode in ipairs({"OneLua", "PSP", "lpp-vita", "PS3", "3DS"}) do
     load_backend(mode)
     shared_suite(mode)
 end

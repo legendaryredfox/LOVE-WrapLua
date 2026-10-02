@@ -1,4 +1,4 @@
--- Half-texel inset for quad sub-rects (FIX_PLAN T8.2).
+-- Half-texel inset for quad sub-rects.
 --
 -- Under linear filtering the GPU samples halfway into neighbouring texels at a
 -- frame boundary, so tightly-packed spritesheet frames bleed a row/column of the

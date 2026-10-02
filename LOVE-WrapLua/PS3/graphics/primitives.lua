@@ -1,4 +1,4 @@
--- PS3 graphics: primitive hooks for core/primitives.lua (FIX_PLAN T6.6).
+-- PS3 graphics: primitive hooks for core/primitives.lua.
 -- Uses tiny3D untextured quads for filled and outlined shapes, and thin
 -- oriented rectangles for lines. Before this task, all prim calls were no-ops.
 
@@ -87,7 +87,7 @@ lv1lua.gfx.prims = {
         thickLine(g, sx1, sy1, sx2, sy2, color)
     end,
 
-    -- Primitives ride the transform stack (T5.2).
+    -- Primitives ride the transform stack.
     mapPoint = function(x, y)
         stack:updateTransform()
         local t = stack.transform

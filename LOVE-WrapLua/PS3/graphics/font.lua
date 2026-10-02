@@ -1,4 +1,4 @@
--- PS3 graphics: font hooks for core/font.lua (FIX_PLAN T6.6).
+-- PS3 graphics: font hooks for core/font.lua.
 -- Adds gfx.FontAddTTF for loading TTF faces and gfx.FontSetSize for resizing,
 -- so setFont(font, size) actually changes the rendered size. The PS3 player
 -- exposes no native text-measurement call, so getWidth still uses the

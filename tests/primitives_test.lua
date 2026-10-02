@@ -13,6 +13,7 @@ local GFX = {
     ["PSP"]      = "LOVE-WrapLua/OneLua/graphics_psp.lua",
     ["lpp-vita"] = "LOVE-WrapLua/lpp-vita/graphics.lua",
     ["PS3"]      = "LOVE-WrapLua/PS3/graphics.lua",
+    ["3DS"]      = "LOVE-WrapLua/3DS/graphics.lua",
 }
 
 local function load_backend(mode)
@@ -390,12 +391,44 @@ end)
 -- ── PS3 ──────────────────────────────────────────────────────────
 load_backend("PS3")
 shared_suite("PS3")
-T.describe("PS3 capability profile (T4.5 + T6.6)", function()
-    T.it("reports real primitives and quad draw after T6.6", function()
-        T.ok(love._backend.features.primitives, "PS3 has primitives after T6.6")
-        T.ok(love._backend.features.quaddraw,   "PS3 has quad draw after T6.6")
+T.describe("PS3 capability profile", function()
+    T.it("reports real primitives and quad draw", function()
+        T.ok(love._backend.features.primitives, "PS3 has primitives")
+        T.ok(love._backend.features.quaddraw,   "PS3 has quad draw")
         T.nok(love.graphics.getSupported().canvas)
         T.eq(love.graphics.getSystemLimits().texturesize, 512)
+    end)
+end)
+
+-- ── 3DS ──────────────────────────────────────────────────────────
+load_backend("3DS")
+shared_suite("3DS")
+T.describe("3DS capability profile", function()
+    T.it("reports real primitives and quad draw", function()
+        T.ok(love._backend.features.primitives, "3DS has primitives")
+        T.ok(love._backend.features.quaddraw,   "3DS has quad draw")
+        T.nok(love.graphics.getSupported().canvas)
+        T.eq(love.graphics.getSystemLimits().texturesize, 1024)
+    end)
+    T.it("native coordinates are LOVE order (x,y then w,h)", function()
+        __rec.reset()
+        love.graphics.rectangle("fill", 10, 20, 30, 40)
+        local c = __rec.last("Graphics.fillRect")
+        T.ok(c, "fillRect was called")
+        T.eq(c.args[1], 10, "x is first arg")
+        T.eq(c.args[2], 20, "y is second arg")
+        T.eq(c.args[3], 30, "w is third arg")
+        T.eq(c.args[4], 40, "h is fourth arg")
+    end)
+    T.it("line passes (x1,y1,x2,y2) in LOVE order", function()
+        __rec.reset()
+        love.graphics.line(5, 6, 15, 16)
+        local c = __rec.last("Graphics.drawLine")
+        T.ok(c, "drawLine was called")
+        T.eq(c.args[1], 5)
+        T.eq(c.args[2], 6)
+        T.eq(c.args[3], 15)
+        T.eq(c.args[4], 16)
     end)
 end)
 

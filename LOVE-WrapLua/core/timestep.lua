@@ -1,4 +1,4 @@
--- Fixed-timestep accumulator, shared by every backend (FIX_PLAN T7.2).
+-- Fixed-timestep accumulator, shared by every backend.
 --
 -- Each backend used to gate love.update behind "has the native timer passed
 -- 16 ms", then hand it the whole elapsed time. Three things followed: updates

@@ -6,12 +6,11 @@
 --   draw(drawable, x, y, r, sx, sy, ox, oy)
 --   draw(drawable, quad, x, y, r, sx, sy, ox, oy)
 -- The common unrotated full-image draw keeps using drawScaleImage as a fast
--- path. (FIX_PLAN T2.1)
+-- path.
 --
 -- The software transform stack (core/transform.lua) is folded in here: its
 -- flattened offset/scale/rotation compose with the per-draw arguments, and a
--- draw whose bounding box falls outside the active scissor is rejected
--- (FIX_PLAN T2.2).
+-- draw whose bounding box falls outside the active scissor is rejected.
 
 local stack = lv1lua.gfx.transform
 
@@ -55,7 +54,7 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx, ky)
     if type(xOrQuad) == "table" and xOrQuad.getViewport then
         -- draw(drawable, quad, x, y, r, sx, sy, ox, oy)
         local qx, qy, qw, qh = xOrQuad:getViewport()
-        -- Half-texel inset keeps linear sampling inside the frame (T8.2).
+        -- Half-texel inset keeps linear sampling inside the frame.
         qx, qy, qw, qh = lv1lua.core.insetQuad(qx, qy, qw, qh)
         local dsy = (ox == nil) and sy or ox
         local dx, dy, rad, lsx, lsy, bw, bh =

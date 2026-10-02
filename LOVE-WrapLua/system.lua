@@ -1,4 +1,4 @@
--- love.system (FIX_PLAN T6.1).
+-- love.system.
 --
 -- Shared module: it reads lv1lua.* and the capability table, and touches an SDK
 -- global only through a guarded probe, because the same file runs on four SDKs

@@ -8,7 +8,7 @@
 --
 -- A backend passes a `fillSpan(x, y, width, color)` closure that draws one
 -- horizontal run with its native call (a 1px-tall filled rect or line), so this
--- module stays free of any SDK dependency. (FIX_PLAN T4.2)
+-- module stays free of any SDK dependency.
 
 lv1lua.core = lv1lua.core or {}
 

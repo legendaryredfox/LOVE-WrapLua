@@ -1,5 +1,5 @@
 -- Shared graphics state: colour, background colour, clear, line style, blend
--- mode, default filter and the stencil stubs (FIX_PLAN T5.1, second slice).
+-- mode, default filter and the stencil stubs.
 --
 -- All four backends kept a copy of this, differing only in which native call
 -- builds a colour and whether clear/filter reach the hardware. Those three
@@ -73,7 +73,7 @@ end
 
 -- ── Blend mode ───────────────────────────────────────────────────
 -- What actually reaches the hardware differs per backend and is recorded in
--- core/capabilities.lua (FIX_PLAN T6.5): the PSP has additive and subtractive
+-- core/capabilities.lua: the PSP has additive and subtractive
 -- image blits, the PS3 player binds tiny3d's blend function, and neither Vita
 -- backend exposes blend state to Lua at all. A backend with something native to
 -- call installs gfx.blendHooks.apply(mode, alphamode); where there is no hook

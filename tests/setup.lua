@@ -19,6 +19,7 @@ local backend_file = ({
     ["PSP"]      = "tests/mock_onelua.lua",
     ["lpp-vita"] = "tests/mock_lppvita.lua",
     ["PS3"]      = "tests/mock_ps3.lua",
+    ["3DS"]      = "tests/mock_3ds.lua",
 })[MODE]
 
 if not backend_file then

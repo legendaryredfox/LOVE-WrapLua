@@ -1,7 +1,7 @@
 love.thread = {}
 local channels = {}
 -- Registry of spawned threads, keyed by filename. Kept module-local so
--- getThreads()/getThread() never touch an undefined global (#4).
+-- getThreads()/getThread() never touch an undefined global.
 local threads = {}
 
 local unpack = table.unpack or unpack

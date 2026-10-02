@@ -15,6 +15,8 @@ if lv1lua.isPSP then
     lv1lua.screenWidth,  lv1lua.screenHeight = 480, 272
 elseif lv1lua.mode == "PS3" then
     lv1lua.screenWidth,  lv1lua.screenHeight = 720, 480
+elseif lv1lua.mode == "3DS" then
+    lv1lua.screenWidth,  lv1lua.screenHeight = 400, 240
 else
     lv1lua.screenWidth,  lv1lua.screenHeight = 960, 544
 end

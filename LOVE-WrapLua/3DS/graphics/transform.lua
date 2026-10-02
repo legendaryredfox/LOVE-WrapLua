@@ -1,7 +1,6 @@
--- PS3 graphics: transform stack.
--- Replaces the identity stubs that were here before tiny3D quad draws allowed
--- real per-frame transforms. The software stack is core/transform.lua; this
--- file only maps the love.graphics surface onto it.
+-- lpp-3ds exposes no matrix stack and no hardware clip rectangle.
+-- The software stack handles push/pop/translate/scale/rotate; scissor is
+-- enforced by rejecting draws whose bounding box lies entirely outside the region.
 
 lv1lua.gfx.transform = lv1lua.core.newTransformStack()
 local stack = lv1lua.gfx.transform
@@ -9,7 +8,7 @@ local stack = lv1lua.gfx.transform
 function love.graphics.push(kind)
     stack:push()
 end
-love.graphics.push()  -- LOVE always has one active level
+love.graphics.push()
 
 function love.graphics.pop()
     stack:pop()
@@ -43,7 +42,6 @@ function love.graphics.rotate(angle)
 end
 
 function love.graphics.shear(kx, ky)
-    -- No native shear on PS3.
 end
 
 function love.graphics.origin()
@@ -90,7 +88,6 @@ function love.graphics.inverseTransformPoint(x, y)
     return (x - t._offsetX) / t._scaleX, (y - t._offsetY) / t._scaleY
 end
 
--- PS3 has no hardware scissor: tracked for compatibility, not enforced.
 function love.graphics.setScissor(x, y, w, h)
     local top = stack:top()
     if top then
@@ -110,4 +107,14 @@ end
 
 function love.graphics.intersectScissor(x, y, w, h)
     love.graphics.setScissor(x, y, w, h)
+end
+
+function lv1lua.gfx.scissorRejects(x, y, w, h)
+    stack:updateTransform()
+    local t = stack.transform
+    if not t._usingScissor then return false end
+    local sx, sy = t._scissorX, t._scissorY
+    local sw, sh = t._scissorWidth, t._scissorHeight
+    return (x + w) <= sx or x >= (sx + sw)
+        or (y + h) <= sy or y >= (sy + sh)
 end

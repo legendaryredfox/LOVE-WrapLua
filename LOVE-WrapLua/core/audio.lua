@@ -1,5 +1,4 @@
--- Shared love.audio: one Source object over per-backend native hooks
--- (FIX_PLAN T6.2).
+-- Shared love.audio: one Source object over per-backend native hooks.
 --
 -- The three backends carried three near-identical Source tables that all
 -- stubbed the same four methods (`seek`, `tell`, `getDuration`, `isPaused`) and

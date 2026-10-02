@@ -2,7 +2,7 @@ lv1lua.core = lv1lua.core or {}
 
 -- Registry of newFile handles that are currently open. Weak-keyed so a forgotten
 -- handle cannot leak (its io finalizer still flushes it), while any handle the
--- game is still holding at quit gets an explicit close (FIX_PLAN T8.3). write /
+-- game is still holding at quit gets an explicit close. write /
 -- append already close immediately, so only long-lived newFile handles matter.
 local _openFiles = setmetatable({}, { __mode = "k" })
 
@@ -34,7 +34,7 @@ elseif lv1lua.mode == "lpp-vita" then
     end
 end
 
--- ── Paths, stat and listing (FIX_PLAN T6.3) ─────────────────────
+-- ── Paths, stat and listing ──────────────────────────────────────
 -- A game-relative name lives in one of two places: the writable save directory
 -- (checked first, so a saved file shadows the shipped one, as LOVE does) or the
 -- read-only game directory.

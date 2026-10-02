@@ -1,12 +1,7 @@
--- lpp-vita graphics: Image and Quad.
---
--- Graphics.loadImage returns a native texture handle, which the wrapper passes
--- straight through: games treat it as an opaque drawable.
-
 function love.graphics.newImage(filename, settings)
     local tex = Graphics.loadImage(lv1lua.dataloc .. "game/" .. filename)
-    -- Warn if the sheet exceeds the backend texture limit.
-    lv1lua.core.validateTexture(Graphics.getImageWidth(tex), Graphics.getImageHeight(tex), filename)
+    lv1lua.core.validateTexture(
+        Graphics.getImageWidth(tex), Graphics.getImageHeight(tex), filename)
     return tex
 end
 
@@ -15,8 +10,6 @@ function love.graphics.newQuad(x, y, w, h, swOrImg, sh)
     if type(swOrImg) == "number" then
         sw, _sh = swOrImg, sh or h
     elseif swOrImg ~= nil then
-        -- A drawable: lpp-vita images are native texture handles with no
-        -- methods, so the size comes from the SDK.
         sw  = Graphics.getImageWidth(swOrImg)  or w
         _sh = Graphics.getImageHeight(swOrImg) or h
     else

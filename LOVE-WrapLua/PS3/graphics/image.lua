@@ -1,4 +1,4 @@
--- PS3 graphics: Image, Quad, and the draw call (FIX_PLAN T6.6).
+-- PS3 graphics: Image, Quad, and the draw call.
 -- Images are loaded with gfx.LoadTexture and drawn as textured quads via
 -- gfx.SetPolygon / VertexPosition / VertexTexture / VertexColor / End.
 -- Rotation is computed in Lua (no dependency on gfx.MatrixSetModelView in 2D).

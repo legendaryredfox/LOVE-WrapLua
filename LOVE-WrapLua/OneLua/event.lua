@@ -3,7 +3,7 @@ function love.event.quit(re)
         love.quit()
     end
     
-    -- Flush any open save handles before the process goes away (T8.3).
+    -- Flush any open save handles before the process goes away.
     if lv1lua.core and lv1lua.core.closeOpenFiles then lv1lua.core.closeOpenFiles() end
 
     if re == "restart" then

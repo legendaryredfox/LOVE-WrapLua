@@ -26,13 +26,15 @@ local function fresh(mode)
         lv1lua.load("LOVE-WrapLua/OneLua/graphics.lua")
     elseif mode == "lpp-vita" then
         lv1lua.load("LOVE-WrapLua/lpp-vita/graphics.lua")
+    elseif mode == "3DS" then
+        lv1lua.load("LOVE-WrapLua/3DS/graphics.lua")
     else
         lv1lua.load("LOVE-WrapLua/PS3/graphics.lua")
     end
     __rec.reset()
 end
 
-local MODES = { "OneLua", "PSP", "lpp-vita", "PS3" }
+local MODES = { "OneLua", "PSP", "lpp-vita", "PS3", "3DS" }
 
 -- ── shared validation ────────────────────────────────────────────
 T.describe("love.graphics.setBlendMode validation", function()

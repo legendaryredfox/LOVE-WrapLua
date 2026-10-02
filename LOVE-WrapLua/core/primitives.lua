@@ -1,4 +1,4 @@
--- Shared primitive shapes (FIX_PLAN T5.1, third slice).
+-- Shared primitive shapes.
 --
 -- Every backend that can draw at all draws primitives out of the same four
 -- native calls, so the geometry (ellipse, arc, polygon outline, circle outline,
@@ -16,7 +16,7 @@
 -- different one (lpp-vita passes both x values before both y values) adapts in
 -- its own one-line hook instead of in every shape.
 --
--- Transforms (T5.2): every vertex a shape emits goes through `mapPoint` once,
+-- Transforms: every vertex a shape emits goes through `mapPoint` once,
 -- so translate/scale move primitives exactly as they move images. Backends
 -- without a transform stack (PSP, PS3) install no hook and their coordinates
 -- pass through untouched. Shapes built out of other shapes (circle outline,

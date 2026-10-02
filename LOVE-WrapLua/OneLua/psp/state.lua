@@ -21,7 +21,7 @@ lv1lua.gfx = {
     clearScreen = function(native) screen.clear(native) end,
 }
 
--- Blend modes (FIX_PLAN T6.5). OSLib's additive and subtractive draw effects
+-- Blend modes. OSLib's additive and subtractive draw effects
 -- reach Lua as image.blitadd / image.blitsub, both of which take an effect
 -- coefficient instead of a source rect. So the mode picks the blit here rather
 -- than setting GPU state, and a quad draw (which needs the rect form) stays on

@@ -17,6 +17,7 @@ local GFX = {
     ["PSP"]      = "LOVE-WrapLua/OneLua/graphics_psp.lua",
     ["lpp-vita"] = "LOVE-WrapLua/lpp-vita/graphics.lua",
     ["PS3"]      = "LOVE-WrapLua/PS3/graphics.lua",
+    ["3DS"]      = "LOVE-WrapLua/3DS/graphics.lua",
 }
 
 local function load_backend(mode)
@@ -143,6 +144,24 @@ T.describe("PS3 text metrics (estimate, no native measuring)", function()
         local f = love.graphics.newFont(nil, 16)
         love.graphics.setFont(f)
         T.ok(love.graphics.getFont() == f)
+    end)
+end)
+
+-- ── 3DS ──────────────────────────────────────────────────────────
+load_backend("3DS")
+shared_suite("3DS")
+T.describe("3DS text metrics (native Font.getTextWidth)", function()
+    T.it("setFont / getFont roundtrip", function()
+        local f = love.graphics.newFont(nil, 16)
+        love.graphics.setFont(f)
+        T.ok(love.graphics.getFont() == f)
+    end)
+    T.it("print emits Font.print with screen constant", function()
+        __rec.reset()
+        love.graphics.print("hi", 5, 10)
+        local c = __rec.last("Font.print")
+        T.ok(c, "Font.print was called")
+        T.eq(c.args[5], TOP_SCREEN)
     end)
 end)
 

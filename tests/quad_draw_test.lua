@@ -132,6 +132,24 @@ for _, b in ipairs(BACKENDS) do
     end)
 end
 
+-- lpp-vita and lpp-3ds hand image handles back with lua_pushinteger, so on a
+-- console the image in newQuad(x, y, w, h, image) is a number. Only the
+-- argument count tells it apart from newQuad(x, y, w, h, sw, sh).
+for _, b in ipairs({
+    { mode = "lpp-vita", gfx = "LOVE-WrapLua/lpp-vita/graphics.lua" },
+}) do
+    load_backend(b.mode, b.gfx)
+    T.describe("Quad with an integer image handle [" .. b.mode .. "]", function()
+        T.it("newQuad(x,y,w,h, handle) measures the image, not the handle", function()
+            local handle = 40001  -- what Graphics.loadImage returns on device
+            local q = love.graphics.newQuad(0, 0, 16, 16, handle)
+            local sw, sh = q:getTextureDimensions()
+            T.eq(sw, 64)  -- the mock's Graphics.getImageWidth
+            T.eq(sh, 64)
+        end)
+    end)
+end
+
 -- ── validateTexture must not choke on a non-numeric size ─────────
 load_backend("PSP", "LOVE-WrapLua/OneLua/graphics_psp.lua")
 T.describe("core/capabilities.validateTexture", function()

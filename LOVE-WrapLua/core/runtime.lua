@@ -47,6 +47,12 @@ function lv1lua.exists(file)
         return files.exists(file)
     elseif lv1lua.mode == "lpp-vita" then
         return System.doesFileExist(file) or System.doesDirExist(file)
+    elseif lv1lua.fileio and lv1lua.fileio.exists then
+        return lv1lua.fileio.exists(file)
+    elseif lv1lua.mode == "3DS" then
+        -- Before the file adapter loads (game/conf.lua lookup): io.open is
+        -- rebound on lpp-3ds, and only files need finding this early.
+        return System.doesFileExist(file)
     else
         local f = io.open(file, "r")
         if f then f:close(); return true end

@@ -1,11 +1,12 @@
 # LOVE-WrapLua — Implemented API (LÖVE 11.5)
 
-> Platform keys: **OL** = OneLua (Vita), **PSP** = PSP (graphics_psp), **LPP** = lpp-vita, **PS3** = PS3
+> Platform keys: **OL** = OneLua (Vita), **PSP** = PSP (graphics_psp), **LPP** = lpp-vita, **PS3** = PS3.
+> The 3DS (lpp-3ds) has its own section below instead of a column.
 >
 > Support tiers (`love._backend.tier`): **OL** and **PSP** are tier 1 (supported),
-> **LPP** is tier 2 (partial), **PS3** is tier 3 (experimental: position-only
-> draws, stubbed primitives, and RPCS3 cannot run it, so develop on desktop LÖVE
-> and confirm on hardware). See the README "Support tiers" table.
+> **LPP** and **PS3** are tier 2 (partial; RPCS3 cannot run the PS3 build, so
+> confirm it on hardware), the **3DS** is tier 3 (experimental: grounded in the
+> lpp-3ds sources, not yet run). See the README "Support tiers" table.
 
 ---
 
@@ -303,6 +304,34 @@ Do not write producer/consumer logic that relies on cross-thread blocking.
 
 ---
 
+## Nintendo 3DS (lpp-3ds)
+
+The backend (`LOVE-WrapLua/3DS/`) is written against the lpp-3ds sources
+(`source/lua*.cpp`, cloned 2026-10-03) and sf2dlib, which `Graphics.*` wraps;
+`tests/mock_3ds.lua` raises wherever the real binding raises. Everything below
+the native layer (shared `core/`, math, data, thread, joystick, keyboard edges)
+behaves as on the other backends.
+
+| Area | Status | Native call / note |
+|---|---|---|
+| Screen | top screen, 400x240 | `Graphics.initBlend(TOP_SCREEN)` per frame; the bottom screen is unused |
+| draw(image / quad, x, y, r, sx, sy, ox, oy) | ✓ rotation, scale, flip, tint | `drawScaleImage` (top-left) unrotated, `drawImageExtended` (centre-placed, texture tenth) otherwise; the colour argument tints every form |
+| Primitives | ✓ | `fillRect` / `fillEmptyRect` / `drawLine` take `(x1, x2, y1, y2, color)`; `drawCircle` is the filled circle (integer radius); outlines, polygons, ellipses and arcs come from `core/primitives.lua` |
+| Transform stack | ✓ | software stack, as on lpp-vita |
+| Scissor | ✓ GPU | `Graphics.setViewport` (sf2d scissor), re-applied each frame; out-of-scissor draws are also rejected before the call |
+| print / printf / Font | ✓ with two deviations | `Font.print` writes the CPU framebuffer after the frame's GPU pass, so text always lands on top of sprites and shapes drawn in the same frame; a line whose start is off screen (x < 0, y < 0, past 400x227) is skipped, because the binding raises there. Measuring uses `Font.measureText` |
+| Draws outside love.draw | dropped, warns once | the GPU only accepts draws between `initBlend` and `termBlend` |
+| love.audio | partial | `Sound.openWav` / `openOgg` / `openAiff` (no MP3), `play(h, loop)`, `pause`, `resume`. No stop (a pause; the next play restarts), no volume, pitch or seek: those are tracked only. WAV duration from the header, OGG/AIFF from `getTotalTime` (whole seconds) |
+| love.filesystem | ✓ | lpp-3ds replaces `io.open/read/write/close` with handle-based `System.openFile` calls, so files go through `3DS/fileio.lua` (`core/fileio.lua` seam). Saves live in `/3ds/data/<identity>/`; a CIA's romfs is read-only |
+| require / filesystem.load | ✓ | chunks are read through the adapter and compiled from the string (the player patches `dofile` because stdio is not set up for SD paths) |
+| love.keyboard / joystick | ✓ | `Controls.read` / `check` with the `KEY_*` bits; A/B/X/Y take the PlayStation positions (A = circle slot = confirm under the default layout); the circle pad is the left stick |
+| love.timer | ✓ | `Timer.getTime` (ms); `sleep` busy-waits, there is no delay call |
+| love.system | ✓ | battery from `System.getBatteryLife` (PTMU level 0-5, reported in 20% steps), language from the CFG index, native username |
+| love.event.quit | ✓ | flushes open files, `Sound.term`, `Graphics.term`, then `System.exit` |
+| Canvas / Shader / Mesh / blend modes | stub / tracked | sf2d exposes no render target or blend state to Lua |
+
+---
+
 ## Platform-specific callbacks
 
 - `onLiveArea()` — Vita only, called when entering live area
@@ -367,24 +396,22 @@ vs RPCS3) is in the README under "Testing and validation targets".
   not stock LÖVE; default `0`) shrinks every quad's source rect by `px` texels
   per side so linear filtering stops sampling the neighbouring frame at a
   boundary (PPSSPP #14977). Use `0.5` for tightly-packed linear-filtered sheets;
-  pixel art is better served by nearest filtering. Applied on OneLua/PSP/lpp-vita;
-  PS3 draws position-only, so it is a no-op there. lpp-vita reads the source
-  origin as an integer (`luaL_checkinteger`), so there the inset rounds inward
-  to whole texels: `0.5` trims one texel per side.
+  pixel art is better served by nearest filtering. Applied on OneLua/PSP/lpp-vita
+  and the 3DS. lpp-vita and lpp-3ds read the source origin as an integer
+  (`luaL_checkinteger`), so there the inset rounds inward to whole texels: `0.5`
+  trims one texel per side.
 - **Save durability** — `write`/`append` open, write and `close()` in one call,
   so those saves are always flushed. A long-lived `newFile` handle you leave open
   is tracked and closed automatically at `love.event.quit` (before the process
   exits), so a save is not lost when the app or emulator closes (Vita3K #3918 /
   #3659). Still, call `File:close()` yourself when done for the earliest flush.
 - **Mesh** is a stub
-- **love.graphics.rotate/translate/scale/push/pop** work on OneLua/Vita and
-  lpp-vita (software transform stack); on PSP and PS3 they are no-ops
-- **polygon fill** is a real even-odd scanline fill on OneLua/PSP/lpp-vita; PS3
-  primitives remain stubs
+- **love.graphics.rotate/translate/scale/push/pop** work on OneLua/Vita,
+  lpp-vita, PS3 and the 3DS (software transform stack); on PSP they are no-ops
+- **polygon fill** is a real even-odd scanline fill on every backend
 - **Audio**: OneLua supports only 2 simultaneous channels; PS3 supports stream only
 - **love.timer.sleep** on lpp-vita busy-waits if `Timer.delay` is unavailable
 - **love.data.hash / compress / decompress** are real (pure-Lua vendored libs,
   slow on-device — cache results). `gzip`/`lz4` compression fall back to deflate
   and are not byte-compatible with those two desktop formats; `deflate`/`zlib` are.
-- PS3 graphics primitives (rectangle, circle, etc.) are stubs pending SDK confirmation
 - Color is **0–1 range** (LÖVE 11.x standard) — code written for 0–255 must be updated

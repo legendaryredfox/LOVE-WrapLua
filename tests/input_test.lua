@@ -288,5 +288,54 @@ T.describe("PS3 updatecontrols", function()
     end)
 end)
 
+T.describe("3DS updatecontrols", function()
+    local function load_3ds()
+        fresh("3DS")
+        lv1lua.load("LOVE-WrapLua/core/config.lua")
+        lv1lua.load("LOVE-WrapLua/core/timestep.lua")
+        lv1lua.load("LOVE-WrapLua/3DS/graphics.lua")
+        lv1lua.load("LOVE-WrapLua/3DS/keyboard.lua")
+        lv1lua.load("LOVE-WrapLua/3DS/whileloop.lua")
+        __3ds.down = {}
+        __3ds.circle = { 0, 0 }
+    end
+
+    T.it("a held button fires keypressed once over many frames", function()
+        load_3ds()
+        local log = recorder()
+        __3ds.down[KEY_DUP] = true
+        for _ = 1, 10 do lv1lua.updatecontrols() end
+        T.eq(countOf(log, "pressed", "up"), 1)
+    end)
+
+    T.it("fires keyreleased once and clears isDown", function()
+        load_3ds()
+        local log = recorder()
+        __3ds.down[KEY_DUP] = true
+        lv1lua.updatecontrols()
+        T.ok(love.keyboard.isDown("up"), "isDown should follow the pad")
+        __3ds.down[KEY_DUP] = nil
+        for _ = 1, 5 do lv1lua.updatecontrols() end
+        T.eq(countOf(log, "released", "up"), 1)
+        T.nok(love.keyboard.isDown("up"))
+    end)
+
+    T.it("A sits in the circle position: confirm under the XB layout", function()
+        load_3ds()
+        __3ds.down[KEY_A] = true
+        lv1lua.updatecontrols()
+        T.ok(love.keyboard.isDown(lv1lua.keyset[1]), "A is keyset[1], the confirm slot")
+        T.ok(lv1lua.joystickState.buttons[2], "A maps to the circle gamepad button")
+    end)
+
+    T.it("the circle pad reaches the left stick, down positive", function()
+        load_3ds()
+        __3ds.circle = { 156, 78 }   -- full right, half up
+        lv1lua.updatecontrols()
+        T.near(lv1lua.joystickState.axes[1], 1)
+        T.near(lv1lua.joystickState.axes[2], -0.5)
+    end)
+end)
+
 io.write("\n=== input edges (core + all backends) ===\n")
 return T.summary()

@@ -60,7 +60,7 @@ local function shared_suite(mode)
     end)
 end
 
-for _, mode in ipairs({"OneLua", "PSP", "lpp-vita", "PS3"}) do
+for _, mode in ipairs({"OneLua", "PSP", "lpp-vita", "PS3", "3DS"}) do
     load_backend(mode)
     shared_suite(mode)
 end
@@ -112,6 +112,28 @@ T.describe("love.system fallbacks [OneLua]", function()
 
     T.it("native language and username come from os.*", function()
         T.eq(love.system.getLanguage(), "en")
+        T.eq(love.system.getUsername(), "Player")
+    end)
+end)
+
+-- ── 3DS: PTMU battery level, CFG language index ──────────────────
+load_backend("3DS")
+T.describe("love.system [3DS native]", function()
+    T.it("battery level 0-5 becomes a percentage", function()
+        System.getBatteryLife = function() return 3 end
+        local state, percent = love.system.getPowerInfo()
+        T.eq(state, "battery")
+        T.eq(percent, 60)
+    end)
+
+    T.it("the CFG language index maps to a language code", function()
+        System.getLanguage = function() return 2 end
+        T.eq(love.system.getLanguage(), "fr")
+        System.getLanguage = function() return 0 end
+        T.eq(love.system.getLanguage(), "ja")
+    end)
+
+    T.it("the username is native", function()
         T.eq(love.system.getUsername(), "Player")
     end)
 end)

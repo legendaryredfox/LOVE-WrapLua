@@ -10,6 +10,8 @@ if lv1lua.isPSP then
     love._console_name = "PSP"
 elseif lv1lua.mode == "PS3" then
     love._console_name = "PS3"
+elseif lv1lua.mode == "3DS" then
+    love._console_name = "3DS"
 else
     love._console_name = "Vita"
 end
@@ -32,8 +34,15 @@ function love.system.getOS()
     return "LOVE-WrapLua"
 end
 
+-- lpp-3ds returns the CFG system language as libctru's CFG_LANGUAGE_* index.
+local CTR_LANGUAGES = { [0] = "ja", "en", "fr", "de", "it", "es", "zh", "ko",
+                        "nl", "pt", "ru", "zh_TW" }
+
 function love.system.getLanguage()
-    if lv1lua.mode == "lpp-vita" then
+    if lv1lua.mode == "3DS" then
+        local fn = native(System, "getLanguage")
+        if fn then return CTR_LANGUAGES[fn()] or "en" end
+    elseif lv1lua.mode == "lpp-vita" then
         local fn = native(System, "getLanguage")
         if fn then return fn() end
     elseif lv1lua.mode == "OneLua" then
@@ -44,7 +53,7 @@ function love.system.getLanguage()
 end
 
 function love.system.getUsername()
-    if lv1lua.mode == "lpp-vita" then
+    if lv1lua.mode == "lpp-vita" or lv1lua.mode == "3DS" then
         local fn = native(System, "getUsername")
         if fn then return fn() end
     elseif lv1lua.mode == "OneLua" then
@@ -69,6 +78,13 @@ local function nativePower()
         local charging = native(System, "isBatteryCharging")
         -- lpp-vita reports remaining life in minutes; LOVE wants seconds.
         return pct(), life and life() * 60 or nil, charging and charging() or false
+    end
+    if lv1lua.mode == "3DS" then
+        -- PTMU reports a battery level of 0-5, not a percentage.
+        local level = native(System, "getBatteryLife")
+        if not level then return nil end
+        local charging = native(System, "isBatteryCharging")
+        return level() * 20, nil, charging and charging() or false
     end
     if lv1lua.mode == "OneLua" then
         -- OneLua's `os` module exposes no battery call we can rely on across

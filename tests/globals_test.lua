@@ -75,7 +75,7 @@ local function boot(mode)
     return seen
 end
 
-local MODES = { "OneLua", "PSP", "lpp-vita", "PS3" }
+local MODES = { "OneLua", "PSP", "lpp-vita", "PS3", "3DS" }
 
 for _, mode in ipairs(MODES) do
     T.describe("global boundary [" .. mode .. "]", function()

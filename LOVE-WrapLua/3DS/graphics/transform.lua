@@ -1,6 +1,8 @@
--- lpp-3ds exposes no matrix stack and no hardware clip rectangle.
--- The software stack handles push/pop/translate/scale/rotate; scissor is
--- enforced by rejecting draws whose bounding box lies entirely outside the region.
+-- lpp-3ds exposes no matrix stack, so the software stack handles
+-- push/pop/translate/scale/rotate. Scissor is real: Graphics.setViewport is
+-- sf2d_set_scissor_test, which maps the rectangle onto the rotated 3DS
+-- framebuffer itself. It only holds until the frame ends, so beginFrame
+-- re-applies it; draws wholly outside it are also rejected before the call.
 
 lv1lua.gfx.transform = lv1lua.core.newTransformStack()
 local stack = lv1lua.gfx.transform
@@ -12,6 +14,7 @@ love.graphics.push()
 
 function love.graphics.pop()
     stack:pop()
+    lv1lua.gfx.applyScissor()
 end
 
 function love.graphics.translate(offsetX, offsetY)
@@ -60,6 +63,7 @@ function love.graphics.reset()
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setBackgroundColor(0, 0, 0)
     lv1lua.gfx.lineWidth = 1
+    lv1lua.gfx.applyScissor()
 end
 
 function love.graphics.applyTransform(transform)
@@ -88,6 +92,25 @@ function love.graphics.inverseTransformPoint(x, y)
     return (x - t._offsetX) / t._scaleX, (y - t._offsetY) / t._scaleY
 end
 
+-- GPU_SCISSORMODE from libctru's gpu/enums.h; lpp-3ds registers no constant.
+local SCISSOR_DISABLE, SCISSOR_NORMAL = 0, 3
+
+function lv1lua.gfx.applyScissor()
+    if not lv1lua.gfx.inFrame then return end
+    stack:updateTransform()
+    local t = stack.transform
+    if t._usingScissor then
+        local x = math.max(0, math.floor(t._scissorX))
+        local y = math.max(0, math.floor(t._scissorY))
+        Graphics.setViewport(x, y,
+            math.max(0, math.floor(t._scissorX + t._scissorWidth) - x),
+            math.max(0, math.floor(t._scissorY + t._scissorHeight) - y),
+            SCISSOR_NORMAL)
+    else
+        Graphics.setViewport(0, 0, lv1lua.screenWidth, lv1lua.screenHeight, SCISSOR_DISABLE)
+    end
+end
+
 function love.graphics.setScissor(x, y, w, h)
     local top = stack:top()
     if top then
@@ -96,6 +119,7 @@ function love.graphics.setScissor(x, y, w, h)
         top._scissorWidth, top._scissorHeight = w, h
         stack:invalidate()
     end
+    lv1lua.gfx.applyScissor()
 end
 
 function love.graphics.getScissor()

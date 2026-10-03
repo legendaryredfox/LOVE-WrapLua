@@ -1,12 +1,14 @@
--- 3DS button bitmasks (CTR HID scan codes).
--- KEY_A=1, KEY_B=2, KEY_SELECT=4, KEY_START=8
--- KEY_DRIGHT=16, KEY_DLEFT=32, KEY_DUP=64, KEY_DDOWN=128
--- KEY_R=256, KEY_L=512, KEY_X=1024, KEY_Y=2048
-
-lv1lua.keyenum = {64, 128, 32, 16, 8, 4, 2, 1, 2048, 1024, 512, 256}
+-- Button order matches lv1lua.keyname / padname below: d-pad, start, select,
+-- then the six face/shoulder buttons in lv1lua.keyset order (circle-position
+-- B, cross-position A, Y, X, L, R). The KEY_* globals are libctru's HID bits,
+-- registered by the player.
+lv1lua.keyenum = {KEY_DUP, KEY_DDOWN, KEY_DLEFT, KEY_DRIGHT, KEY_START, KEY_SELECT,
+                  KEY_A, KEY_B, KEY_X, KEY_Y, KEY_L, KEY_R}
 lv1lua.keyname = {"up","down","left","right","start","back"}
+-- love.joystick maps from PlayStation names (core/input.lua PAD_BUTTON), so
+-- each 3DS button takes the name of the PlayStation button in its position.
 lv1lua.padname = {"up","down","left","right","start","select",
-                  "b","a","y","x","l","r"}
+                  "circle","cross","triangle","square","l","r"}
 lv1lua.keymask = {}
 
 for i = 1, #lv1lua.keyset do

@@ -41,6 +41,10 @@ function __glyphCount(s)
     return n
 end
 
+-- mock_3ds.lua rebinds io.open the way lpp-3ds does; every other backend gets
+-- the real one back when the next mock loads.
+if io.__lv1RealOpen then io.open = io.__lv1RealOpen end
+
 -- ── luaL_checkinteger ────────────────────────────────────────────
 -- The console players run Lua 5.3, where luaL_checkinteger raises on a number
 -- with a fractional part ("number has no integer representation") instead of

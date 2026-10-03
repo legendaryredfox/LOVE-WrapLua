@@ -230,6 +230,33 @@ T.describe("backend loops drive the accumulator", function()
         love.update = nil
     end)
 
+    T.it("3DS: integer-millisecond frames feed the accumulator", function()
+        loadBackend("3DS")
+        local n = 0
+        love.update = function() n = n + 1 end
+        for _ = 1, 4 do
+            __3ds.clock = __3ds.clock + 5
+            lv1lua.update()
+        end
+        T.eq(n, 1)
+        T.eq(Timer.getTime(lv1lua.timer), 0, "the frame timer is reset")
+        love.update = nil
+    end)
+
+    T.it("3DS: love.timer.sleep spins on the timer (no native delay)", function()
+        loadBackend("3DS")
+        local calls = 0
+        local getTime = Timer.getTime
+        Timer.getTime = function(t)
+            calls = calls + 1
+            __3ds.clock = __3ds.clock + 1
+            return getTime(t)
+        end
+        love.timer.sleep(0.01)
+        Timer.getTime = getTime
+        T.ok(calls >= 10, "should wait about 10 ms of timer ticks")
+    end)
+
     T.it("PSP: a 5 ms frame still advances the game", function()
         loadBackend("PSP")
         local n = 0

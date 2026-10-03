@@ -7,8 +7,10 @@ end
 
 function love.graphics.newQuad(x, y, w, h, swOrImg, sh)
     local sw, _sh
-    if type(swOrImg) == "number" then
-        sw, _sh = swOrImg, sh or h
+    -- Graphics.loadImage returns the texture as an integer, so a number in the
+    -- fifth slot is only a width when a height follows it.
+    if type(swOrImg) == "number" and sh ~= nil then
+        sw, _sh = swOrImg, sh
     elseif swOrImg ~= nil then
         sw  = Graphics.getImageWidth(swOrImg)  or w
         _sh = Graphics.getImageHeight(swOrImg) or h

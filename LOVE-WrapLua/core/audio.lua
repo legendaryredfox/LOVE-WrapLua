@@ -46,7 +46,8 @@ end
 -- carries the byte rate and the data chunk its length. Anything else (MP3, OGG)
 -- needs the SDK to tell us, and none of them does.
 local function readWavDuration(path)
-    local ok, f = pcall(io.open, path, "rb")
+    local open = (lv1lua.fileio and lv1lua.fileio.open) or io.open
+    local ok, f = pcall(open, path, "rb")
     if not ok or not f then return nil end
     local header = f:read(44)
     f:close()

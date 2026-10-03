@@ -9,6 +9,11 @@ lv1lua.loadOnce("LOVE-WrapLua/core/timestep.lua")
 
 local backend = "LOVE-WrapLua/" .. lv1lua.mode .. "/"
 
+-- lpp-3ds rebinds io.*, so its file adapter has to be in place before
+-- anything below opens a file.
+if lv1lua.mode == "3DS" then lv1lua.load(backend .. "fileio.lua") end
+lv1lua.loadOnce("LOVE-WrapLua/core/fileio.lua")
+
 if lv1lua.isPSP then
     -- PSP runs OneLua too, but with its own thin graphics backend.
     lv1lua.load("LOVE-WrapLua/OneLua/graphics_psp.lua")

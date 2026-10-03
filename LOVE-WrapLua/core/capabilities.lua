@@ -169,8 +169,8 @@ local CAPS = {
                                           replace = true, screen = true,
                                           lighten = true, darken = true } }),
     },
-    -- lpp-3ds (citro2d): quad+rotation draw, software transform stack + scissor.
-    -- Tier 3 until real-device confirmation.
+    -- lpp-3ds (sf2d): quad+rotation+tint draw, software transform stack, real
+    -- GPU scissor (Graphics.setViewport). Tier 3 until real-device confirmation.
     ["3DS"] = {
         renderer  = "lpp-3ds",
         tier      = 3,
@@ -182,7 +182,8 @@ local CAPS = {
         rendersensitive = rendersensitive({ blendmode = true, framebufferread = true,
                                             savepersistence = true }),
         system    = systemcaps({ cores = 2, battery = true, vibrate = false }),
-        audio     = audiocaps({ voices = 2, formats = "mp3, ogg, wav" }),
+        -- NDSP has 24 channels; the player decodes WAV, OGG and AIFF only.
+        audio     = audiocaps({ voices = 24, formats = "wav, ogg, aiff" }),
         blend     = blendcaps(),
     },
 }

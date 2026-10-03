@@ -23,6 +23,57 @@ lpp-3ds, sf2dlib).
   inward to whole texels there (`lv1lua.core.insetQuadTexels`).
 - Tests: `__checkInteger` in `mock_common.lua` encodes the Lua 5.3 integer rule;
   the lpp-vita mock applies it to the source origin.
+- lpp-vita and 3DS: `Graphics.loadImage` returns the texture as an integer, so
+  `newQuad(x, y, w, h, image)` took the handle for the sheet width. The image
+  form is now told apart from `(sw, sh)` by the argument count, and the 3DS mock
+  hands out integer handles like the console.
+- 3DS: the T6.4 backend was written against a mock nobody had checked against
+  lpp-3ds, and almost every native call differed. Rewritten against the player's
+  own bindings:
+  - `Graphics.*` draws only between `initBlend(TOP_SCREEN)` and `termBlend()`
+    (`TOP_SCREEN` is `0`, not `1`), so the frame now opens and closes the GPU
+    pass; draws outside `love.draw` are dropped with a warning instead of
+    raising.
+  - Primitives use lpp-vita's `(x1, x2, y1, y2, color)` order with no screen
+    argument; `drawRect` / `fillCircle` do not exist (`fillEmptyRect` /
+    `drawCircle`, integer radius).
+  - `drawImageExtended` takes the texture tenth and the sprite centre, and it
+    tints, so `setColor` now reaches every 3DS draw.
+  - `Font.print` is `(font, x, y, text, color, screen)` into the CPU framebuffer:
+    text is queued during the frame and printed after `termBlend` (otherwise the
+    GPU transfer paints over it), positions are rounded to integers, and lines
+    starting off screen are skipped instead of raising. Measuring uses
+    `Font.measureText` (there is no `getTextWidth`).
+  - `Sound` has no `open`, `stop`, volume or seek: sources open with
+    `openWav` / `openOgg` / `openAiff` by extension, stop is a pause, and
+    `play(handle, loop)` passes the looping flag.
+  - Input reads `Controls.readCirclePad` (there is no `getCircleX`) with up as
+    negative Y, and the face buttons take the PlayStation positions so
+    `love.joystick` sees them (they were named `a`/`b`/`x`/`y`, which the
+    gamepad map never matched).
+  - `Timer.delay` does not exist; `sleep` spins on the timer.
+  - Scissor is real on the GPU through `Graphics.setViewport`.
+- 3DS file access: lpp-3ds rebinds `io.open/read/write/close` to handle-based
+  `System.openFile` calls, so every `io.open` in the shared modules raised there.
+  A small seam, `core/fileio.lua` (`open`, `loadfile`), now carries all file
+  access; on every other backend it is the standard library, and
+  `3DS/fileio.lua` implements it over `System.openFile` (truncating on `"w"`,
+  which `FCREATE` alone does not, and finding directories by listing the
+  parent). `require` and `love.filesystem.load` compile through it too.
+- 3DS boot: lpp-3ds also boots `index.lua`, which hard-coded lpp-vita. It now
+  detects the player by `TOP_SCREEN`, and takes `dataloc` from `romfs:/` (CIA)
+  or `System.currentDirectory()` (.3dsx). Saves go to `/3ds/data/<identity>/`.
+- `love.system` on the 3DS: battery level (PTMU 0-5) as a percentage, the CFG
+  language index as a language code, native username.
+- Capability table: the 3DS decodes WAV / OGG / AIFF (not MP3) on 24 NDSP
+  channels.
+- Tests: `tests/mock_platform.lua` inherited `__MODE` from whichever suite ran
+  before it in `run_all`, so the "OneLua" suites could silently run under
+  another backend; it is now always OneLua. The 3DS joined the globals,
+  timestep, input, audio, system, capabilities, objects, filesystem and
+  bootstrap suites.
+- Docs: README, `Implemented.md` and `AGENTS.md` describe the 3DS backend, and
+  the PS3 rows now match T6.6 (tier 2, real tiny3D draws and primitives).
 
 ### 2026-09-16, branch `fix/phase0-1-correctness`
 

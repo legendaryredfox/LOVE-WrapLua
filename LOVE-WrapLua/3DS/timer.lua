@@ -1,3 +1,5 @@
+-- lpp-3ds Timer: new / getTime (integer milliseconds) / reset. There is no
+-- delay or sleep call, so love.timer.sleep spins on a timer.
 lv1lua.timer = Timer.new()
 local gtimer  = Timer.new()
 lv1lua.dt = lv1lua.dt or 0
@@ -23,11 +25,7 @@ function love.timer.step()
 end
 
 function love.timer.sleep(seconds)
-    local ms = math.floor(seconds * 1000)
-    if Timer.delay then
-        Timer.delay(ms)
-    else
-        local start = Timer.getTime(gtimer)
-        while Timer.getTime(gtimer) - start < ms do end
-    end
+    local ms = (seconds or 0) * 1000
+    local start = Timer.getTime(gtimer)
+    while Timer.getTime(gtimer) - start < ms do end
 end

@@ -101,6 +101,7 @@ local BACKENDS = {
     { mode = "PSP",      gfx = "LOVE-WrapLua/OneLua/graphics_psp.lua" },
     { mode = "lpp-vita", gfx = "LOVE-WrapLua/lpp-vita/graphics.lua" },
     { mode = "PS3",      gfx = "LOVE-WrapLua/PS3/graphics.lua" },
+    { mode = "3DS",      gfx = "LOVE-WrapLua/3DS/graphics.lua" },
 }
 
 for _, b in ipairs(BACKENDS) do
@@ -137,11 +138,13 @@ end
 -- argument count tells it apart from newQuad(x, y, w, h, sw, sh).
 for _, b in ipairs({
     { mode = "lpp-vita", gfx = "LOVE-WrapLua/lpp-vita/graphics.lua" },
+    { mode = "3DS",      gfx = "LOVE-WrapLua/3DS/graphics.lua" },
 }) do
     load_backend(b.mode, b.gfx)
     T.describe("Quad with an integer image handle [" .. b.mode .. "]", function()
         T.it("newQuad(x,y,w,h, handle) measures the image, not the handle", function()
-            local handle = 40001  -- what Graphics.loadImage returns on device
+            -- An integer, as Graphics.loadImage returns on device.
+            local handle = b.mode == "3DS" and Graphics.loadImage("sheet.png") or 40001
             local q = love.graphics.newQuad(0, 0, 16, 16, handle)
             local sw, sh = q:getTextureDimensions()
             T.eq(sw, 64)  -- the mock's Graphics.getImageWidth

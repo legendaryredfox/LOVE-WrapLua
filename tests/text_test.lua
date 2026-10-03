@@ -17,6 +17,7 @@ local GFX = {
     ["PSP"]      = "LOVE-WrapLua/OneLua/graphics_psp.lua",
     ["lpp-vita"] = "LOVE-WrapLua/lpp-vita/graphics.lua",
     ["PS3"]      = "LOVE-WrapLua/PS3/graphics.lua",
+    ["3DS"]      = "LOVE-WrapLua/3DS/graphics.lua",
 }
 
 local function load_backend(mode)
@@ -143,6 +144,66 @@ T.describe("PS3 text metrics (estimate, no native measuring)", function()
         local f = love.graphics.newFont(nil, 16)
         love.graphics.setFont(f)
         T.ok(love.graphics.getFont() == f)
+    end)
+end)
+
+-- ── 3DS ──────────────────────────────────────────────────────────
+load_backend("3DS")
+shared_suite("3DS")
+T.describe("3DS text (Font.print / Font.measureText)", function()
+    T.it("setFont / getFont roundtrip", function()
+        local f = love.graphics.newFont(nil, 16)
+        love.graphics.setFont(f)
+        T.ok(love.graphics.getFont() == f)
+    end)
+
+    T.it("print passes (font, x, y, text, color, screen)", function()
+        __rec.reset()
+        love.graphics.print("hi", 5, 10)
+        local c = __rec.last("Font.print")
+        T.ok(c, "Font.print was called")
+        T.eq(c.args[2], 5); T.eq(c.args[3], 10)
+        T.eq(c.args[4], "hi")
+        T.eq(c.args[5], lv1lua.current.color)
+        T.eq(c.args[6], TOP_SCREEN)
+    end)
+
+    T.it("fractional coordinates are rounded to integers", function()
+        __rec.reset()
+        love.graphics.print("hi", 5.4, 10.6)
+        local c = __rec.last("Font.print")
+        T.eq(c.args[2], 5); T.eq(c.args[3], 11)
+    end)
+
+    T.it("text starting off screen is dropped instead of raising", function()
+        __rec.reset()
+        local ok, err = pcall(function()
+            love.graphics.print("left", -3, 10)
+            love.graphics.print("below", 10, 230)
+        end)
+        T.ok(ok, tostring(err))
+        T.eq(__rec.count("Font.print"), 0)
+    end)
+
+    T.it("getWidth measures with Font.measureText", function()
+        local f = love.graphics.newFont(nil, 16)
+        T.eq(f:getWidth("abcd"), 32)   -- mock: 4 glyphs * 16 px * 0.5
+    end)
+
+    T.it("text printed during a frame lands after termBlend", function()
+        lv1lua.load("LOVE-WrapLua/core/input.lua")
+        dofile("LOVE-WrapLua/3DS/whileloop.lua")
+        love.draw = function()
+            love.graphics.print("score", 4, 4)
+            love.graphics.rectangle("fill", 0, 0, 4, 4)
+        end
+        __rec.reset()
+        lv1lua.draw()
+        love.draw = nil
+        local order = {}
+        for _, c in ipairs(__rec.calls) do order[#order + 1] = c.fn end
+        local s = table.concat(order, " ")
+        T.ok(s:find("Graphics.termBlend.-Font.print.-Screen.flip"), "order was: " .. s)
     end)
 end)
 

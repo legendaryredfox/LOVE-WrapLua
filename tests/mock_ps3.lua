@@ -37,6 +37,79 @@ snd = {
     SetVolumeBGMusic = function(...) __rec.log("snd.SetVolumeBGMusic", ...) end,
 }
 
+-- tiny3d namespace. The player binds tiny3d_BlendFunc as gfx.BlendFunction and
+-- puts its constants on this table; the values below are the ones tiny3d.h
+-- defines (RGB in the low half, alpha in the high half), so a wrapper that
+-- combines the wrong pair fails here.
+-- T6.6 added quad-draw, texture-load, and TTF text functions.
+gfx = {
+    -- Frame mode.
+    Mode2D = function(...) __rec.log("gfx.Mode2D", ...) end,
+    Mode3D = function(...) __rec.log("gfx.Mode3D", ...) end,
+
+    -- Polygon drawing (GX_QUADS = 7 in tiny3d.h).
+    QUADS          = 7,
+    SetPolygon     = function(...) __rec.log("gfx.SetPolygon",     ...) end,
+    VertexPosition = function(...) __rec.log("gfx.VertexPosition", ...) end,
+    VertexTexture  = function(...) __rec.log("gfx.VertexTexture",  ...) end,
+    VertexColor    = function(...) __rec.log("gfx.VertexColor",    ...) end,
+    End            = function(...) __rec.log("gfx.End",            ...) end,
+
+    -- Texture management.
+    LoadTexture = function(path)
+        __rec.log("gfx.LoadTexture", path)
+        local tex = { _path = path, _w = 64, _h = 64 }
+        function tex:getWidth()  return self._w end
+        function tex:getHeight() return self._h end
+        return tex
+    end,
+    SetTexture     = function(...) __rec.log("gfx.SetTexture",     ...) end,
+    SetTextureWrap = function(...) __rec.log("gfx.SetTextureWrap", ...) end,
+
+    -- TTF text.
+    FontAddTTF     = function(path) __rec.log("gfx.FontAddTTF", path); return { _path = path } end,
+    FontDrawString = function(...) __rec.log("gfx.FontDrawString", ...) end,
+    FontSetSize    = function(...) __rec.log("gfx.FontSetSize",    ...) end,
+    FontSetColors  = function(...) __rec.log("gfx.FontSetColors",  ...) end,
+
+    -- Offscreen surfaces.
+    SurfaceNew      = function(w, h) __rec.log("gfx.SurfaceNew", w, h); return { _w=w, _h=h } end,
+    SurfaceClear    = function(...) __rec.log("gfx.SurfaceClear",    ...) end,
+    SurfaceSetPixel = function(...) __rec.log("gfx.SurfaceSetPixel", ...) end,
+    SurfaceFree     = function(...) __rec.log("gfx.SurfaceFree",     ...) end,
+
+    BlendFunction = function(...) __rec.log("gfx.BlendFunction", ...) end,
+
+    BLEND_FUNC_SRC_RGB_ZERO                  = 0x00000000,
+    BLEND_FUNC_SRC_RGB_ONE                   = 0x00000001,
+    BLEND_FUNC_SRC_RGB_SRC_ALPHA             = 0x00000302,
+    BLEND_FUNC_SRC_RGB_DST_COLOR             = 0x00000306,
+    BLEND_FUNC_SRC_ALPHA_ZERO                = 0x00000000,
+    BLEND_FUNC_SRC_ALPHA_ONE                 = 0x00010000,
+    BLEND_FUNC_SRC_ALPHA_SRC_ALPHA           = 0x03020000,
+    BLEND_FUNC_SRC_ALPHA_DST_ALPHA           = 0x03040000,
+
+    BLEND_FUNC_DST_RGB_ZERO                  = 0x00000000,
+    BLEND_FUNC_DST_RGB_ONE                   = 0x00000001,
+    BLEND_FUNC_DST_RGB_ONE_MINUS_SRC_COLOR   = 0x00000301,
+    BLEND_FUNC_DST_RGB_ONE_MINUS_SRC_ALPHA   = 0x00000303,
+    BLEND_FUNC_DST_ALPHA_ZERO                = 0x00000000,
+    BLEND_FUNC_DST_ALPHA_ONE                 = 0x00010000,
+    BLEND_FUNC_DST_ALPHA_ONE_MINUS_SRC_COLOR = 0x03010000,
+    BLEND_FUNC_DST_ALPHA_ONE_MINUS_SRC_ALPHA = 0x03030000,
+
+    BLEND_RGB_FUNC_ADD                       = 0x00008006,
+    BLEND_RGB_FUNC_SUBTRACT                  = 0x0000800A,
+    BLEND_RGB_FUNC_REVERSE_SUBTRACT          = 0x0000800B,
+    BLEND_RGB_MIN                            = 0x00008007,
+    BLEND_RGB_MAX                            = 0x00008008,
+    BLEND_ALPHA_FUNC_ADD                     = 0x80060000,
+    BLEND_ALPHA_FUNC_SUBTRACT                = 0x800A0000,
+    BLEND_ALPHA_FUNC_REVERSE_SUBTRACT        = 0x800B0000,
+    BLEND_ALPHA_MIN                          = 0x80070000,
+    BLEND_ALPHA_MAX                          = 0x80080000,
+}
+
 -- Graphics namespace (PS3 exposes only fillRect natively).
 Graphics = { fillRect = function(...) __rec.log("Graphics.fillRect", ...) end }
 

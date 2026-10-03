@@ -13,6 +13,7 @@ local GFX = {
     ["PSP"]      = "LOVE-WrapLua/OneLua/graphics_psp.lua",
     ["lpp-vita"] = "LOVE-WrapLua/lpp-vita/graphics.lua",
     ["PS3"]      = "LOVE-WrapLua/PS3/graphics.lua",
+    ["3DS"]      = "LOVE-WrapLua/3DS/graphics.lua",
 }
 
 local function load_backend(mode)
@@ -277,8 +278,10 @@ T.describe("lpp-vita draw (drawImageExtended)", function()
         love.graphics.draw(img, 5, 6, math.pi / 2)
         local c = __rec.last("Graphics.drawImageExtended")
         T.ok(c ~= nil, "drawImageExtended should be called for a rotated draw")
-        T.eq(c.args[1], 5)   -- x
-        T.eq(c.args[2], 6)   -- y
+        -- vita2d places the sub-rect by its centre: the 64x64 image's centre,
+        -- (32, 32) from the pivot, turned a quarter around it.
+        T.near(c.args[1], 5 - 32)
+        T.near(c.args[2], 6 + 32)
         T.eq(c.args[4], 0)   -- st_x (full image)
         T.eq(c.args[5], 0)   -- st_y
         T.eq(c.args[6], 64)  -- w  (mock image is 64x64)
@@ -293,8 +296,8 @@ T.describe("lpp-vita draw (drawImageExtended)", function()
         love.graphics.draw(img, q, 100, 50, 0, 2, 3)
         local c = __rec.last("Graphics.drawImageExtended")
         T.ok(c ~= nil, "drawImageExtended should be called for a quad draw")
-        T.eq(c.args[1], 100)  -- x
-        T.eq(c.args[2], 50)   -- y
+        T.near(c.args[1], 100 + 32 * 2 / 2)  -- centre x = x + w*sx/2
+        T.near(c.args[2], 50 + 24 * 3 / 2)   -- centre y = y + h*sy/2
         T.eq(c.args[4], 8)    -- st_x = quad x
         T.eq(c.args[5], 16)   -- st_y = quad y
         T.eq(c.args[6], 32)   -- w    = quad w
@@ -309,8 +312,49 @@ T.describe("lpp-vita draw (drawImageExtended)", function()
         local q   = love.graphics.newQuad(0, 0, 32, 32, img)
         love.graphics.draw(img, q, 100, 100, 0, 2, 2, 5, 10)
         local c = __rec.last("Graphics.drawImageExtended")
-        T.eq(c.args[1], 100 - 5 * 2)   -- x - ox*sx
-        T.eq(c.args[2], 100 - 10 * 2)  -- y - oy*sy
+        T.near(c.args[1], 100 + (16 - 5) * 2)   -- centre: (w/2 - ox) * sx
+        T.near(c.args[2], 100 + (16 - 10) * 2)  -- centre: (h/2 - oy) * sy
+    end)
+
+    T.it("a rotated quad turns around its origin, not its corner", function()
+        __rec.reset()
+        local img = love.graphics.newImage("s.png")
+        local q   = love.graphics.newQuad(0, 0, 16, 16, img)
+        -- Origin at the centre: the centre stays on the pivot whatever the angle.
+        love.graphics.draw(img, q, 40, 60, 1.2, 1, 1, 8, 8)
+        local c = __rec.last("Graphics.drawImageExtended")
+        T.near(c.args[1], 40)
+        T.near(c.args[2], 60)
+    end)
+
+    T.it("a mirrored quad with ox = w covers the same pixels as the original", function()
+        __rec.reset()
+        local img = love.graphics.newImage("s.png")
+        local q   = love.graphics.newQuad(0, 0, 16, 16, img)
+        love.graphics.draw(img, q, 100, 0, 0, -1, 1, 16, 0)
+        local c = __rec.last("Graphics.drawImageExtended")
+        T.near(c.args[1], 108)  -- spans 100..116, centre 108
+        T.eq(c.args[9], -1)
+    end)
+
+    T.it("a mirrored full image with ox = w keeps its top-left at x", function()
+        __rec.reset()
+        local img = love.graphics.newImage("s.png")
+        love.graphics.draw(img, 100, 0, 0, -1, 1, 64, 0)
+        local c = __rec.last("Graphics.drawScaleImage")
+        -- drawScaleImage spans x .. x + w*sx, so x must be the right edge.
+        T.near(c.args[1], 164)
+        T.eq(c.args[4], -1)
+    end)
+
+    T.it("source origin reaches the native call as an integer", function()
+        love.graphics.setTextureInset(0.5)
+        local img = love.graphics.newImage("s.png")
+        local q   = love.graphics.newQuad(0, 16, 16, 16, img)
+        __rec.reset()
+        local ok, err = pcall(love.graphics.draw, img, q, 0, 0)
+        love.graphics.setTextureInset(0)
+        T.ok(ok, tostring(err))
     end)
 end)
 
@@ -377,6 +421,15 @@ T.describe("lpp-vita software scissor", function()
         T.eq(__rec.count("Graphics.drawScaleImage"), 1)
     end)
 
+    T.it("keeps a mirrored draw that lands inside the scissor", function()
+        love.graphics.reset()
+        love.graphics.setScissor(0, 0, 50, 50)
+        __rec.reset()
+        -- sx = -1 from x = 100 covers 36..100, which overlaps the scissor.
+        love.graphics.draw(love.graphics.newImage("s.png"), 100, 0, 0, -1, 1)
+        T.eq(__rec.count("Graphics.drawScaleImage"), 1)
+    end)
+
     T.it("clearing the scissor lets all draws through again", function()
         love.graphics.reset()
         love.graphics.setScissor(0, 0, 1, 1)
@@ -390,12 +443,161 @@ end)
 -- ── PS3 ──────────────────────────────────────────────────────────
 load_backend("PS3")
 shared_suite("PS3")
-T.describe("PS3 capability profile (T4.5)", function()
-    T.it("reports the least-supported tier honestly", function()
-        T.nok(love._backend.features.primitives, "PS3 has no primitives")
-        T.nok(love._backend.features.quaddraw,  "PS3 has no quad sub-rect blit")
+T.describe("PS3 capability profile", function()
+    T.it("reports real primitives and quad draw", function()
+        T.ok(love._backend.features.primitives, "PS3 has primitives")
+        T.ok(love._backend.features.quaddraw,   "PS3 has quad draw")
         T.nok(love.graphics.getSupported().canvas)
         T.eq(love.graphics.getSystemLimits().texturesize, 512)
+    end)
+end)
+
+-- ── 3DS ──────────────────────────────────────────────────────────
+-- lpp-3ds only draws inside an initBlend/termBlend pair, so the suite runs
+-- inside one frame, as love.draw does.
+load_backend("3DS")
+lv1lua.gfx.beginFrame()
+shared_suite("3DS")
+T.describe("3DS capability profile", function()
+    T.it("reports real primitives and quad draw", function()
+        T.ok(love._backend.features.primitives, "3DS has primitives")
+        T.ok(love._backend.features.quaddraw,   "3DS has quad draw")
+        T.nok(love.graphics.getSupported().canvas)
+        T.eq(love.graphics.getSystemLimits().texturesize, 1024)
+    end)
+end)
+
+T.describe("3DS native primitives (lpp-3ds luaGraphics.cpp)", function()
+    T.it("fillRect takes (x1, x2, y1, y2, color), like lpp-vita", function()
+        love.graphics.reset()
+        __rec.reset()
+        love.graphics.rectangle("fill", 10, 20, 30, 40)
+        local c = __rec.last("Graphics.fillRect")
+        T.ok(c, "fillRect was called")
+        T.eq(c.args[1], 10); T.eq(c.args[2], 40)   -- x1, x2
+        T.eq(c.args[3], 20); T.eq(c.args[4], 60)   -- y1, y2
+        T.eq(#c.args, 5, "no screen argument: initBlend chose the screen")
+    end)
+
+    T.it("rectangle outline uses fillEmptyRect in the same order", function()
+        __rec.reset()
+        love.graphics.rectangle("line", 10, 20, 30, 40)
+        local c = __rec.last("Graphics.fillEmptyRect")
+        T.ok(c, "fillEmptyRect was called")
+        T.eq(c.args[1], 10); T.eq(c.args[2], 40)
+        T.eq(c.args[3], 20); T.eq(c.args[4], 60)
+    end)
+
+    T.it("drawLine takes (x1, x2, y1, y2, color)", function()
+        __rec.reset()
+        love.graphics.line(5, 6, 15, 16)
+        local c = __rec.last("Graphics.drawLine")
+        T.ok(c, "drawLine was called")
+        T.eq(c.args[1], 5); T.eq(c.args[2], 15)
+        T.eq(c.args[3], 6); T.eq(c.args[4], 16)
+    end)
+
+    T.it("a filled circle reaches drawCircle with an integer radius", function()
+        __rec.reset()
+        love.graphics.circle("fill", 50, 50, 10.4)
+        local c = __rec.last("Graphics.drawCircle")
+        T.ok(c, "drawCircle was called")
+        T.eq(c.args[3], 10)
+    end)
+
+    T.it("colours reach the natives as Color.new integers", function()
+        love.graphics.setColor(1, 0, 0, 1)
+        __rec.reset()
+        love.graphics.rectangle("fill", 0, 0, 4, 4)
+        local c = __rec.last("Graphics.fillRect")
+        T.eq(c.args[5], Color.new(255, 0, 0, 255))
+        love.graphics.setColor(1, 1, 1, 1)
+    end)
+end)
+
+T.describe("3DS draw placement (sf2d)", function()
+    T.it("an unrotated draw uses drawScaleImage at the top-left with the tint", function()
+        love.graphics.reset()
+        love.graphics.setColor(1, 0.5, 0, 1)
+        __rec.reset()
+        love.graphics.draw(love.graphics.newImage("s.png"), 10, 20)
+        local c = __rec.last("Graphics.drawScaleImage")
+        T.ok(c, "drawScaleImage was called")
+        T.eq(c.args[1], 10); T.eq(c.args[2], 20)
+        T.eq(c.args[6], Color.new(255, 128, 0, 255))
+        love.graphics.setColor(1, 1, 1, 1)
+    end)
+
+    T.it("drawImageExtended takes the texture tenth and the centre first", function()
+        __rec.reset()
+        local img = love.graphics.newImage("s.png")
+        local q   = love.graphics.newQuad(8, 16, 32, 24, img)
+        love.graphics.draw(img, q, 100, 50, 0, 2, 3)
+        local c = __rec.last("Graphics.drawImageExtended")
+        T.ok(c, "drawImageExtended was called")
+        T.near(c.args[1], 100 + 32)   -- centre x = x + w*sx/2
+        T.near(c.args[2], 50 + 36)    -- centre y = y + h*sy/2
+        T.eq(c.args[3], 8);  T.eq(c.args[4], 16)
+        T.eq(c.args[5], 32); T.eq(c.args[6], 24)
+        T.eq(c.args[8], 2);  T.eq(c.args[9], 3)
+        T.ok(c.args[10] == img, "texture is the tenth argument")
+    end)
+
+    T.it("a rotated draw turns around its origin", function()
+        __rec.reset()
+        love.graphics.draw(love.graphics.newImage("s.png"), 40, 60, 1.1, 1, 1, 32, 32)
+        local c = __rec.last("Graphics.drawImageExtended")
+        T.near(c.args[1], 40); T.near(c.args[2], 60)
+        T.near(c.args[7], 1.1)
+    end)
+
+    T.it("a half-texel inset reaches the source origin as whole texels", function()
+        love.graphics.setTextureInset(0.5)
+        local img = love.graphics.newImage("s.png")
+        local q   = love.graphics.newQuad(0, 16, 16, 16, img)
+        __rec.reset()
+        local ok, err = pcall(love.graphics.draw, img, q, 0, 0)
+        love.graphics.setTextureInset(0)
+        T.ok(ok, tostring(err))
+        local c = __rec.last("Graphics.drawImageExtended")
+        T.eq(c.args[3], 1); T.eq(c.args[4], 17)
+    end)
+
+    T.it("setScissor reaches Graphics.setViewport, clearing it disables", function()
+        love.graphics.setScissor(10, 20, 30, 40)
+        T.eq(__3ds.scissor[1], 10); T.eq(__3ds.scissor[3], 30)
+        T.eq(__3ds.scissor[5], 3)   -- GPU_SCISSOR_NORMAL
+        love.graphics.setScissor()
+        T.eq(__3ds.scissor[5], 0)   -- GPU_SCISSOR_DISABLE
+    end)
+end)
+
+T.describe("3DS frame", function()
+    T.it("a draw outside a frame is dropped instead of raising", function()
+        lv1lua.gfx.endFrame()
+        __rec.reset()
+        local ok, err = pcall(function()
+            love.graphics.rectangle("fill", 0, 0, 4, 4)
+            love.graphics.draw(love.graphics.newImage("s.png"), 0, 0)
+        end)
+        T.ok(ok, tostring(err))
+        T.eq(__rec.count("Graphics.fillRect"), 0)
+        T.eq(__rec.count("Graphics.drawScaleImage"), 0)
+    end)
+
+    T.it("lv1lua.draw wraps love.draw in initBlend/termBlend and flips", function()
+        lv1lua.load("LOVE-WrapLua/core/input.lua")
+        dofile("LOVE-WrapLua/3DS/whileloop.lua")
+        love.draw = function() love.graphics.rectangle("fill", 0, 0, 4, 4) end
+        __rec.reset()
+        lv1lua.draw()
+        love.draw = nil
+        local order = {}
+        for _, c in ipairs(__rec.calls) do order[#order + 1] = c.fn end
+        local s = table.concat(order, " ")
+        T.ok(s:find("Graphics.initBlend.-Graphics.fillRect.-Graphics.termBlend.-Screen.flip"),
+             "frame order was: " .. s)
+        T.ok(__3ds.blend == nil, "the frame is closed")
     end)
 end)
 

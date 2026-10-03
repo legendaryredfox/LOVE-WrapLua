@@ -13,7 +13,7 @@ lv1lua.gfx.prims = {
     line        = function(x1, y1, x2, y2, c) draw.line(x1, y1, x2, y2, c) end,
     fillCircle  = function(x, y, r, c, segments) draw.circle(x, y, r, c, segments) end,
 
-    -- Primitives ride the same transform stack as images (T5.2): every vertex
+    -- Primitives ride the same transform stack as images: every vertex
     -- through mapPoint, every size through mapScale.
     mapPoint = function(x, y)
         stack:updateTransform()

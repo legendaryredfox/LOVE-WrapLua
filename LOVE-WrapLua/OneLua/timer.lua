@@ -15,16 +15,18 @@ function love.timer.getDelta()
 end
 
 function love.timer.getFPS()
-    if lv1lua.dt > 0 then return math.floor(1 / lv1lua.dt + 0.5) end
-    return 60
+    -- The render rate, which the fixed-timestep accumulator (core/timestep.lua)
+    -- keeps separate from the update rate, so 1/dt is no longer the answer.
+    return lv1lua.core.getFPS()
 end
 
 function love.timer.getAverageDelta()
-    return lv1lua.dt
+    return lv1lua.core.getAverageDelta()
 end
 
 function love.timer.step()
-    -- In the wrapper the main loop drives stepping; this is a no-op.
+    -- The main loop measures the frame; report what it measured.
+    return lv1lua.frameDelta or 0
 end
 
 function love.timer.sleep(seconds)

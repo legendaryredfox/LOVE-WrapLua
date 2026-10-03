@@ -1,5 +1,4 @@
--- Shared Font objects: one prototype, one cache, four backends (FIX_PLAN T5.1,
--- font slice).
+-- Shared Font objects: one prototype, one cache, four backends.
 --
 -- Each backend used to carry its own newFont/setFont/getFont/setNewFont and its
 -- own ad-hoc font table, and they had drifted: only OneLua cached faces, only

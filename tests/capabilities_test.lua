@@ -11,9 +11,10 @@ local GFX = {
     ["PSP"]      = "LOVE-WrapLua/OneLua/graphics_psp.lua",
     ["lpp-vita"] = "LOVE-WrapLua/lpp-vita/graphics.lua",
     ["PS3"]      = "LOVE-WrapLua/PS3/graphics.lua",
+    ["3DS"]      = "LOVE-WrapLua/3DS/graphics.lua",
 }
 
-local MODES = { "OneLua", "PSP", "lpp-vita", "PS3" }
+local MODES = { "OneLua", "PSP", "lpp-vita", "PS3", "3DS" }
 
 local FLAGS = { "blendmode", "framebufferread", "texturefilter", "savepersistence" }
 
@@ -46,11 +47,21 @@ for _, mode in ipairs(MODES) do
             end
         end)
 
-        -- Blending is a stub everywhere, so no backend may claim it works.
-        T.it("never advertises canvas, shader or blend mode", function()
+        T.it("never advertises canvas or shader", function()
             T.nok(love.graphics.getSupported().canvas)
             T.nok(love.graphics.getSupported().shader)
-            T.nok(love._backend.features.blendmode)
+        end)
+
+        -- Since T6.5 blending is real where the SDK exposes it (PSP, PS3) and
+        -- still a stub on both Vita backends, so the flag has to agree with the
+        -- mode list rather than being false everywhere.
+        T.it("the blend feature flag matches the mode list", function()
+            local blend = love._backend.blend
+            T.istype(blend, "table")
+            T.eq(love._backend.features.blendmode, blend.native)
+            if not blend.native then
+                T.nok(blend.modes.add, "a backend with no blend call supports alpha only")
+            end
         end)
     end)
 end
@@ -91,8 +102,10 @@ end)
 
 load_backend("PS3")
 T.describe("capabilities [PS3 specifics]", function()
-    T.it("is the experimental tier (T8.5)", function()
-        T.eq(love._backend.tier, 3)
+    -- T6.6 promoted PS3 from tier 3 to tier 2 (textured quads, transforms,
+    -- primitives, TTF text); Canvas RTT still deferred.
+    T.it("is the partial tier after T6.6 (T8.5 + T6.6)", function()
+        T.eq(love._backend.tier, 2)
     end)
 
     T.it("treats every renderer-sensitive area as unconfirmed", function()
@@ -101,9 +114,9 @@ T.describe("capabilities [PS3 specifics]", function()
         end
     end)
 
-    T.it("claims no primitives or quad draw", function()
-        T.nok(love._backend.features.primitives)
-        T.nok(love._backend.features.quaddraw)
+    T.it("reports real primitives and quad draw after T6.6", function()
+        T.ok(love._backend.features.primitives)
+        T.ok(love._backend.features.quaddraw)
     end)
 end)
 

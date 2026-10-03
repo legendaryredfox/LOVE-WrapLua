@@ -31,7 +31,8 @@ runs on the handheld or console without a real LÖVE runtime.
 | PS Vita | `OneLua` | [OneLua](http://onelua.x10.mx/) | 1, supported |
 | PSP | `OneLua` (PSP sub-mode) | OneLua | 1, supported |
 | PS Vita (alternative) | `lpp-vita` | [lpp-vita](https://github.com/Rinnegatamante/lpp-vita) | 2, partial |
-| PS3 | `PS3` | Lua Player PS3 | 3, experimental |
+| PS3 | `PS3` | Lua Player PS3 (tiny3D) | 2, partial |
+| Nintendo 3DS | `3DS` | [lpp-3ds](https://github.com/Rinnegatamante/lpp-3ds) | 3, experimental |
 
 The backend is selected automatically at boot (see [Entry points](#entry-points)).
 PSP is detected at runtime via `os.cfw`, and reports itself as `__MODE = "PSP"`
@@ -42,14 +43,12 @@ to the test harness and the capability table.
 | Tier | Backends | What to expect | How to develop |
 |---|---|---|---|
 | **1, supported** | OneLua on Vita and PSP | The API coverage below holds; tested on hardware and in emulators | Build and run directly; confirm blend, timing and saves on device |
-| **2, partial** | lpp-vita | Draw, quads, rotation, transforms and primitives work; some peripheral calls (global audio volume, `clear`, default filter) are stubs | Same as tier 1, but check [`Implemented.md`](Implemented.md) before relying on a call |
-| **3, experimental** | PS3 | Draws are position only, primitives are stubs, and nothing is emulator-verifiable because RPCS3 homebrew loading is minimal ([#18997](https://github.com/RPCS3/rpcs3/issues/18997)) | Write and test game logic on **desktop LÖVE 11.5**, then confirm output on real hardware. Treat the PS3 backend as a porting target under construction |
+| **2, partial** | lpp-vita, PS3 | Draw, quads, rotation, transforms and primitives work; some peripheral calls (global audio volume, `clear`, default filter) are stubs. PS3 draws through tiny3D, but nothing there is emulator-verifiable because RPCS3 homebrew loading is minimal ([#18997](https://github.com/RPCS3/rpcs3/issues/18997)) | Same as tier 1, but check [`Implemented.md`](Implemented.md) before relying on a call; confirm PS3 output on real hardware |
+| **3, experimental** | 3DS | Written against the lpp-3ds sources and tested through a mock that enforces them, but not yet confirmed on a console or in Citra / Azahar | Write and test game logic on **desktop LÖVE 11.5**, then confirm output on real hardware or an emulator |
 
 Tier 3 is a statement about the backend, not about your game: logic, input,
-filesystem, math and data all behave the same there. It is the graphics layer
-that is thin. Contributions that move PS3 onto tiny3D (see
-[Ecosystem and prior art](#ecosystem-and-prior-art)) are the fastest way to
-promote it.
+filesystem, math and data all behave the same there. What is unconfirmed is the
+native layer underneath.
 
 ---
 
@@ -129,32 +128,33 @@ for the runnable sample.
 ## Compatibility matrix
 
 Columns: **OL** = OneLua on Vita, **PSP** = OneLua on PSP, **LPP** = lpp-vita,
-**PS3** = Lua Player PS3. Legend: **full** = LÖVE behaviour, **partial** = works
+**PS3** = Lua Player PS3, **3DS** = lpp-3ds. Legend: **full** = LÖVE behaviour, **partial** = works
 with documented gaps, **stub** = callable, does nothing, **none** = not defined on
 that backend, so calling it errors.
 
-| Module | OL | PSP | LPP | PS3 | Notes |
-|---|---|---|---|---|---|
-| love.graphics (images, quads, draw) | full | partial | full | partial | PSP draws quads as sub-rect blits (no rotation); PS3 is position only |
-| love.graphics (primitives) | full | full | full | stub | rectangle/circle/ellipse/arc/line/points/polygon fill; they follow the transform stack on OL and LPP; PS3 pending SDK work |
-| love.graphics (fonts, print, printf) | full | full | full | full | real text metrics per backend |
-| love.graphics (transform stack) | full | stub | full | stub | push/pop/translate/scale/rotate; `shear` is a stub everywhere |
-| love.graphics (scissor) | full | stub | partial | stub | lpp-vita rejects out-of-scissor draws in software |
-| love.graphics (SpriteBatch, Text) | full | full | full | partial | shared implementation (`core/objects.lua`); each backend honours what its own draw supports |
-| love.graphics (ParticleSystem) | partial | none | none | none | basic emitter, OneLua/Vita only |
-| love.graphics (Canvas, Shader, Mesh, blend mode) | stub | stub | stub | stub | `getSupported().canvas` and `.shader` are `false` |
-| love.audio | partial | partial | partial | partial | shared Source (`core/audio.lua`); 2 simultaneous voices on OneLua/PSP, 1 background voice on PS3; position and pitch are timed in software, `seek` moves the reported position only |
-| love.keyboard | full | full | full | full | edge-triggered press/release, optional key repeat |
-| love.joystick | full | full | full | full | one virtual gamepad: axes, buttons and the d-pad hat are filled every frame |
-| love.touch / love.mouse | full | none | none | none | Vita front touchscreen, OneLua only; the mouse is the last touch position, and a touch is button 1 |
-| love.filesystem | full | full | full | full | `mount`/`unmount` are stubs |
-| love.math | full | full | full | full | own RNG, Perlin 1D to 4D, 2D affine transforms, triangulate |
-| love.data | full | full | full | full | real hash and deflate/zlib; `pack`/`unpack` need Lua 5.3 |
-| love.timer | full | full | full | full | `step()` is a no-op |
-| love.window | partial | partial | partial | partial | always fullscreen, `setMode` is a no-op |
-| love.system | full | full | full | full | `getOS()` returns `"LOVE-WrapLua"`; battery is native on lpp-vita, `nobattery` on PS3, `unknown` on OneLua; clipboard is process-local |
-| love.thread | partial | partial | partial | partial | coroutine pseudo-threads, synchronous by design |
-| love.event | full | full | full | full | `quit` flushes open save handles first |
+| Module | OL | PSP | LPP | PS3 | 3DS | Notes |
+|---|---|---|---|---|---|---|
+| love.graphics (images, quads, draw) | full | partial | full | full | full | PSP draws quads as sub-rect blits (no rotation); PS3 and 3DS draw rotated, scaled, tinted quads |
+| love.graphics (primitives) | full | full | full | full | full | rectangle/circle/ellipse/arc/line/points/polygon fill; they follow the transform stack on OL, LPP, PS3 and 3DS |
+| love.graphics (fonts, print, printf) | full | full | full | full | partial | real text metrics per backend; 3DS text always lands on top of the frame |
+| love.graphics (transform stack) | full | stub | full | full | full | push/pop/translate/scale/rotate; `shear` is a stub everywhere |
+| love.graphics (scissor) | full | stub | partial | stub | full | lpp-vita rejects out-of-scissor draws in software; 3DS clips on the GPU |
+| love.graphics (SpriteBatch, Text) | full | full | full | partial | full | shared implementation (`core/objects.lua`); each backend honours what its own draw supports |
+| love.graphics (ParticleSystem) | partial | none | none | none | none | basic emitter, OneLua/Vita only |
+| love.graphics (Canvas, Shader, Mesh) | stub | stub | stub | stub | stub | `getSupported().canvas` and `.shader` are `false` |
+| love.graphics (blend mode) | tracked | partial | tracked | full | tracked | PSP: `add`/`subtract` on whole images. PS3: all eight modes. Both Vita backends expose no blend call, so the mode is tracked and alpha renders. Ask `love.graphics.isBlendModeSupported(mode)` |
+| love.audio | partial | partial | partial | partial | partial | shared Source (`core/audio.lua`); 2 simultaneous voices on OneLua/PSP, 1 background voice on PS3, WAV/OGG/AIFF without volume on 3DS; position and pitch are timed in software, `seek` moves the reported position only |
+| love.keyboard | full | full | full | full | full | edge-triggered press/release, optional key repeat |
+| love.joystick | full | full | full | full | full | one virtual gamepad: axes, buttons and the d-pad hat are filled every frame |
+| love.touch / love.mouse | full | none | none | none | none | Vita front touchscreen, OneLua only; the mouse is the last touch position, and a touch is button 1 |
+| love.filesystem | full | full | full | full | full | `mount`/`unmount` are stubs; 3DS goes through `System.openFile` (lpp-3ds replaces `io`) |
+| love.math | full | full | full | full | full | own RNG, Perlin 1D to 4D, 2D affine transforms, triangulate |
+| love.data | full | full | full | full | full | real hash and deflate/zlib; `pack`/`unpack` need Lua 5.3 |
+| love.timer | full | full | full | full | full | Fixed-timestep updates (`lv1luaconf.updaterate`); PS3 has no timer, so its frame time is assumed |
+| love.window | partial | partial | partial | partial | partial | always fullscreen, `setMode` is a no-op |
+| love.system | full | full | full | full | full | `getOS()` returns `"LOVE-WrapLua"`; battery is native on lpp-vita and 3DS (in steps of 20%), `nobattery` on PS3, `unknown` on OneLua; clipboard is process-local |
+| love.thread | partial | partial | partial | partial | partial | coroutine pseudo-threads, synchronous by design |
+| love.event | full | full | full | full | full | `quit` flushes open save handles first |
 
 Per-function detail lives in [`Implemented.md`](Implemented.md).
 
@@ -166,15 +166,15 @@ is also what `love.graphics.getSupported()`, `love.graphics.getSystemLimits()`
 and `love._backend` return at runtime. Query them instead of hardcoding a backend
 check.
 
-| Capability | OL | PSP | LPP | PS3 |
-|---|---|---|---|---|
-| `getSupported().canvas` | false | false | false | false |
-| `getSupported().shader` / `glsl3` | false | false | false | false |
-| `getSupported().fullnpot` | false | false | **true** | false |
-| `getSystemLimits().texturesize` | 512 | 512 | 1024 | 512 |
-| `getSystemLimits().pointsize` | 1 | 1 | 1 | 1 |
-| power-of-two textures required | no | **yes** | no | no |
-| `love._backend.tier` (see [Support tiers](#support-tiers)) | 1 | 1 | 2 | 3 |
+| Capability | OL | PSP | LPP | PS3 | 3DS |
+|---|---|---|---|---|---|
+| `getSupported().canvas` | false | false | false | false | false |
+| `getSupported().shader` / `glsl3` | false | false | false | false | false |
+| `getSupported().fullnpot` | false | false | **true** | false | **true** |
+| `getSystemLimits().texturesize` | 512 | 512 | 1024 | 512 | 1024 |
+| `getSystemLimits().pointsize` | 1 | 1 | 1 | 1 | 1 |
+| power-of-two textures required | no | **yes** | no | no | no |
+| `love._backend.tier` (see [Support tiers](#support-tiers)) | 1 | 1 | 2 | 2 | 3 |
 
 ```lua
 if love.graphics.getSupported().canvas then
@@ -213,18 +213,32 @@ tell you which entry file and layout the wrapper expects.
 ### PS3, Lua Player PS3
 
 - Entry point: **`app.lua`** (loads `script.lua`).
-- **Tier 3, experimental.** Graphics primitives are largely stubbed pending SDK
-  confirmation, and draws are position only (quads are accepted and ignored).
+- **Tier 2, partial.** Sprites, quads, primitives and TTF text draw through the
+  player's tiny3D binding (`gfx.*`); there is no hardware scissor.
 - RPCS3 cannot be used as a safety net: its homebrew loading is minimal
   ([#18997](https://github.com/RPCS3/rpcs3/issues/18997)). Develop against
   **desktop LÖVE 11.5**, then confirm on real hardware.
+
+### Nintendo 3DS, lpp-3ds
+
+- Entry point: **`index.lua`**, the same file lpp-vita boots. It tells the two
+  players apart by the `TOP_SCREEN` constant only lpp-3ds defines, then sets
+  `lv1lua.mode = "3DS"`.
+- `.3dsx`: put the project next to the lpp-3ds `.3dsx` on the SD card; `dataloc`
+  is that folder (`System.currentDirectory()`). CIA: pack the project into the
+  romfs; `dataloc` becomes `romfs:/`.
+- Saves go to `/3ds/data/<identity>/` on the SD card (romfs is read-only).
+- Everything draws to the 400x240 top screen. Text is printed after the frame's
+  sprites and shapes (lpp-3ds prints into the CPU framebuffer once the GPU frame
+  is done), so it is always on top, and a line that starts off screen is skipped.
+- Audio is WAV, OGG or AIFF only; there is no MP3 decoder, volume, pitch or seek.
 
 ### Entry points
 
 | File | Target | Purpose |
 |---|---|---|
 | `script.lua` | all | Bootstrap: sets up `love`, loads modules, runs the loop |
-| `index.lua`  | lpp-vita | Sets mode and `dataloc`, then loads `script.lua` |
+| `index.lua`  | lpp-vita, 3DS | Detects the player, sets mode and `dataloc`, then loads `script.lua` |
 | `app.lua`    | PS3 | Loads `script.lua` |
 
 ---
@@ -249,7 +263,10 @@ A practical checklist, roughly in the order things bite:
    silently.
 5. **Remove Canvas, Shader and Mesh dependencies.** They are stubs: calls succeed,
    nothing renders offscreen. Gate them on `love.graphics.getSupported()`.
-6. **Do not rely on blend modes.** Only the platform default (alpha) is applied.
+6. **Check blend modes before relying on one.** `love.graphics.isBlendModeSupported`
+   answers per backend: PSP applies `add` and `subtract` to whole-image draws,
+   PS3 applies all eight, and both Vita backends have no blend call at all, so
+   the mode is remembered and alpha is what renders.
 7. **Make threads optional.** `love.thread` runs synchronously on a coroutine, so
    a thread body with an infinite loop hangs the app, and `Channel:demand` never
    blocks.
@@ -272,6 +289,14 @@ Define it before the wrapper boots, at the top of `game/main.lua`.
 | `keyconf` | `"XB"`, `"XBA"`, `"PS"`, `"SE"` | `"XB"` | Physical to logical face-button mapping |
 | `imgscale` | boolean | `false` | Draws images at 75% |
 | `resscale` | boolean | `false` | Scales draw coordinates to 75% |
+| `updaterate` | number, or `"variable"` | `60` | Fixed updates per second. `love.update` gets exactly `1/updaterate` as `dt`, whatever the frame took. `"variable"` restores desktop LÖVE's one-update-per-frame with the measured `dt` |
+| `maxframeskip` | number | `5` | Most update slices one frame may run, so a long stall (loading, sleep and resume) cannot queue hundreds of catch-up updates |
+
+**Timing.** Game logic runs on a fixed-timestep accumulator: the real frame time
+is measured, `love.update` is called in fixed slices, and the remainder is
+carried into the next frame. `love.timer.getDelta` reports the update slice,
+while `getFPS` and `getAverageDelta` report the measured render rate, which is a
+different number.
 
 `keyconf` values: `"XB"` is the Xbox layout, `"XBA"` swaps confirm and cancel,
 `"PS"` uses PlayStation names (`circle`, `cross`, `triangle`, `square`, `l`, `r`),
@@ -311,7 +336,7 @@ runs the shared suites under all four backends (`OneLua`, `PSP`, `lpp-vita`, `PS
 
 ```bash
 lua tests/run_all.lua           # full suite, exits non-zero on failure
-lua tests/test_math.lua         # a single suite
+lua tests/math_test.lua         # a single suite
 ```
 
 Target a specific backend in a single suite by setting `__MODE` before loading
@@ -338,8 +363,15 @@ Per-function detail is in [`Implemented.md`](Implemented.md).
   scene-to-texture surfaces. OneLua exposes none.
 - **Shader and Mesh** are stubs. The objects exist so call sites do not crash,
   nothing renders.
-- **Blend mode** is a stub; only the platform default (alpha) is applied. Verify
-  any blend-dependent look on real hardware, not on an emulator.
+- **Blend mode** depends on the backend, because only two of the four expose a
+  blend call to Lua. PSP maps `add` and `subtract` onto OSLib's `image.blitadd`
+  / `image.blitsub`, which take whole images (a quad draw or a primitive stays
+  alpha). PS3 maps all eight LOVE modes onto tiny3d's `gfx.BlendFunction`.
+  ONElua on Vita dropped the PSP's additive blits, and lpp-vita has no blend
+  entry point at all (`Graphics.initBlend` / `termBlend` are the drawing-phase
+  begin/end), so on both the mode is tracked and alpha is what renders. Ask
+  `love.graphics.isBlendModeSupported(mode)`, and verify any blend-dependent
+  look on real hardware, not on an emulator.
 - **love.thread** pseudo-threads run **synchronously** on a coroutine (no real
   parallelism). A thread body that loops forever hangs the app. `Channel:supply`
   is an immediate push and `Channel:demand` is a non-blocking pop.
@@ -357,7 +389,9 @@ Per-function detail is in [`Implemented.md`](Implemented.md).
 - **Quad edge-bleed**: `love.graphics.setTextureInset(px)` (a wrapper extension,
   default `0`) shrinks every quad's source rect by `px` texels per side so linear
   filtering stops sampling the neighbouring frame. Use `0.5` for tightly packed
-  linear-filtered sheets; pixel art is better served by nearest filtering.
+  linear-filtered sheets; pixel art is better served by nearest filtering. On
+  lpp-vita and the 3DS the native source origin is an integer, so the inset rounds inward to
+  whole texels (`0.5` trims one texel per side).
 - **Save durability**: `write` and `append` open, write and close in one call. A
   long-lived `newFile` handle is tracked and closed automatically at
   `love.event.quit`, but calling `File:close()` yourself flushes earliest.
@@ -376,20 +410,22 @@ Per target, what you can trust. **works** = matches hardware in practice,
 **emulator-dependent** = varies by graphics backend, recheck on device,
 **unsupported** = not available at all, **unverified** = nobody has confirmed it.
 
-| Area | Real hardware | Vita3K (OpenGL) | Vita3K (Vulkan) | PPSSPP (PSP) | RPCS3 (PS3) |
-|---|---|---|---|---|---|
-| Boot / run the wrapper | works | works | works | works | unverified |
-| Sprite draw, quads, animation | works | works | works | works | unverified |
-| 2D primitives, text | works | works | works | works | unsupported (PS3 stubs) |
-| Alpha blending | works | emulator-dependent | emulator-dependent | emulator-dependent | unverified |
-| Framebuffer readback, screenshots | works | emulator-dependent | emulator-dependent | emulator-dependent | unverified |
-| Quad edge filtering | works | works | works | emulator-dependent | unverified |
-| Save flush on close | works | emulator-dependent | emulator-dependent | works | unverified |
-| Input, gamepad mapping | works | works | works | works | unverified |
-| Audio | works | emulator-dependent | emulator-dependent | works | unverified |
+| Area | Real hardware | Vita3K (OpenGL) | Vita3K (Vulkan) | PPSSPP (PSP) | RPCS3 (PS3) | Citra / Azahar (3DS) |
+|---|---|---|---|---|---|---|
+| Boot / run the wrapper | works | works | works | works | unverified | unverified |
+| Sprite draw, quads, animation | works | works | works | works | unverified | unverified |
+| 2D primitives, text | works | works | works | works | unverified | unverified |
+| Alpha blending | works | emulator-dependent | emulator-dependent | emulator-dependent | unverified | unverified |
+| Framebuffer readback, screenshots | works | emulator-dependent | emulator-dependent | emulator-dependent | unverified | unverified |
+| Quad edge filtering | works | works | works | emulator-dependent | unverified | unverified |
+| Save flush on close | works | emulator-dependent | emulator-dependent | works | unverified | unverified |
+| Input, gamepad mapping | works | works | works | works | unverified | unverified |
+| Audio | works | emulator-dependent | emulator-dependent | works | unverified | unverified |
 
-Emulator targets and versions: **Vita3K** for the Vita backends (OneLua and
-lpp-vita), **PPSSPP** for PSP, **RPCS3** for PS3. RetroArch PSP/Vita cores work
+The 3DS column is unverified across the board: the backend is checked against
+the lpp-3ds sources, not yet run. Emulator targets and versions: **Vita3K** for
+the Vita backends (OneLua and lpp-vita), **PPSSPP** for PSP, **RPCS3** for PS3,
+**Citra / Azahar** for the 3DS. RetroArch PSP/Vita cores work
 for a smoke test but give you less diagnostic output than the standalone builds.
 
 ### Renderer caveats
@@ -450,7 +486,7 @@ in `OneLua/graphics/`.
 ```
 game/           <- your LÖVE game lives here (main.lua, conf.lua, assets)
 script.lua      <- wrapper bootstrap: ordered core/* steps, then the main loop
-index.lua       <- lpp-vita entry point
+index.lua       <- lpp-vita and 3DS entry point
 app.lua         <- PS3 entry point
 LOVE-WrapLua/
   core/         <- backend-agnostic: loader, util, transform stack, word wrap,
@@ -465,6 +501,7 @@ LOVE-WrapLua/
   OneLua/       <- Vita modules (graphics/) + PSP modules (psp/)
   lpp-vita/     <- lpp-vita platform modules (graphics/)
   PS3/          <- PS3 Lua Player platform modules (graphics/)
+  3DS/          <- lpp-3ds platform modules (graphics/, fileio.lua)
 tests/          <- unit tests (desktop Lua), one suite per area + 4 backends
 Implemented.md  <- detailed per-backend API coverage table
 FIX_PLAN.md     <- roadmap and task status

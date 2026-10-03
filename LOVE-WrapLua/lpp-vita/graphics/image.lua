@@ -5,15 +5,17 @@
 
 function love.graphics.newImage(filename, settings)
     local tex = Graphics.loadImage(lv1lua.dataloc .. "game/" .. filename)
-    -- Warn if the sheet exceeds the backend texture limit (FIX_PLAN T8.1).
+    -- Warn if the sheet exceeds the backend texture limit.
     lv1lua.core.validateTexture(Graphics.getImageWidth(tex), Graphics.getImageHeight(tex), filename)
     return tex
 end
 
 function love.graphics.newQuad(x, y, w, h, swOrImg, sh)
     local sw, _sh
-    if type(swOrImg) == "number" then
-        sw, _sh = swOrImg, sh or h
+    -- Graphics.loadImage returns the texture as an integer (lua_pushinteger),
+    -- so a number in the fifth slot is only a width when a height follows it.
+    if type(swOrImg) == "number" and sh ~= nil then
+        sw, _sh = swOrImg, sh
     elseif swOrImg ~= nil then
         -- A drawable: lpp-vita images are native texture handles with no
         -- methods, so the size comes from the SDK.

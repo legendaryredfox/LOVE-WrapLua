@@ -12,6 +12,7 @@ local AUDIO = {
     ["PSP"]      = "LOVE-WrapLua/OneLua/audio.lua",
     ["lpp-vita"] = "LOVE-WrapLua/lpp-vita/audio.lua",
     ["PS3"]      = "LOVE-WrapLua/PS3/audio.lua",
+    ["3DS"]      = "LOVE-WrapLua/3DS/audio.lua",
 }
 
 -- A fake clock, so a timed playback position is testable without sleeping.
@@ -24,7 +25,16 @@ local function load_backend(mode)
     love.timer = love.timer or {}
     love.timer.getTime = function() return clock end
     clock = 0
+    if mode == "3DS" then dofile("LOVE-WrapLua/3DS/fileio.lua") end
     dofile(AUDIO[mode])
+    if mode == "3DS" then
+        -- lpp-3ds decodes no MP3, so the shared suite's names are played as OGG.
+        local newSource = love.audio.newSource
+        love.audio.newSource = function(name, ...)
+            if type(name) == "string" then name = name:gsub("%.mp3$", ".ogg") end
+            return newSource(name, ...)
+        end
+    end
     __rec.reset()
 end
 
@@ -206,7 +216,7 @@ local function shared_suite(mode)
     end)
 end
 
-for _, mode in ipairs({"OneLua", "PSP", "lpp-vita", "PS3"}) do
+for _, mode in ipairs({"OneLua", "PSP", "lpp-vita", "PS3", "3DS"}) do
     load_backend(mode)
     shared_suite(mode)
 end

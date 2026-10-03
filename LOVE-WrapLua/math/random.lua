@@ -12,7 +12,7 @@
 --     8.6e13), so it is exact in a double and gives the *same* sequence on
 --     Lua 5.1, 5.3, 5.4 and LuaJIT. The previous LCG multiplied a 32-bit state
 --     by 1103515245, which overflows a double's exact range and silently
---     produced a different stream per Lua version (#11).
+--     produced a different stream per Lua version.
 --   * It needs no bitwise operators, which the console SDKs' Lua 5.1 lacks.
 --   * It has two independent state words, so LÖVE's setSeed(low, high) can
 --     actually use both instead of dropping the second.

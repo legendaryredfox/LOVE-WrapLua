@@ -1,5 +1,4 @@
--- Shared printf: wrap, align and line spacing over each backend's print
--- (FIX_PLAN T5.1, text slice).
+-- Shared printf: wrap, align and line spacing over each backend's print.
 --
 -- Only `love.graphics.print` is genuinely native (it has to reach
 -- screen.print / Font.print / DrawText and apply that platform's scale), so it

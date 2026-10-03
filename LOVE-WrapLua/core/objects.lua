@@ -1,5 +1,4 @@
--- Shared graphics objects: Canvas, Shader, SpriteBatch, Text/TextBatch
--- (FIX_PLAN T5.1, first slice of the shared graphics core).
+-- Shared graphics objects: Canvas, Shader, SpriteBatch, Text/TextBatch.
 --
 -- None of these need native calls: they are pure Lua over the public
 -- love.graphics surface (draw / print / printf / setFont), so one copy serves

@@ -11,15 +11,18 @@ function love.timer.getDelta()
 end
 
 function love.timer.getFPS()
-    if lv1lua.dt > 0 then return math.floor(1 / lv1lua.dt + 0.5) end
-    return 60
+    -- Nothing here measures a frame, so this is the assumed rate the
+    -- accumulator runs at (core/timestep.lua).
+    return lv1lua.core.getFPS()
 end
 
 function love.timer.getAverageDelta()
-    return lv1lua.dt
+    return lv1lua.core.getAverageDelta()
 end
 
-function love.timer.step() end
+function love.timer.step()
+    return lv1lua.frameDelta or 0
+end
 
 function love.timer.sleep(seconds)
     sys.TimerUsleep(math.floor(seconds * 1000000))

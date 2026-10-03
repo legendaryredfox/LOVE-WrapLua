@@ -15,6 +15,8 @@ if lv1lua.isPSP then
     lv1lua.screenWidth,  lv1lua.screenHeight = 480, 272
 elseif lv1lua.mode == "PS3" then
     lv1lua.screenWidth,  lv1lua.screenHeight = 720, 480
+elseif lv1lua.mode == "3DS" then
+    lv1lua.screenWidth,  lv1lua.screenHeight = 400, 240
 else
     lv1lua.screenWidth,  lv1lua.screenHeight = 960, 544
 end
@@ -45,6 +47,12 @@ function lv1lua.exists(file)
         return files.exists(file)
     elseif lv1lua.mode == "lpp-vita" then
         return System.doesFileExist(file) or System.doesDirExist(file)
+    elseif lv1lua.fileio and lv1lua.fileio.exists then
+        return lv1lua.fileio.exists(file)
+    elseif lv1lua.mode == "3DS" then
+        -- Before the file adapter loads (game/conf.lua lookup): io.open is
+        -- rebound on lpp-3ds, and only files need finding this early.
+        return System.doesFileExist(file)
     else
         local f = io.open(file, "r")
         if f then f:close(); return true end

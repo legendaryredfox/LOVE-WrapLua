@@ -17,6 +17,8 @@ lv1lua.loadOnce("LOVE-WrapLua/core/runtime.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/input.lua")
 lv1lua.load("LOVE-WrapLua/love-functions/thread.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/config.lua")
+-- After config: the accumulator reads lv1luaconf.updaterate / maxframeskip.
+lv1lua.loadOnce("LOVE-WrapLua/core/timestep.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/modules.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/require.lua")
 

@@ -1,8 +1,11 @@
 lv1lua.core = lv1lua.core or {}
+-- Files go through the core/fileio.lua seam (lpp-3ds has no io.open).
+local function fileio() return lv1lua.fileio or {} end
+local function open(path, mode) return (fileio().open or io.open)(path, mode) end
 
 -- Registry of newFile handles that are currently open. Weak-keyed so a forgotten
 -- handle cannot leak (its io finalizer still flushes it), while any handle the
--- game is still holding at quit gets an explicit close (FIX_PLAN T8.3). write /
+-- game is still holding at quit gets an explicit close. write /
 -- append already close immediately, so only long-lived newFile handles matter.
 local _openFiles = setmetatable({}, { __mode = "k" })
 
@@ -19,6 +22,9 @@ if lv1lua.isPSP then
     lv1lua.saveloc = "ms0:/PSP/GAME/LOVE-WrapLua/savedata/"
 elseif lv1lua.mode == "PS3" then
     lv1lua.saveloc = lv1lua.dataloc.."savedata/"
+elseif lv1lua.mode == "3DS" then
+    -- Not under dataloc: a CIA build runs from romfs:/, which is read-only.
+    lv1lua.saveloc = "/3ds/data/"..lv1lua.loveconf.identity.."/"
 else
     lv1lua.saveloc = "ux0:/data/"..lv1lua.loveconf.identity.."/savedata/"
 end
@@ -32,9 +38,12 @@ elseif lv1lua.mode == "lpp-vita" then
         System.createDirectory("ux0:/data/"..lv1lua.loveconf.identity)
         System.createDirectory(lv1lua.saveloc)
     end
+elseif fileio().mkdir then
+    fileio().mkdir("/3ds/data/")
+    fileio().mkdir(lv1lua.saveloc)
 end
 
--- ── Paths, stat and listing (FIX_PLAN T6.3) ─────────────────────
+-- ── Paths, stat and listing ──────────────────────────────────────
 -- A game-relative name lives in one of two places: the writable save directory
 -- (checked first, so a saved file shadows the shipped one, as LOVE does) or the
 -- read-only game directory.
@@ -51,6 +60,7 @@ end
 -- probed; the fallback is "it exists but cannot be opened as a byte stream",
 -- which is what a directory looks like through the console io layers.
 local function isDirPath(path)
+    if fileio().isDir then return fileio().isDir(path) end
     if lv1lua.mode == "lpp-vita" and type(System) == "table"
        and type(System.doesDirExist) == "function" then
         return System.doesDirExist(path) and true or false
@@ -59,7 +69,7 @@ local function isDirPath(path)
        and type(files.isdir) == "function" then
         return files.isdir(path) and true or false
     end
-    local f = io.open(path, "rb")
+    local f = open(path, "rb")
     -- A path that exists (the caller checked) but will not open is a directory
     -- on the console io layers.
     if not f then return true end
@@ -72,7 +82,7 @@ end
 
 -- Byte size of a real file, or nil when it cannot be measured.
 local function fileSize(path)
-    local f = io.open(path, "rb")
+    local f = open(path, "rb")
     if not f then return nil end
     local ok, size = pcall(f.seek, f, "end")
     f:close()
@@ -81,6 +91,7 @@ local function fileSize(path)
 end
 
 local function listNative(dir)
+    if fileio().list then return fileio().list(dir) end
     if lv1lua.mode == "OneLua" and type(files) == "table" and files.list then
         return files.list(dir)
     end
@@ -97,7 +108,7 @@ end
 function love.filesystem.read(file, size)
     local path = resolve(file)
     if not path then return nil, "File not found: "..file end
-    local f = io.open(path, "rb")
+    local f = open(path, "rb")
     if not f then return nil, "Cannot open "..path end
     local contents = size and f:read(size) or f:read("*a")
     f:close()
@@ -106,7 +117,7 @@ end
 
 function love.filesystem.write(file, data, size)
     local mode = lv1lua.mode == "PS3" and "w+" or "wb"
-    local f = io.open(lv1lua.saveloc..file, mode)
+    local f = open(lv1lua.saveloc..file, mode)
     if not f then return false, "Cannot open for writing" end
     local content = size and string.sub(data, 1, size) or data
     local ok = f:write(content)
@@ -115,7 +126,7 @@ function love.filesystem.write(file, data, size)
 end
 
 function love.filesystem.append(file, data, size)
-    local f = io.open(lv1lua.saveloc..file, "ab")
+    local f = open(lv1lua.saveloc..file, "ab")
     if not f then return false, "Cannot open for appending" end
     local content = size and string.sub(data, 1, size) or data
     local ok = f:write(content)
@@ -149,7 +160,7 @@ function love.filesystem.getInfo(file, filtertype)
 end
 
 function love.filesystem.load(file)
-    return loadfile(resolve(file) or gamePath(file))
+    return (fileio().loadfile or loadfile)(resolve(file) or gamePath(file))
 end
 
 function love.filesystem.remove(file)
@@ -157,6 +168,8 @@ function love.filesystem.remove(file)
         return files.delete(lv1lua.saveloc..file)
     elseif lv1lua.mode == "lpp-vita" then
         return System.deleteFile(lv1lua.saveloc..file)
+    elseif fileio().remove then
+        return fileio().remove(lv1lua.saveloc..file)
     end
     return false
 end
@@ -169,6 +182,8 @@ function love.filesystem.createDirectory(path)
     elseif lv1lua.mode == "lpp-vita" then
         if not System.doesDirExist(full) then System.createDirectory(full) end
         return true
+    elseif fileio().mkdir then
+        return fileio().mkdir(full)
     end
     return false
 end
@@ -214,7 +229,7 @@ function love.filesystem.newFile(filename, mode)
         if m == "r" and not lv1lua.exists(path) then
             path = lv1lua.dataloc.."game/"..self._name
         end
-        self._handle = io.open(path, luaMode)
+        self._handle = open(path, luaMode)
         if self._handle then _openFiles[self] = true end
         return self._handle ~= nil
     end

@@ -12,16 +12,18 @@ local GFX = {
     ["PSP"]      = "LOVE-WrapLua/OneLua/graphics_psp.lua",
     ["lpp-vita"] = "LOVE-WrapLua/lpp-vita/graphics.lua",
     ["PS3"]      = "LOVE-WrapLua/PS3/graphics.lua",
+    ["3DS"]      = "LOVE-WrapLua/3DS/graphics.lua",
 }
 
-local MODES = { "OneLua", "PSP", "lpp-vita", "PS3" }
+local MODES = { "OneLua", "PSP", "lpp-vita", "PS3", "3DS" }
 
 -- The native call each backend makes per unrotated, unquadded sprite.
 local BLIT = {
     ["OneLua"]   = "image.blit",
     ["PSP"]      = "image.blit",
     ["lpp-vita"] = "Graphics.drawScaleImage",
-    ["PS3"]      = "BlitToScreen",
+    ["PS3"]      = "gfx.SetPolygon",  -- T6.6: textured quad draw
+    ["3DS"]      = "Graphics.drawScaleImage",
 }
 
 -- The native call each backend makes per printed string.
@@ -29,7 +31,8 @@ local PRINT = {
     ["OneLua"]   = "screen.print",
     ["PSP"]      = "screen.print",
     ["lpp-vita"] = "Font.print",
-    ["PS3"]      = "DrawText",
+    ["PS3"]      = "gfx.FontDrawString",  -- T6.6: TTF text
+    ["3DS"]      = "Font.print",
 }
 
 local function load_backend(mode)
@@ -37,6 +40,17 @@ local function load_backend(mode)
     dofile("tests/setup.lua")
     dofile(GFX[mode])
     __rec.reset()
+end
+
+-- Runs fn the way love.draw runs: inside the GPU frame on backends that have
+-- one (lpp-3ds draws only between initBlend and termBlend, and prints the
+-- frame's text after it).
+local function in_frame(fn)
+    local gfx = lv1lua.gfx
+    if gfx.beginFrame then gfx.beginFrame() end
+    local ok, err = pcall(fn)
+    if gfx.endFrame then gfx.endFrame() end
+    if not ok then error(err, 0) end
 end
 
 -- Records what SpriteBatch/Text hand to the backend's draw entry point.
@@ -129,7 +143,7 @@ for _, mode in ipairs(MODES) do
             sb:add(0, 0)
             sb:add(10, 10)
             __rec.reset()
-            love.graphics.draw(sb, 0, 0)
+            in_frame(function() love.graphics.draw(sb, 0, 0) end)
             T.eq(__rec.count(BLIT[mode]), 2)
         end)
 
@@ -138,7 +152,7 @@ for _, mode in ipairs(MODES) do
             txt:add("one", 0, 0)
             txt:add("two", 0, 20)
             __rec.reset()
-            love.graphics.draw(txt, 0, 0)
+            in_frame(function() love.graphics.draw(txt, 0, 0) end)
             T.ok(__rec.count(PRINT[mode]) >= 2, "each queued string should print")
         end)
 

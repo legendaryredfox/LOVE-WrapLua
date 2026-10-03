@@ -18,16 +18,13 @@ end
 local keys = lv1lua.core.newKeyTracker()
 
 function lv1lua.update()
-    if Timer.getTime(lv1lua.timer) >= 16 then
-        -- Kept on lv1lua rather than as a global, so game code cannot collide
-        -- with it.
-        local dt = Timer.getTime(lv1lua.timer) / 1000
-        lv1lua.dt = dt
-        if love.update then
-            love.update(dt)
-        end
-        Timer.reset(lv1lua.timer)
-    end
+    -- Timer.getTime is milliseconds since the last reset; the shared
+    -- accumulator (core/timestep.lua) turns that into fixed update slices and
+    -- carries the remainder, so short frames are no longer thrown away.
+    -- lv1lua.dt is set there.
+    local ms = Timer.getTime(lv1lua.timer)
+    Timer.reset(lv1lua.timer)
+    lv1lua.core.step(ms / 1000)
 end
 
 function lv1lua.updatecontrols()
@@ -51,7 +48,9 @@ function lv1lua.updatecontrols()
         physical[lv1lua.padname[i]] = down
         lv1lua.keymask[i] = down
     end
-    keys:update(held, lv1lua.dt or 0)
+    -- Key repeat is a wall-clock effect, so it follows the real frame time
+    -- rather than the fixed update slice.
+    keys:update(held, lv1lua.frameDelta or 0)
     lv1lua.core.syncJoystick(physical)
 
     -- The on-screen keyboard closes on some later frame than the one that

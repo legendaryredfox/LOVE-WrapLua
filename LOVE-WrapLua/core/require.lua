@@ -41,7 +41,8 @@ else
         if cached ~= nil then return cached end
 
         local full = lv1lua.dataloc .. "game/" .. path
-        local chunk = loadfile(full)
+        local load = (lv1lua.fileio and lv1lua.fileio.loadfile) or loadfile
+        local chunk = load(full)
         if not chunk then
             -- Not a game file: let the interpreter resolve it (vendored
             -- libraries pull in "bit" and friends this way).

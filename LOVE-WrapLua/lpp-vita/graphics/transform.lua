@@ -5,7 +5,7 @@
 -- native draw calls: the flattened offset/scale/rotation feed drawImageExtended
 -- and the primitive coordinates. vita2d exposes no clip rectangle either, so
 -- scissor is enforced by software-rejecting draws whose bounding box falls
--- entirely outside the region (documented in Implemented.md). (FIX_PLAN T2.2)
+-- entirely outside the region (documented in Implemented.md).
 
 lv1lua.gfx.transform = lv1lua.core.newTransformStack()
 local stack = lv1lua.gfx.transform

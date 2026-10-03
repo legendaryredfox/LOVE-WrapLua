@@ -324,5 +324,95 @@ end)
 -- Cleanup
 os.execute("rm -rf " .. TMPDIR)
 
+-- ── 3DS: every file goes through the System.openFile adapter ─────
+-- lpp-3ds rebinds io.open to a handle-based call (the mock does the same), so
+-- this block fails on any io.open left in the shared modules.
+__MODE = "3DS"
+dofile("tests/setup.lua")
+local ROOT = "/tmp/lwl_3ds_" .. tostring(os.time()) .. "/"
+os.execute("mkdir -p " .. ROOT .. "game " .. ROOT .. "save")
+lv1lua.dataloc = ROOT
+lv1lua.loveconf = { identity = "fs3ds" }
+dofile("LOVE-WrapLua/core/runtime.lua")
+lv1lua.dataloc = ROOT
+dofile("LOVE-WrapLua/3DS/fileio.lua")
+dofile("LOVE-WrapLua/filesystem.lua")
+lv1lua.saveloc = ROOT .. "save/"
+
+T.describe("love.filesystem [3DS adapter]", function()
+    T.it("write then read round-trips", function()
+        T.ok(love.filesystem.write("a.txt", "hello 3ds"))
+        T.eq(love.filesystem.read("a.txt"), "hello 3ds")
+    end)
+
+    T.it("a shorter rewrite truncates (FCREATE alone would not)", function()
+        love.filesystem.write("t.txt", "a long first version")
+        love.filesystem.write("t.txt", "short")
+        T.eq(love.filesystem.read("t.txt"), "short")
+    end)
+
+    T.it("append adds to the end", function()
+        love.filesystem.write("ap.txt", "one")
+        love.filesystem.append("ap.txt", "two")
+        T.eq(love.filesystem.read("ap.txt"), "onetwo")
+    end)
+
+    T.it("read with a size returns only that many bytes", function()
+        love.filesystem.write("sz.txt", "abcdef")
+        T.eq(love.filesystem.read("sz.txt", 3), "abc")
+    end)
+
+    T.it("getInfo reports a file with its real size", function()
+        love.filesystem.write("info.txt", "12345")
+        local info = love.filesystem.getInfo("info.txt")
+        T.eq(info.type, "file")
+        T.eq(info.size, 5)
+    end)
+
+    T.it("createDirectory makes a directory isDirectory sees", function()
+        T.ok(love.filesystem.createDirectory("levels"))
+        T.ok(love.filesystem.isDirectory("levels"))
+        T.nok(love.filesystem.isFile("levels"))
+        T.eq(love.filesystem.getInfo("levels").type, "directory")
+    end)
+
+    T.it("getDirectoryItems merges the game and save roots", function()
+        local f = io.__lv1RealOpen(ROOT .. "game/shipped.txt", "wb")
+        f:write("x"); f:close()
+        love.filesystem.write("saved.txt", "y")
+        local seen = {}
+        for _, n in ipairs(love.filesystem.getDirectoryItems("")) do seen[n] = true end
+        T.ok(seen["shipped.txt"], "game file listed")
+        T.ok(seen["saved.txt"], "save file listed")
+    end)
+
+    T.it("newFile writes, seeks and reads back", function()
+        local f = love.filesystem.newFile("nf.txt")
+        T.ok(f:open("w"))
+        f:write("abcdef")
+        f:close()
+        T.ok(f:open("r"))
+        f:seek(2)
+        T.eq(f:read(2), "cd")
+        T.eq(f:getSize(), 6)
+        f:close()
+    end)
+
+    T.it("remove deletes a saved file", function()
+        love.filesystem.write("gone.txt", "x")
+        love.filesystem.remove("gone.txt")
+        T.eq(love.filesystem.getInfo("gone.txt"), nil)
+    end)
+
+    T.it("load compiles a chunk without the standard loadfile", function()
+        local f = io.__lv1RealOpen(ROOT .. "game/mod.lua", "wb")
+        f:write("return 40 + 2"); f:close()
+        local chunk = love.filesystem.load("mod.lua")
+        T.eq(chunk(), 42)
+    end)
+end)
+
+os.execute("rm -rf " .. ROOT)
+
 io.write("\n=== love.filesystem ===\n")
 return T.summary()

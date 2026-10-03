@@ -11,6 +11,9 @@
 --   Graphics.fillCircle(x, y, radius, color)
 --   Graphics.drawScaleImage(x, y, tex, sx, sy [, color])
 --   Graphics.drawImageExtended(x, y, tex, st_x, st_y, w, h, radius, sx, sy [, color])
+--       (x, y) is the CENTRE of the scaled sub-rect, which rotates around it
+--       (vita2d draw_texture_part_scale_rotate_generic). st_x / st_y are read
+--       with luaL_checkinteger, so a fractional value raises on Lua 5.3.
 --   Font.getTextWidth(font, text)  -> pixel width
 --   Font.print(font, x, y, text, color)
 
@@ -39,6 +42,8 @@ Graphics = {
     drawScaleImage = function(x, y, tex, sx, sy, c)
         __rec.log("Graphics.drawScaleImage", x, y, tex, sx, sy, c) end,
     drawImageExtended = function(x, y, tex, st_x, st_y, w, h, rad, sx, sy, c)
+        __checkInteger("drawImageExtended", 4, st_x)
+        __checkInteger("drawImageExtended", 5, st_y)
         __rec.log("Graphics.drawImageExtended", x, y, tex, st_x, st_y, w, h, rad, sx, sy, c) end,
 }
 
@@ -112,7 +117,9 @@ Timer = {
 
 -- ── System (filesystem + process) ────────────────────────────────
 System = {
-    doesFileExist  = function(f) return lv1lua.exists(f) end,
+    -- Reads the mock VFS directly: core/runtime.lua points lv1lua.exists at
+    -- this function on lpp-vita, so delegating back to it recurses forever.
+    doesFileExist  = function(f) return files.exists(f) end,
     doesDirExist   = function(f) return files.exists(f) end,
     createDirectory= function(f) files.mkdir(f) end,
     deleteFile     = function(f) files.delete(f); return true end,

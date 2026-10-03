@@ -5,7 +5,7 @@ local stack = lv1lua.gfx.transform
 
 -- Loaded images are immutable sources. Scaling makes a transient copy keyed by
 -- (source, sx, sy) so the same image can be drawn at different scales in one
--- frame without corrupting the shared drawable (#6). Weak keys let unused
+-- frame without corrupting the shared drawable. Weak keys let unused
 -- copies be collected.
 local _scaledCache = setmetatable({}, { __mode = "k" })
 
@@ -46,7 +46,12 @@ function love.graphics._defaultDraw(drawable, x, y, r, sx, sy, xf, yf, w, h)
     if xf ~= nil then
         image.blit(img, x, y, xf, yf, w, h, color.a(lv1lua.current.color))
     else
-        image.blit(img, x, y, color.a(lv1lua.current.color))
+        local rgba = lv1lua.current.colorRGBA
+        if rgba[1] ~= 1 or rgba[2] ~= 1 or rgba[3] ~= 1 then
+            image.blittint(img, x, y, lv1lua.current.color)
+        else
+            image.blit(img, x, y, color.a(lv1lua.current.color))
+        end
     end
 end
 

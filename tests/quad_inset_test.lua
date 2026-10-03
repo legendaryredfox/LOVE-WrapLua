@@ -40,17 +40,19 @@ T.describe("quad inset [lpp-vita]", function()
         T.eq(c.args[7], 16)  -- h
     end)
 
-    T.it("inset 0.5 shrinks the source rect by half a texel per side", function()
+    T.it("inset 0.5 rounds inward to a whole texel per side", function()
+        -- lpp-vita reads st_x / st_y with luaL_checkinteger, so a half texel
+        -- cannot reach it; the inset rounds inward instead of raising.
         love.graphics.setTextureInset(0.5)
         local img  = love.graphics.newImage("s.png")
         local quad = love.graphics.newQuad(0, 16, 16, 16, 64, 64)
         __rec.reset()
         love.graphics.draw(img, quad, 0, 0)
         local c = __rec.last("Graphics.drawImageExtended")
-        T.near(c.args[4], 0.5)   -- st_x inset
-        T.near(c.args[5], 16.5)  -- st_y inset
-        T.near(c.args[6], 15)    -- w - 1
-        T.near(c.args[7], 15)    -- h - 1
+        T.eq(c.args[4], 1)    -- st_x
+        T.eq(c.args[5], 17)   -- st_y
+        T.eq(c.args[6], 14)   -- w - 2
+        T.eq(c.args[7], 14)   -- h - 2
     end)
 
     T.it("adjacent vertical frames no longer share a boundary", function()

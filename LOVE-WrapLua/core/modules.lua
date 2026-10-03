@@ -3,7 +3,16 @@
 -- Backend modules come first: they define lv1lua.gfx / lv1lua.current, which
 -- the shared ones read.
 
+-- Every backend's whileloop calls lv1lua.core.step, so the accumulator has to
+-- exist before one loads. loadOnce: script.lua already asked for it.
+lv1lua.loadOnce("LOVE-WrapLua/core/timestep.lua")
+
 local backend = "LOVE-WrapLua/" .. lv1lua.mode .. "/"
+
+-- lpp-3ds rebinds io.*, so its file adapter has to be in place before
+-- anything below opens a file.
+if lv1lua.mode == "3DS" then lv1lua.load(backend .. "fileio.lua") end
+lv1lua.loadOnce("LOVE-WrapLua/core/fileio.lua")
 
 if lv1lua.isPSP then
     -- PSP runs OneLua too, but with its own thin graphics backend.

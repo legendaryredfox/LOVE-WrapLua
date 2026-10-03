@@ -15,7 +15,7 @@ end
 
 function love.graphics.newImage(filename, settings)
     local img = image.load(lv1lua.dataloc .. "game/" .. filename)
-    -- Warn if the sheet exceeds the backend texture limit (FIX_PLAN T8.1).
+    -- Warn if the sheet exceeds the backend texture limit.
     lv1lua.core.validateTexture(image.getrealw(img), image.getrealh(img), filename)
     if lv1luaconf.imgscale == true then
         image.scale(img, lv1lua.gfx.scale * 100)
@@ -92,7 +92,7 @@ function love.graphics.newQuad(x, y, width, height, swOrImg, sh)
     end
     function q:draw(drawable, x, y, r, sx, sy)
         self:updateBufferScaled(drawable, sx, sy)
-        -- Half-texel inset keeps linear sampling inside the frame (T8.2).
+        -- Half-texel inset keeps linear sampling inside the frame.
         local vx, vy, vw, vh = lv1lua.core.insetQuad(self:getViewportScaled(sx, sy))
         love.graphics._defaultDraw(self._bufferImage, x, y, r, sx, sy, vx, vy, vw, vh)
     end

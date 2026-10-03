@@ -1,8 +1,13 @@
 local T = dofile("tests/runner.lua")
 dofile("tests/mock_platform.lua")
--- thread.lua uses require internally; redirect it to avoid path issues
+-- thread.lua uses require internally; redirect it to avoid path issues, then
+-- put the interpreter's own require back. run_all shares one process, and
+-- leaving this shim in place broke later tests: on LuaJIT the vendored sha2
+-- asks for the built-in "bit", which the shim turned into dofile("bit.lua").
+local systemRequire = require
 require = function(p) return dofile(p:gsub("%.", "/")..".lua") end
 dofile("LOVE-WrapLua/love-functions/thread.lua")
+require = systemRequire
 
 -- ── Channel via getChannel ───────────────────────────────────────
 T.describe("love.thread.getChannel", function()

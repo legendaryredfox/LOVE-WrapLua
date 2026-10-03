@@ -149,12 +149,69 @@ T.describe("core.config", function()
         T.eq(type(lv1lua.loveconf.window), "table")
     end)
 
+    T.it("sets a save identity even with no game/conf.lua", function()
+        -- love.filesystem builds the save path from this; a game shipped
+        -- without a conf.lua used to reach a nil there on its first save.
+        fresh("OneLua")
+        lv1luaconf = nil
+        lv1lua.load("LOVE-WrapLua/core/config.lua")
+        T.eq(lv1lua.loveconf.identity, "LOVE-WrapLua")
+    end)
+
     T.it("does not leak the conf table as a global", function()
         fresh("OneLua")
         lv1luaconf = nil
         t = nil
         lv1lua.load("LOVE-WrapLua/core/config.lua")
         T.ok(t == nil, "conf table should stay local")
+    end)
+end)
+
+-- ── index.lua: one entry name, two players ───────────────────────
+-- Runs index.lua with dofile intercepted, so only its detection runs.
+local function boot_index()
+    local booted
+    local realDofile = dofile
+    dofile = function(path) booted = path end
+    local ok, err = pcall(function() loadfile("index.lua")() end)
+    dofile = realDofile
+    if not ok then error(err, 0) end
+    return booted
+end
+
+T.describe("index.lua", function()
+    T.it("boots lpp-vita when the 3DS screen constants are absent", function()
+        __MODE = "lpp-vita"
+        dofile("tests/setup.lua")
+        TOP_SCREEN, BOTTOM_SCREEN = nil, nil
+        T.eq(boot_index(), "app0:/script.lua")
+        T.eq(lv1lua.mode, "lpp-vita")
+    end)
+
+    T.it("boots the 3DS from its SD folder", function()
+        __MODE = "3DS"
+        dofile("tests/setup.lua")
+        T.eq(boot_index(), "/3ds/LOVE-WrapLua/script.lua")
+        T.eq(lv1lua.mode, "3DS")
+    end)
+
+    T.it("boots the 3DS from romfs when the game is packed in a CIA", function()
+        __MODE = "3DS"
+        dofile("tests/setup.lua")
+        local exists = System.doesFileExist
+        System.doesFileExist = function(p) return p == "romfs:/script.lua" end
+        local booted = boot_index()
+        System.doesFileExist = exists
+        T.eq(booted, "romfs:/script.lua")
+    end)
+
+    T.it("the 3DS runtime sees a 400x240 top screen", function()
+        __MODE = "3DS"
+        dofile("tests/setup.lua")
+        boot_index()
+        dofile("LOVE-WrapLua/core/runtime.lua")
+        T.eq(lv1lua.screenWidth, 400)
+        T.eq(lv1lua.screenHeight, 240)
     end)
 end)
 

@@ -41,6 +41,18 @@ function __glyphCount(s)
     return n
 end
 
+-- ── luaL_checkinteger ────────────────────────────────────────────
+-- The console players run Lua 5.3, where luaL_checkinteger raises on a number
+-- with a fractional part ("number has no integer representation") instead of
+-- truncating it as 5.1 did. Mocks call this for every argument the real binding
+-- reads as an integer, so a wrapper that forwards 0.5 fails here, not on device.
+function __checkInteger(fname, argn, v)
+    if type(v) ~= "number" or v ~= math.floor(v) then
+        error(("bad argument #%d to '%s' (number has no integer representation, got %s)")
+              :format(argn, fname, tostring(v)), 3)
+    end
+end
+
 -- ── Runtime state ────────────────────────────────────────────────
 lv1lua = {
     dataloc      = "",

@@ -376,7 +376,9 @@ Per-function detail is in [`Implemented.md`](Implemented.md).
 - **Quad edge-bleed**: `love.graphics.setTextureInset(px)` (a wrapper extension,
   default `0`) shrinks every quad's source rect by `px` texels per side so linear
   filtering stops sampling the neighbouring frame. Use `0.5` for tightly packed
-  linear-filtered sheets; pixel art is better served by nearest filtering.
+  linear-filtered sheets; pixel art is better served by nearest filtering. On
+  lpp-vita the native source origin is an integer, so the inset rounds inward to
+  whole texels (`0.5` trims one texel per side).
 - **Save durability**: `write` and `append` open, write and close in one call. A
   long-lived `newFile` handle is tracked and closed automatically at
   `love.event.quit`, but calling `File:close()` yourself flushes earliest.

@@ -1,5 +1,29 @@
 ## Changelog
 
+### 2026-10-03, branch `fix/t7.5-native-grounding`
+
+Native contracts re-checked against upstream source (lpp-vita, libvita2d,
+lpp-3ds, sf2dlib).
+
+**Fixes**
+- lpp-vita: `Graphics.drawImageExtended` places the scaled sub-rect by its
+  **centre** and rotates around it (libvita2d
+  `draw_texture_part_scale_rotate_generic`), but the backend passed the
+  top-left corner. Every quad draw (all spritesheet animation) and every rotated
+  draw landed half its size up and to the left, and rotated around the wrong
+  point. The centre is now derived from LOVE's pivot and origin
+  (`lv1lua.util.spriteCentre`).
+- lpp-vita: mirrored draws (`sx = -1` with `ox = w`, the usual flip idiom)
+  applied the origin with `abs(scale)`, so the image landed a full width to the
+  left; the scissor reject also rejected mirrored draws that were on screen.
+  The origin and the scissor box now use the signed scale.
+- lpp-vita: `drawImageExtended` reads `st_x` / `st_y` with
+  `luaL_checkinteger`, which raises on Lua 5.3 for a fractional value, so
+  `setTextureInset(0.5)` crashed the first quad draw. The inset now rounds
+  inward to whole texels there (`lv1lua.core.insetQuadTexels`).
+- Tests: `__checkInteger` in `mock_common.lua` encodes the Lua 5.3 integer rule;
+  the lpp-vita mock applies it to the source origin.
+
 ### 2026-09-16, branch `fix/phase0-1-correctness`
 
 Backend-independent sprite drawing and the desAnim8 rework.

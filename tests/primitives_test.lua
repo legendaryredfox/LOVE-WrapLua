@@ -278,8 +278,10 @@ T.describe("lpp-vita draw (drawImageExtended)", function()
         love.graphics.draw(img, 5, 6, math.pi / 2)
         local c = __rec.last("Graphics.drawImageExtended")
         T.ok(c ~= nil, "drawImageExtended should be called for a rotated draw")
-        T.eq(c.args[1], 5)   -- x
-        T.eq(c.args[2], 6)   -- y
+        -- vita2d places the sub-rect by its centre: the 64x64 image's centre,
+        -- (32, 32) from the pivot, turned a quarter around it.
+        T.near(c.args[1], 5 - 32)
+        T.near(c.args[2], 6 + 32)
         T.eq(c.args[4], 0)   -- st_x (full image)
         T.eq(c.args[5], 0)   -- st_y
         T.eq(c.args[6], 64)  -- w  (mock image is 64x64)
@@ -294,8 +296,8 @@ T.describe("lpp-vita draw (drawImageExtended)", function()
         love.graphics.draw(img, q, 100, 50, 0, 2, 3)
         local c = __rec.last("Graphics.drawImageExtended")
         T.ok(c ~= nil, "drawImageExtended should be called for a quad draw")
-        T.eq(c.args[1], 100)  -- x
-        T.eq(c.args[2], 50)   -- y
+        T.near(c.args[1], 100 + 32 * 2 / 2)  -- centre x = x + w*sx/2
+        T.near(c.args[2], 50 + 24 * 3 / 2)   -- centre y = y + h*sy/2
         T.eq(c.args[4], 8)    -- st_x = quad x
         T.eq(c.args[5], 16)   -- st_y = quad y
         T.eq(c.args[6], 32)   -- w    = quad w
@@ -310,8 +312,49 @@ T.describe("lpp-vita draw (drawImageExtended)", function()
         local q   = love.graphics.newQuad(0, 0, 32, 32, img)
         love.graphics.draw(img, q, 100, 100, 0, 2, 2, 5, 10)
         local c = __rec.last("Graphics.drawImageExtended")
-        T.eq(c.args[1], 100 - 5 * 2)   -- x - ox*sx
-        T.eq(c.args[2], 100 - 10 * 2)  -- y - oy*sy
+        T.near(c.args[1], 100 + (16 - 5) * 2)   -- centre: (w/2 - ox) * sx
+        T.near(c.args[2], 100 + (16 - 10) * 2)  -- centre: (h/2 - oy) * sy
+    end)
+
+    T.it("a rotated quad turns around its origin, not its corner", function()
+        __rec.reset()
+        local img = love.graphics.newImage("s.png")
+        local q   = love.graphics.newQuad(0, 0, 16, 16, img)
+        -- Origin at the centre: the centre stays on the pivot whatever the angle.
+        love.graphics.draw(img, q, 40, 60, 1.2, 1, 1, 8, 8)
+        local c = __rec.last("Graphics.drawImageExtended")
+        T.near(c.args[1], 40)
+        T.near(c.args[2], 60)
+    end)
+
+    T.it("a mirrored quad with ox = w covers the same pixels as the original", function()
+        __rec.reset()
+        local img = love.graphics.newImage("s.png")
+        local q   = love.graphics.newQuad(0, 0, 16, 16, img)
+        love.graphics.draw(img, q, 100, 0, 0, -1, 1, 16, 0)
+        local c = __rec.last("Graphics.drawImageExtended")
+        T.near(c.args[1], 108)  -- spans 100..116, centre 108
+        T.eq(c.args[9], -1)
+    end)
+
+    T.it("a mirrored full image with ox = w keeps its top-left at x", function()
+        __rec.reset()
+        local img = love.graphics.newImage("s.png")
+        love.graphics.draw(img, 100, 0, 0, -1, 1, 64, 0)
+        local c = __rec.last("Graphics.drawScaleImage")
+        -- drawScaleImage spans x .. x + w*sx, so x must be the right edge.
+        T.near(c.args[1], 164)
+        T.eq(c.args[4], -1)
+    end)
+
+    T.it("source origin reaches the native call as an integer", function()
+        love.graphics.setTextureInset(0.5)
+        local img = love.graphics.newImage("s.png")
+        local q   = love.graphics.newQuad(0, 16, 16, 16, img)
+        __rec.reset()
+        local ok, err = pcall(love.graphics.draw, img, q, 0, 0)
+        love.graphics.setTextureInset(0)
+        T.ok(ok, tostring(err))
     end)
 end)
 
@@ -375,6 +418,15 @@ T.describe("lpp-vita software scissor", function()
         love.graphics.setScissor(0, 0, 100, 100)
         __rec.reset()
         love.graphics.draw(love.graphics.newImage("s.png"), 10, 10)
+        T.eq(__rec.count("Graphics.drawScaleImage"), 1)
+    end)
+
+    T.it("keeps a mirrored draw that lands inside the scissor", function()
+        love.graphics.reset()
+        love.graphics.setScissor(0, 0, 50, 50)
+        __rec.reset()
+        -- sx = -1 from x = 100 covers 36..100, which overlaps the scissor.
+        love.graphics.draw(love.graphics.newImage("s.png"), 100, 0, 0, -1, 1)
         T.eq(__rec.count("Graphics.drawScaleImage"), 1)
     end)
 

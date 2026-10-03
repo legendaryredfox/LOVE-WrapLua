@@ -33,3 +33,16 @@ function lv1lua.core.insetQuad(x, y, w, h)
     if iy < 0 then iy = 0 end
     return x + ix, y + iy, w - 2 * ix, h - 2 * iy
 end
+
+-- The same inset rounded inward to whole texels, for SDK calls that read the
+-- source origin with luaL_checkinteger (lpp-vita and lpp-3ds
+-- drawImageExtended). Lua 5.3 raises "number has no integer representation" on
+-- a fractional argument there, so an inset of 0.5 becomes one whole texel.
+function lv1lua.core.insetQuadTexels(x, y, w, h)
+    local ix, iy, iw, ih = lv1lua.core.insetQuad(x, y, w, h)
+    local x0, y0 = math.ceil(ix), math.ceil(iy)
+    local x1, y1 = math.floor(ix + iw), math.floor(iy + ih)
+    if x1 <= x0 then x1 = x0 + 1 end
+    if y1 <= y0 then y1 = y0 + 1 end
+    return x0, y0, x1 - x0, y1 - y0
+end

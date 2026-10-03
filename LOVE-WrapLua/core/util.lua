@@ -72,5 +72,27 @@ function util.isDrawObject(obj)
            and type(obj._draw) == "function"
 end
 
+-- vita2d and sf2d place a rotated, scaled sub-rect by its centre, while LOVE
+-- places a sprite so that its origin (ox, oy) sits on the pivot (px, py) and
+-- rotates around it. Returns the screen-space centre that puts the sprite where
+-- LOVE would. The scale is signed, so a mirrored sprite lands on the correct
+-- side of its pivot.
+function util.spriteCentre(px, py, rad, sx, sy, ox, oy, w, h)
+    local lx = (w / 2 - (ox or 0)) * sx
+    local ly = (h / 2 - (oy or 0)) * sy
+    local c, s = math.cos(rad), math.sin(rad)
+    return px + c * lx - s * ly, py + s * lx + c * ly
+end
+
+-- Axis-aligned box (x, y, w, h) around a w x h sprite centred on (cx, cy) and
+-- rotated by rad. Used for the software scissor reject.
+function util.spriteBox(cx, cy, rad, w, h)
+    local c, s = math.abs(math.cos(rad)), math.abs(math.sin(rad))
+    w, h = math.abs(w), math.abs(h)
+    local ew = w * c + h * s
+    local eh = w * s + h * c
+    return cx - ew / 2, cy - eh / 2, ew, eh
+end
+
 -- Kept as a global: game code and older platform modules call it directly.
 __mathRound = util.round

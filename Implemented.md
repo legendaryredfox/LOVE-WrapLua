@@ -368,7 +368,9 @@ vs RPCS3) is in the README under "Testing and validation targets".
   per side so linear filtering stops sampling the neighbouring frame at a
   boundary (PPSSPP #14977). Use `0.5` for tightly-packed linear-filtered sheets;
   pixel art is better served by nearest filtering. Applied on OneLua/PSP/lpp-vita;
-  PS3 draws position-only, so it is a no-op there.
+  PS3 draws position-only, so it is a no-op there. lpp-vita reads the source
+  origin as an integer (`luaL_checkinteger`), so there the inset rounds inward
+  to whole texels: `0.5` trims one texel per side.
 - **Save durability** — `write`/`append` open, write and `close()` in one call,
   so those saves are always flushed. A long-lived `newFile` handle you leave open
   is tracked and closed automatically at `love.event.quit` (before the process

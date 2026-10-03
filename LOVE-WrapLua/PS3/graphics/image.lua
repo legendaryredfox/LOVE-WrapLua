@@ -34,11 +34,7 @@ function love.graphics.newImage(filename, settings)
     local w = (handle and handle.getWidth  and handle:getWidth())  or 64
     local h = (handle and handle.getHeight and handle:getHeight()) or 64
     lv1lua.core.validateTexture(w, h, filename)
-    local img = { _tex = handle, _w = w, _h = h }
-    function img:getWidth()      return self._w end
-    function img:getHeight()     return self._h end
-    function img:getDimensions() return self._w, self._h end
-    return img
+    return lv1lua.core.wrapImage(handle, w, h)
 end
 
 function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx)

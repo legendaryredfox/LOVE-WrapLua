@@ -8,7 +8,8 @@ function love.graphics.newImage(filename, settings)
     if lv1luaconf.imgscale == true then
         image.scale(img, lv1lua.gfx.scale * 100)
     end
-    return img
+    -- The game gets a shared Image object (core/image.lua); draw unwraps it.
+    return lv1lua.core.wrapImage(img, image.getrealw(img), image.getrealh(img))
 end
 
 -- Loaded images are immutable sources. Scaling makes a transient copy keyed by
@@ -76,6 +77,7 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy)
     if lv1lua.util.isDrawObject(drawable) then
         return drawable:_draw(xOrQuad, y, r, sx, sy, ox, oy)
     end
+    drawable = lv1lua.core.texture(drawable)
     if type(xOrQuad) == "table" and xOrQuad.getViewport then
         return _quadDraw(drawable, xOrQuad, y, r, sx, sy, ox, oy)
     end
@@ -110,8 +112,10 @@ function love.graphics.newQuad(x, y, width, height, swOrImg, sh)
     local sw, _sh
     if type(swOrImg) == "number" then
         sw, _sh = swOrImg, sh
+    elseif lv1lua.core.isImage(swOrImg) then
+        sw, _sh = swOrImg:getDimensions()
     elseif swOrImg ~= nil then
-        -- A drawable: PSP images are native handles, so their size comes from
+        -- A bare native handle (a library may pass one): PSP images are native handles, so their size comes from
         -- the SDK rather than from a method on a wrapper table.
         sw  = image.getrealw(swOrImg) or width
         _sh = image.getrealh(swOrImg) or height

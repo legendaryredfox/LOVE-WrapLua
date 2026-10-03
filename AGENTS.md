@@ -48,6 +48,7 @@ LOVE-WrapLua/
 │   ├── core/                   ← Backend-agnostic, no native calls.
 │   │   ├── loader.lua          ← lv1lua.load / loadOnce: dofile with the data prefix.
 │   │   ├── fileio.lua          ← File access seam (open / loadfile); lpp-3ds has no io.open.
+│   │   ├── image.lua           ← Shared Image object around each SDK's texture handle.
 │   │   ├── util.lua            ← Rounding, 0-1↔0-255 colour, UTF-8 glyph iteration.
 │   │   ├── transform.lua       ← Software transform stack (push/pop/flatten).
 │   │   ├── textwrap.lua        ← Greedy word wrap, measured by the font itself.
@@ -137,6 +138,7 @@ LOVE-WrapLua/
     ├── text_test.lua           ← Text metrics + printf across all 4 backends.
     ├── font_test.lua           ← Shared Font object + printf layout, all 4 backends.
     ├── prim_transform_test.lua ← Primitives vs the transform stack, per backend.
+    ├── image_test.lua          ← Image object surface + native handle, all 5 backends.
     ├── system_test.lua         ← love.system across all 4 backends.
     ├── math_test.lua
     ├── data_test.lua
@@ -203,9 +205,12 @@ end
 
 `love.graphics.draw` dispatches on the drawable argument type:
 
-1. If `drawable._draw` exists → call `drawable:_draw(x, y, r, sx, sy, ox, oy)`.  This covers SpriteBatch, Text/TextBatch, ParticleSystem, Mesh.
-2. If `drawable.imgData` exists → it is a wrapped image; use `drawable.imgData` for the platform blit call.
-3. Otherwise → treat as a raw platform image handle.
+1. If `lv1lua.util.isDrawObject(drawable)` → call `drawable:_draw(x, y, r, sx, sy, ox, oy)`.  This covers SpriteBatch, Text/TextBatch, ParticleSystem, Mesh.
+2. Otherwise unwrap with `lv1lua.core.texture(drawable)`: an Image (`core/image.lua`, what every backend's `newImage` returns) gives its native handle in `_tex`; anything else is taken as a raw handle a library passed in. OneLua's Image also keeps the handle as `imgData` for its draw path.
+
+`newImage` must return `lv1lua.core.wrapImage(handle, w, h)`, never the bare
+handle: lpp-vita and lpp-3ds return textures as integers, and a game calling
+`img:getWidth()` on one crashes (T7.6).
 
 When creating new drawable types, implement `_draw(self, x, y, r, sx, sy, ox, oy)`.
 

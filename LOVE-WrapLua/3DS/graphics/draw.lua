@@ -35,6 +35,7 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx, ky)
         return
     end
     if not drawable or not gfx.canDraw() then return end
+    drawable = lv1lua.core.texture(drawable)
 
     if type(xOrQuad) == "table" and xOrQuad.getViewport then
         -- draw(drawable, quad, x, y, r, sx, sy, ox, oy)

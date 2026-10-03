@@ -1,13 +1,31 @@
 -- lpp-vita graphics: Image and Quad.
 --
--- Graphics.loadImage returns a native texture handle, which the wrapper passes
--- straight through: games treat it as an opaque drawable.
+-- Graphics.loadImage returns the texture as an integer; the game gets a shared
+-- Image object (core/image.lua) around it, and the draw path unwraps it.
+
+-- vita2d filters per texture; luaGraphics.cpp registers the two constants.
+local FILTERS = { nearest = "FILTER_POINT", linear = "FILTER_LINEAR" }
+
+local function nativeFilter(name)
+    return rawget(_G, FILTERS[name] or "FILTER_LINEAR")
+end
+
+lv1lua.gfx.imageHooks = {
+    setFilter = function(tex, min, mag)
+        local nmin, nmag = nativeFilter(min), nativeFilter(mag)
+        if Graphics.setImageFilters and nmin and nmag then
+            Graphics.setImageFilters(tex, nmin, nmag)
+        end
+    end,
+    release = function(tex) Graphics.freeImage(tex) end,
+}
 
 function love.graphics.newImage(filename, settings)
     local tex = Graphics.loadImage(lv1lua.dataloc .. "game/" .. filename)
+    local w, h = Graphics.getImageWidth(tex), Graphics.getImageHeight(tex)
     -- Warn if the sheet exceeds the backend texture limit.
-    lv1lua.core.validateTexture(Graphics.getImageWidth(tex), Graphics.getImageHeight(tex), filename)
-    return tex
+    lv1lua.core.validateTexture(w, h, filename)
+    return lv1lua.core.wrapImage(tex, w, h)
 end
 
 function love.graphics.newQuad(x, y, w, h, swOrImg, sh)
@@ -16,6 +34,8 @@ function love.graphics.newQuad(x, y, w, h, swOrImg, sh)
     -- so a number in the fifth slot is only a width when a height follows it.
     if type(swOrImg) == "number" and sh ~= nil then
         sw, _sh = swOrImg, sh
+    elseif lv1lua.core.isImage(swOrImg) then
+        sw, _sh = swOrImg:getDimensions()
     elseif swOrImg ~= nil then
         -- A drawable: lpp-vita images are native texture handles with no
         -- methods, so the size comes from the SDK.

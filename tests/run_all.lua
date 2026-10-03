@@ -34,6 +34,7 @@ local test_files = {
     "tests/globals_test.lua",
     "tests/audio_test.lua",
     "tests/ps3_draw_test.lua",
+    "tests/image_test.lua",
 }
 
 local total_fail = 0

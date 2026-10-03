@@ -19,6 +19,11 @@
 
 lv1lua.mode = "lpp-vita"
 
+__lppvita = { textures = {}, nextTexture = 8192 }
+
+-- SCE_GXM_TEXTURE_FILTER_POINT / _LINEAR, registered by luaGraphics.cpp.
+FILTER_POINT, FILTER_LINEAR = 0, 1
+
 -- ── Color ────────────────────────────────────────────────────────
 Color = {
     new = function(r, g, b, a) return { r=r, g=g, b=b, a=a or 255 } end,
@@ -28,10 +33,28 @@ Color = {
 
 -- ── Graphics ─────────────────────────────────────────────────────
 Graphics = {
-    loadImage        = function(path) return { _w=64, _h=64, _path=path } end,
-    getImageWidth    = function(tex)  return type(tex)=="table" and tex._w or 64 end,
-    getImageHeight   = function(tex)  return type(tex)=="table" and tex._h or 64 end,
-    freeImage        = function(...) end,
+    -- Textures come back as integers (lua_pushinteger of the lpp_texture
+    -- pointer), so the wrapper can never tell one from a number by type. A
+    -- handle the mock did not hand out still measures 64x64, as a stand-in.
+    loadImage = function(path)
+        __lppvita.nextTexture = __lppvita.nextTexture + 16
+        __lppvita.textures[__lppvita.nextTexture] = { _w = 64, _h = 64, _path = path }
+        return __lppvita.nextTexture
+    end,
+    getImageWidth  = function(tex)
+        local t = __lppvita.textures[tex]; return t and t._w or 64 end,
+    getImageHeight = function(tex)
+        local t = __lppvita.textures[tex]; return t and t._h or 64 end,
+    freeImage = function(tex)
+        __lppvita.textures[tex] = nil
+        __rec.log("Graphics.freeImage", tex)
+    end,
+    setImageFilters = function(tex, min, mag)
+        __checkInteger("setImageFilters", 1, tex)
+        __checkInteger("setImageFilters", 2, min)
+        __checkInteger("setImageFilters", 3, mag)
+        __rec.log("Graphics.setImageFilters", tex, min, mag)
+    end,
     initBlend        = function() end,
     termBlend        = function() end,
 

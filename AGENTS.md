@@ -51,6 +51,8 @@ LOVE-WrapLua/
 │   │   ├── image.lua           ← Shared Image object around each SDK's texture handle.
 │   │   ├── util.lua            ← Rounding, 0-1↔0-255 colour, UTF-8 glyph iteration.
 │   │   ├── transform.lua       ← Software transform stack (push/pop/flatten).
+│   │   ├── transformapi.lua    ← Shared love.graphics transform + scissor surface
+│   │   │                         over that stack (optional gfx.applyScissor hook).
 │   │   ├── textwrap.lua        ← Greedy word wrap, measured by the font itself.
 │   │   ├── font.lua            ← Shared Font prototype + face cache over gfx.fontHooks.
 │   │   ├── text.lua            ← Shared printf: wrap, align, getHeight×getLineHeight.
@@ -75,11 +77,11 @@ LOVE-WrapLua/
 │   │   └── thread.lua          ← love.thread (coroutine-based pseudo-threads + channels).
 │   ├── OneLua/
 │   │   ├── graphics.lua        ← Entry: love.graphics for Vita (OneLua SDK).
-│   │   ├── graphics/           ← state, transform, image, draw, font, text,
+│   │   ├── graphics/           ← state, image, draw, font, text,
 │   │   │                         primitives, canvas, spritebatch, textobject,
 │   │   │                         mesh, particles, info.
 │   │   ├── graphics_psp.lua    ← Entry: love.graphics for PSP.
-│   │   ├── psp/                ← state, transform, image, font, text,
+│   │   ├── psp/                ← state, image, font, text,
 │   │   │                         primitives, objects, info.
 │   │   ├── audio.lua           ← love.audio (OneLua sound.* API, 2 channels).
 │   │   ├── keyboard.lua        ← love.keyboard (OneLua buttons.* API).
@@ -93,7 +95,7 @@ LOVE-WrapLua/
 │   │   └── shader.lua          ← Pixel-cache shader stub.
 │   ├── lpp-vita/
 │   │   ├── graphics.lua        ← Entry: love.graphics (lpp-vita Graphics.* API).
-│   │   ├── graphics/           ← state, transform, image, draw, font, text,
+│   │   ├── graphics/           ← state, image, draw, font, text,
 │   │   │                         primitives, objects, info.
 │   │   ├── audio.lua           ← love.audio (lpp-vita Sound.* API).
 │   │   ├── keyboard.lua        ← love.keyboard (lpp-vita Controls.* API).
@@ -102,13 +104,13 @@ LOVE-WrapLua/
 │   │   └── event.lua           ← love.event.
 │   ├── 3DS/
 │   │   ├── graphics.lua        ← Entry: love.graphics (lpp-3ds Graphics/Font, sf2d).
-│   │   ├── graphics/           ← state (GPU frame), transform, image, draw, font,
+│   │   ├── graphics/           ← state (GPU frame), scissor, image, draw, font,
 │   │   │                         text (deferred CPU print), primitives, info.
 │   │   ├── fileio.lua          ← io-like files over System.openFile/readFile/writeFile.
 │   │   ├── audio.lua / keyboard.lua / timer.lua / whileloop.lua / event.lua
 │   └── PS3/
 │       ├── graphics.lua        ← Entry: love.graphics (PS3 Lua Player, tiny3D gfx.*).
-│       ├── graphics/           ← state, transform, image, font, text,
+│       ├── graphics/           ← state, image, font, text,
 │       │                         primitives, objects, info.
 │       ├── audio.lua           ← love.audio (snd.* PS3 API, stream only).
 │       ├── keyboard.lua        ← love.keyboard (pad.* API).

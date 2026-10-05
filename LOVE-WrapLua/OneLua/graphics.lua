@@ -3,7 +3,7 @@
 -- This file only wires the pieces together; each submodule owns one area of the
 -- API. Load order matters:
 --   state      defines lv1lua.gfx / lv1lua.current, which the rest read
---   transform  creates the transform stack (draw, text and primitives use it)
+--   transformapi creates the transform stack (draw, text and primitives use it)
 --   font       needs newFont before it can install the default font
 --
 -- Loading this file is the whole public entry point: everything lands on
@@ -24,7 +24,7 @@ local GRAPHICS = "LOVE-WrapLua/OneLua/graphics/"
 lv1lua.load(GRAPHICS .. "state.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/state.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/texinset.lua")
-lv1lua.load(GRAPHICS .. "transform.lua")
+lv1lua.loadOnce("LOVE-WrapLua/core/transformapi.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/image.lua")
 lv1lua.load(GRAPHICS .. "image.lua")
 lv1lua.load(GRAPHICS .. "draw.lua")

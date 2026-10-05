@@ -18,6 +18,20 @@ local function fresh(mode, keyconf)
 end
 
 -- ── Vita input modules are not tied to the button layout (R1) ────
+T.describe("core/config button layout", function()
+    T.it("an unknown keyconf falls back to XB instead of leaving keyset nil", function()
+        __MODE = "OneLua"
+        dofile("tests/setup.lua")
+        lv1luaconf = { keyconf = "typo", imgscale = false, resscale = false }
+        lv1lua.keyset = nil
+        dofile("LOVE-WrapLua/core/util.lua")
+        dofile("LOVE-WrapLua/core/input.lua")
+        dofile("LOVE-WrapLua/core/config.lua")
+        T.ok(lv1lua.keyset ~= nil, "keyset must exist")
+        T.eq(lv1lua.keyset[1], "b")
+    end)
+end)
+
 T.describe("core/config loads the Vita input modules", function()
     T.it("touch and mouse exist with the default XB layout", function()
         fresh("OneLua", "XB")
@@ -165,6 +179,18 @@ T.describe("core/callbacks", function()
         end)
         love.keypressed("a")
         T.eq(got, "a")
+    end)
+
+    T.it("the d-pad reaches gamepadpressed under its gamepad name", function()
+        local got, rel
+        wire(function()
+            love.gamepadpressed  = function(js, button) got = button end
+            love.gamepadreleased = function(js, button) rel = button end
+        end)
+        love.keypressed("up")
+        love.keyreleased("left")
+        T.eq(got, "dpup")
+        T.eq(rel, "dpleft")
     end)
 
     T.it("a game's own keypressed is left alone", function()

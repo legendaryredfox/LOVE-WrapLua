@@ -67,4 +67,11 @@ elseif lv1luaconf.keyconf == "XBA" then
     lv1lua.keyset = {"a","b","x","y","leftshoulder","rightshoulder"}
 elseif lv1luaconf.keyconf == "PS" then
     lv1lua.keyset = {"circle","cross","triangle","square","l","r"}
+else
+    -- Every backend's input map is built from keyset, so a typo here used to
+    -- crash the first keyboard module that loaded.
+    lv1lua.util.warn("lv1luaconf.keyconf '" .. tostring(lv1luaconf.keyconf)
+                     .. "' is not XB, XBA, PS or SE; using XB")
+    lv1luaconf.keyconf = "XB"
+    lv1lua.keyset = {"b","a","y","x","leftshoulder","rightshoulder"}
 end

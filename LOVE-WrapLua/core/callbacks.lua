@@ -5,9 +5,16 @@
 -- remaining callback gets a no-op stub so platform code can call it without
 -- nil checks on every frame.
 
+-- The keys the frame loops report are LOVE keyboard names; the d-pad has
+-- different names on a gamepad.
+local GAMEPAD_NAME = { up = "dpup", down = "dpdown", left = "dpleft", right = "dpright" }
+local function button(key) return GAMEPAD_NAME[key] or key end
+
 if not love.keypressed and love.gamepadpressed then
-    function love.keypressed(key)
-        love.gamepadpressed(love.joystick.getJoysticks()[1], key)
+    -- A held key repeats as a keypress; a gamepad button does not.
+    function love.keypressed(key, scancode, isrepeat)
+        if isrepeat then return end
+        love.gamepadpressed(love.joystick.getJoysticks()[1], button(key))
     end
 elseif not love.keypressed then
     love.keypressed = function() end
@@ -15,7 +22,7 @@ end
 
 if not love.keyreleased and love.gamepadreleased then
     function love.keyreleased(key)
-        love.gamepadreleased(love.joystick.getJoysticks()[1], key)
+        love.gamepadreleased(love.joystick.getJoysticks()[1], button(key))
     end
 elseif not love.keyreleased then
     love.keyreleased = function() end

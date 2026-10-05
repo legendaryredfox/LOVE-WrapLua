@@ -337,5 +337,48 @@ T.describe("3DS updatecontrols", function()
     end)
 end)
 
+-- love.keyboard.isDown(k1, k2, ...) is true when any of the keys is down; the
+-- backends looked at the first argument only, so isDown("left", "a") ignored
+-- the second key.
+T.describe("isDown takes several keys", function()
+    local loaders = {
+        { "OneLua", function()
+            fresh("OneLua"); lv1lua.load("LOVE-WrapLua/core/config.lua")
+            lv1lua.load("LOVE-WrapLua/OneLua/keyboard.lua")
+            buttons.held = { up = true }
+        end },
+        { "lpp-vita", function()
+            fresh("lpp-vita"); lv1lua.load("LOVE-WrapLua/core/config.lua")
+            lv1lua.load("LOVE-WrapLua/core/timestep.lua")
+            lv1lua.load("LOVE-WrapLua/lpp-vita/graphics.lua")
+            lv1lua.load("LOVE-WrapLua/lpp-vita/keyboard.lua")
+            lv1lua.load("LOVE-WrapLua/lpp-vita/whileloop.lua")
+            Controls._down = { [lv1lua.keyenum[1]] = true }
+            lv1lua.updatecontrols()
+        end },
+        { "PS3", function()
+            fresh("PS3"); lv1lua.load("LOVE-WrapLua/core/config.lua")
+            lv1lua.load("LOVE-WrapLua/PS3/keyboard.lua")
+            pad._down = { up = true }
+        end },
+        { "3DS", function()
+            fresh("3DS"); lv1lua.load("LOVE-WrapLua/core/config.lua")
+            lv1lua.load("LOVE-WrapLua/core/timestep.lua")
+            lv1lua.load("LOVE-WrapLua/3DS/graphics.lua")
+            lv1lua.load("LOVE-WrapLua/3DS/keyboard.lua")
+            lv1lua.load("LOVE-WrapLua/3DS/whileloop.lua")
+            __3ds.down = { [KEY_DUP] = true }; __3ds.circle = { 0, 0 }
+            lv1lua.updatecontrols()
+        end },
+    }
+    for _, l in ipairs(loaders) do
+        T.it(l[1] .. ": true when a later key is down", function()
+            l[2]()
+            T.ok(love.keyboard.isDown("left", "up"))
+            T.nok(love.keyboard.isDown("left", "right"))
+        end)
+    end
+end)
+
 io.write("\n=== input edges (core + all backends) ===\n")
 return T.summary()

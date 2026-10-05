@@ -142,7 +142,16 @@ function lv1lua.core.newKeyTracker()
     }, Tracker)
 end
 
--- Owned here rather than in each backend's keyboard.lua, so the three copies
+-- love.keyboard.isDown(k1, k2, ...) is true when any of the keys is down. Each
+-- backend answers for one key; this spreads the call over all of them.
+function lv1lua.core.anyDown(isDown, ...)
+    for i = 1, select("#", ...) do
+        if isDown((select(i, ...))) then return true end
+    end
+    return false
+end
+
+-- Owned here rather than in each backend's keyboard.lua, so the copies
 -- cannot drift.
 function love.keyboard.setKeyRepeat(enable)
     lv1lua.input.keyRepeat = enable and true or false

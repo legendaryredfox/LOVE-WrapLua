@@ -1,5 +1,28 @@
 ## Changelog
 
+### 2026-10-05, branch `feat/t7.7-psp-transforms`
+
+**Features**
+- The PSP runs on the real transform stack. `push`, `pop`, `translate`,
+  `scale`, `rotate`, `applyTransform` and `transformPoint` were identity stubs
+  there, so a game that places its scene through the stack (a camera, UI
+  scaling) drew wrong on the highest-priority target only. Images, quads and
+  primitives now all follow it.
+
+**Fixes**
+- OneLua Vita folded the stack into image draws two different wrong ways: with
+  `scale(2)` and `translate(10, 0)` active, `draw(img, 5, 0)` landed at x=45
+  and the same draw through a full-sheet quad at x=25, while a rectangle in
+  the same frame (and LOVE) land on 30. Both paths now map the anchor as
+  `p*S+O`, like primitives and every other backend.
+
+**Refactor**
+- The love.graphics transform and scissor surface is one shared file,
+  `core/transformapi.lua`, instead of four near-identical backend copies. The
+  3DS hardware scissor is the optional `lv1lua.gfx.applyScissor` hook.
+- Tests: `tests/draw_transform_test.lua` checks that an image, a quad and a
+  rectangle agree under the stack on PSP and OneLua Vita.
+
 ### 2026-10-03, branch `feat/t7.6-image-objects`
 
 **Fixes**

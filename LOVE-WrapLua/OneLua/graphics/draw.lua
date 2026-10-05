@@ -69,16 +69,15 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx, ky)
 
     if type(xOrQuad) == "table" and xOrQuad.getViewport then
         -- draw(drawable, quad, x, y, r, sx, sy, ox, oy)
-        _x  = (y  == nil) and transform._offsetX or y  + transform._offsetX
-        _y  = (r  == nil) and transform._offsetY or r  + transform._offsetY
+        _x  = (y or 0) * transform._scaleX + transform._offsetX
+        _y  = (r or 0) * transform._scaleY + transform._offsetY
         _r  = sx
         _sx = (sy == nil) and transform._scaleX  or sy * transform._scaleX
         _sy = (ox == nil) and transform._scaleY  or ox * transform._scaleY
         ox, oy = oy or 0, kx or 0
         local absSx, absSy = math.abs(_sx), math.abs(_sy)
-        -- Same destination formula as the plain-image path below: the two used
-        -- to disagree once a scale was active, so the same sprite landed in
-        -- two different places depending on whether a quad was passed.
+        -- The anchor maps as a point (p * S + O), as primitives and every
+        -- other backend do; the origin offset is a pivot in the folded scale.
         _x = util.round((_x - ox * absSx))
         _y = util.round((_y - oy * absSy))
         if isNew then
@@ -89,14 +88,14 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx, ky)
         end
     else
         -- draw(drawable, x, y, r, sx, sy, ox, oy)
-        _x  = (xOrQuad == nil) and 0 or xOrQuad
-        _y  = y  or 0
+        _x  = (xOrQuad or 0) * transform._scaleX + transform._offsetX
+        _y  = (y or 0) * transform._scaleY + transform._offsetY
         _sx = (sx == nil) and transform._scaleX or sx * transform._scaleX
         _sy = (sy == nil) and transform._scaleY or sy * transform._scaleY
         ox, oy = ox or 0, oy or 0
         local absSx, absSy = math.abs(_sx), math.abs(_sy)
-        _x = util.round((_x - ox * absSx) + transform._offsetX * absSx)
-        _y = util.round((_y - oy * absSy) + transform._offsetY * absSy)
+        _x = util.round(_x - ox * absSx)
+        _y = util.round(_y - oy * absSy)
         if isNew then
             _x, _y = drawable:__handleNegativeScale(_x, _y, _sx, _sy)
             love.graphics._defaultDraw(drawable.imgData, _x, _y, r, absSx, absSy)

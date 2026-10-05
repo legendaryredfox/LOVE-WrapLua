@@ -28,7 +28,7 @@ local function blitAt()
     return a[2], a[3]
 end
 
-for _, mode in ipairs({ "PSP" }) do
+for _, mode in ipairs({ "PSP", "OneLua" }) do
     load_backend(mode)
     local img = love.graphics.newImage("sheet.png")   -- 64x64 in the mock
     local full = love.graphics.newQuad(0, 0, 64, 64, img)

@@ -11,6 +11,9 @@ local gfx = lv1lua.gfx
 gfx.transform = lv1lua.core.newTransformStack()
 local stack = gfx.transform
 
+-- Lua 5.3 folded atan2 into math.atan(y, x).
+local atan2 = math.atan2 or math.atan
+
 local function applyScissor()
     if gfx.applyScissor then gfx.applyScissor() end
 end
@@ -77,12 +80,17 @@ function love.graphics.reset()
     applyScissor()
 end
 
+-- A love.math Transform is decomposed into translate, rotate and scale, the
+-- three things the stack can hold; shear has nowhere to go and is dropped.
 function love.graphics.applyTransform(transform)
-    if transform and transform._m then
-        local m = transform._m
-        love.graphics.translate(m[7], m[8])
-        love.graphics.scale(m[1], m[5])
-    end
+    if not (transform and transform._m) then return end
+    local m = transform._m
+    local sx = math.sqrt(m[1] * m[1] + m[2] * m[2])
+    local angle = (sx ~= 0) and atan2(m[2], m[1]) or 0
+    local sy = (sx ~= 0) and (m[1] * m[5] - m[2] * m[4]) / sx or m[5]
+    love.graphics.translate(m[7], m[8])
+    if angle ~= 0 then love.graphics.rotate(angle) end
+    love.graphics.scale(sx, sy)
 end
 
 function love.graphics.replaceTransform(transform)

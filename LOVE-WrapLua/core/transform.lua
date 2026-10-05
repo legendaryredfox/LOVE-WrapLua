@@ -2,7 +2,8 @@
 --
 -- None of the console SDKs exposes a matrix stack, so push/pop/translate/scale/
 -- rotate/scissor are tracked here and flattened into plain offsets, scales and a
--- rotation that the native draw calls can consume.
+-- rotation that the native draw calls can consume. Rotation turns what is drawn
+-- but does not rotate positions: the flattened form has no off-diagonal terms.
 --
 -- Each stack level composes into its own transform (two translates inside one
 -- push must add up), and the flattened result is cached until something marks
@@ -28,14 +29,17 @@ local Stack = {}
 Stack.__index = Stack
 
 -- Flattens every level into `self.transform`. Cheap to call: no-op while clean.
+-- Levels compose outermost first, so a level's offset is in the space the
+-- levels outside it have already scaled: `scale(2) push() translate(-10)`
+-- maps x to 2 * (x - 10), as in LOVE.
 function Stack:updateTransform()
     if not self._dirty then return end
     local x, y, sx, sy, rot = 0, 0, 1, 1, 0
     local usingScissor, scX, scY, scW, scH = false, 0, 0, 0, 0
     for i = 1, #self.stack do
         local t = self.stack[i]
-        x   = x * t._scaleX + t._offsetX
-        y   = y * t._scaleY + t._offsetY
+        x   = x + sx * t._offsetX
+        y   = y + sy * t._offsetY
         sx  = sx * t._scaleX
         sy  = sy * t._scaleY
         rot = rot + t._rotation

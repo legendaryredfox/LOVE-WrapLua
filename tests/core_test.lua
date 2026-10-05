@@ -141,6 +141,24 @@ T.describe("core.transform stack", function()
         T.eq(s.transform._rotation, 3)
     end)
 
+    T.it("an outer scale applies to an inner level's offset", function()
+        -- scale(2); push(); translate(-10): LOVE maps x to 2 * (x - 10).
+        local s = core.newTransformStack()
+        s:push(); s:top()._scaleX = 2
+        s:push(); s:top()._offsetX = -10
+        s:invalidate()
+        T.eq((s:mapPoint(15, 0)), 10)
+    end)
+
+    T.it("an inner scale leaves an outer offset alone", function()
+        -- translate(100); push(); scale(2): LOVE maps x to 100 + 2 * x.
+        local s = core.newTransformStack()
+        s:push(); s:top()._offsetX = 100
+        s:push(); s:top()._scaleX = 2
+        s:invalidate()
+        T.eq((s:mapPoint(10, 0)), 120)
+    end)
+
     T.it("clear leaves no levels", function()
         local s = core.newTransformStack()
         s:push(); s:push()

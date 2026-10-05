@@ -11,9 +11,13 @@ local keysetMap = {
     ["back"]           = "select",
 }
 
-function love.keyboard.isDown(key)
+local function isDown(key)
     local btn = keysetMap[key] or key
-    return buttons.held[btn] or false
+    return buttons.held[btn] and true or false
+end
+
+function love.keyboard.isDown(...)
+    return lv1lua.core.anyDown(isDown, ...)
 end
 
 function love.keyboard.isScancodeDown(scancode)

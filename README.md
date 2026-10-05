@@ -4,13 +4,14 @@
 
 # LOVE-WrapLua
 
-A [LÖVE](https://love2d.org/) 11.5 compatibility layer for **PSP**, **PS Vita**, and **PS3**.
+A [LÖVE](https://love2d.org/) 11.5 compatibility layer for **PSP**, **PS Vita**, **PS3** and
+**Nintendo 3DS**.
 Drop your LÖVE game into `game/` and boot the wrapper. It re-implements the LÖVE
 API on top of each console's native Lua SDK, so a game written against `love.*`
 runs on the handheld or console without a real LÖVE runtime.
 
 > **Scope.** This is a 2D subset of LÖVE aimed at homebrew hardware. GPU-heavy
-> features (Canvas/render-to-texture, shaders, meshes) are stubbed, see
+> features (Canvas/render-to-texture, shaders, meshes) are stubbed: see
 > [Known limitations](#known-limitations). If your game is sprite-based 2D, it
 > should port with little or no change.
 
@@ -43,7 +44,7 @@ to the test harness and the capability table.
 | Tier | Backends | What to expect | How to develop |
 |---|---|---|---|
 | **1, supported** | OneLua on Vita and PSP | The API coverage below holds; tested on hardware and in emulators | Build and run directly; confirm blend, timing and saves on device |
-| **2, partial** | lpp-vita, PS3 | Draw, quads, rotation, transforms and primitives work; some peripheral calls (global audio volume, `clear`, default filter) are stubs. PS3 draws through tiny3D, but nothing there is emulator-verifiable because RPCS3 homebrew loading is minimal ([#18997](https://github.com/RPCS3/rpcs3/issues/18997)) | Same as tier 1, but check [`Implemented.md`](Implemented.md) before relying on a call; confirm PS3 output on real hardware |
+| **2, partial** | lpp-vita, PS3 | Draw, quads, rotation, transforms and primitives work; a few peripheral calls (`clear` mid-frame, the default filter on PS3) do not reach the hardware. PS3 draws through tiny3D, but nothing there is emulator-verifiable because RPCS3 homebrew loading is minimal ([#18997](https://github.com/RPCS3/rpcs3/issues/18997)) | Same as tier 1, but check [`Implemented.md`](Implemented.md) before relying on a call; confirm PS3 output on real hardware |
 | **3, experimental** | 3DS | Written against the lpp-3ds sources and tested through a mock that enforces them, but not yet confirmed on a console or in Citra / Azahar | Write and test game logic on **desktop LÖVE 11.5**, then confirm output on real hardware or an emulator |
 
 Tier 3 is a statement about the backend, not about your game: logic, input,
@@ -62,8 +63,8 @@ native layer underneath.
    ```lua
    lv1luaconf = {
        keyconf  = "XB",   -- button layout, see Configuration
-       imgscale = false,  -- draw images at 75% (handy on the PSP's smaller screen)
-       resscale = false,  -- scale all draw coordinates to 75%
+       imgscale = false,  -- shrink images by the backend's scale factor
+       resscale = false,  -- shrink every draw coordinate by that factor
    }
    ```
 3. **(Optional) `game/conf.lua`.** A standard LÖVE `conf.lua` works; the wrapper
@@ -75,7 +76,7 @@ native layer underneath.
 ### Minimal game
 
 A complete `game/main.lua`: load a spritesheet, animate it, draw it, read input.
-The bundled `desAnim8` ships in `game/libraries/` and works on all four backends
+The bundled `desAnim8` ships in `game/libraries/` and works on every backend
 (kikito's `anim8` is bundled too and also works).
 
 ```lua
@@ -134,27 +135,27 @@ that backend, so calling it errors.
 
 | Module | OL | PSP | LPP | PS3 | 3DS | Notes |
 |---|---|---|---|---|---|---|
-| love.graphics (images, quads, draw) | full | partial | full | full | full | PSP draws quads as sub-rect blits (no rotation); PS3 and 3DS draw rotated, scaled, tinted quads |
+| love.graphics (images, quads, draw) | full | full | full | full | full | OneLua (Vita and PSP) blits a scaled, mirrored copy per sheet, and a rotated quad turns that whole copy; the others draw rotated, scaled, tinted quads natively |
 | love.graphics (primitives) | full | full | full | full | full | rectangle/circle/ellipse/arc/line/points/polygon fill; they follow the transform stack on every backend |
-| love.graphics (fonts, print, printf) | full | full | full | full | partial | real text metrics per backend; 3DS text always lands on top of the frame |
-| love.graphics (transform stack) | full | full | full | full | full | push/pop/translate/scale/rotate; `shear` is a stub everywhere |
-| love.graphics (scissor) | full | stub | partial | stub | full | lpp-vita rejects out-of-scissor draws in software; 3DS clips on the GPU |
-| love.graphics (SpriteBatch, Text) | full | full | full | partial | full | shared implementation (`core/objects.lua`); each backend honours what its own draw supports |
-| love.graphics (ParticleSystem) | partial | none | none | none | none | basic emitter, OneLua/Vita only |
-| love.graphics (Canvas, Shader, Mesh) | stub | stub | stub | stub | stub | `getSupported().canvas` and `.shader` are `false` |
+| love.graphics (fonts, print, printf) | full | full | full | full | partial | real text metrics per backend; text follows the transform stack; 3DS text always lands on top of the frame |
+| love.graphics (transform stack) | partial | partial | partial | partial | partial | push/pop/translate/scale/rotate/applyTransform; rotation turns what is drawn but not positions, and `shear` is a stub |
+| love.graphics (scissor) | tracked | tracked | partial | tracked | full | lpp-vita rejects out-of-scissor draws in software; 3DS clips on the GPU; elsewhere getScissor answers but nothing is clipped |
+| love.graphics (SpriteBatch, Text) | full | full | full | full | full | shared implementation (`core/objects.lua`); `draw(batch, x, y, r, sx, sy, ox, oy)` places the whole batch |
+| love.graphics (ParticleSystem) | partial | partial | partial | partial | partial | basic emitter (`core/particles.lua`): no size, colour or rotation curves |
+| love.graphics (Canvas, Shader, Mesh) | stub | stub | stub | stub | stub | `getSupported().canvas` and `.shader` are `false`; drawing a Canvas does nothing |
 | love.graphics (blend mode) | tracked | partial | tracked | full | tracked | PSP: `add`/`subtract` on whole images. PS3: all eight modes. Both Vita backends expose no blend call, so the mode is tracked and alpha renders. Ask `love.graphics.isBlendModeSupported(mode)` |
-| love.audio | partial | partial | partial | partial | partial | shared Source (`core/audio.lua`); 2 simultaneous voices on OneLua/PSP, 1 background voice on PS3, WAV/OGG/AIFF without volume on 3DS; position and pitch are timed in software, `seek` moves the reported position only |
-| love.keyboard | full | full | full | full | full | edge-triggered press/release, optional key repeat |
+| love.audio | partial | partial | partial | partial | partial | shared Source (`core/audio.lua`, LÖVE 11 play/pause semantics); 2 simultaneous voices on OneLua/PSP, 1 background voice on PS3 (the last stream played holds it), WAV/OGG/AIFF without volume on 3DS; position and pitch are timed in software, `seek` moves the reported position only |
+| love.keyboard | full | full | full | full | full | edge-triggered press/release, optional key repeat, `isDown(k1, k2, ...)` |
 | love.joystick | full | full | full | full | full | one virtual gamepad: axes, buttons and the d-pad hat are filled every frame |
-| love.touch / love.mouse | full | none | none | none | none | Vita front touchscreen, OneLua only; the mouse is the last touch position, and a touch is button 1 |
-| love.filesystem | full | full | full | full | full | `mount`/`unmount` are stubs; 3DS goes through `System.openFile` (lpp-3ds replaces `io`) |
+| love.touch / love.mouse | full | none | none | none | none | Vita front touchscreen, OneLua only; every touch and mouse callback fires, and the first finger is mouse button 1 |
+| love.filesystem | full | full | full | full | full | `mount`/`unmount` are stubs; `modtime` is 0; 3DS goes through `System.openFile` (lpp-3ds replaces `io`) |
 | love.math | full | full | full | full | full | own RNG, Perlin 1D to 4D, 2D affine transforms, triangulate |
 | love.data | full | full | full | full | full | real hash and deflate/zlib; `pack`/`unpack` need Lua 5.3 |
-| love.timer | full | full | full | full | full | Fixed-timestep updates (`lv1luaconf.updaterate`); PS3 has no timer, so its frame time is assumed |
+| love.timer | full | full | full | full | full | Fixed-timestep updates (`lv1luaconf.updaterate`); PS3 has no timer, so its frame time is assumed and `getTime` is the frame clock |
 | love.window | partial | partial | partial | partial | partial | always fullscreen, `setMode` is a no-op |
 | love.system | full | full | full | full | full | `getOS()` returns `"LOVE-WrapLua"`; battery is native on lpp-vita and 3DS (in steps of 20%), `nobattery` on PS3, `unknown` on OneLua; clipboard is process-local |
-| love.thread | partial | partial | partial | partial | partial | coroutine pseudo-threads, synchronous by design |
-| love.event | full | full | full | full | full | `quit` flushes open save handles first |
+| love.thread | partial | partial | partial | partial | partial | coroutine pseudo-threads, synchronous by design; errors reach `getError` and `love.threaderror` |
+| love.event | full | full | full | full | full | `quit` flushes open save handles first; `love.quit` returning true cancels it |
 
 Per-function detail lives in [`Implemented.md`](Implemented.md).
 
@@ -254,9 +255,9 @@ A practical checklist, roughly in the order things bite:
    (except the Vita front touchscreen on OneLua). Route everything through
    `love.keypressed` / `love.gamepadpressed` and the single virtual joystick, see
    [Input model](#input-model).
-3. **Resize to the console.** PSP is 480x272, PS3 is 720x480, Vita is 960x544.
-   Use `love.graphics.getDimensions()` rather than hardcoded numbers, or set
-   `resscale = true` for a quick 75% pass.
+3. **Resize to the console.** PSP is 480x272, PS3 is 720x480, Vita is 960x544,
+   the 3DS top screen is 400x240. Use `love.graphics.getDimensions()` rather than
+   hardcoded numbers, or set `resscale = true` for a quick downscaled pass.
 4. **Fix spritesheets for the target.** PSP needs power-of-two sheets no larger
    than 512x512, so split oversized atlases. Oversize or non-power-of-two sheets
    log a `[LOVE-WrapLua]` warning at `newImage`/`newQuad` instead of corrupting
@@ -287,8 +288,8 @@ Define it before the wrapper boots, at the top of `game/main.lua`.
 | Key | Values | Default | Effect |
 |---|---|---|---|
 | `keyconf` | `"XB"`, `"XBA"`, `"PS"`, `"SE"` | `"XB"` | Physical to logical face-button mapping |
-| `imgscale` | boolean | `false` | Draws images at 75% |
-| `resscale` | boolean | `false` | Scales draw coordinates to 75% |
+| `imgscale` | boolean | `false` | Shrinks images by the backend's factor (0.75 Vita, 0.375 PSP, 0.5625 PS3, none on 3DS) |
+| `resscale` | boolean | `false` | Shrinks every draw coordinate by that factor |
 | `updaterate` | number, or `"variable"` | `60` | Fixed updates per second. `love.update` gets exactly `1/updaterate` as `dt`, whatever the frame took. `"variable"` restores desktop LÖVE's one-update-per-frame with the measured `dt` |
 | `maxframeskip` | number | `5` | Most update slices one frame may run, so a long stall (loading, sleep and resume) cannot queue hundreds of catch-up updates |
 
@@ -301,14 +302,15 @@ different number.
 `keyconf` values: `"XB"` is the Xbox layout, `"XBA"` swaps confirm and cancel,
 `"PS"` uses PlayStation names (`circle`, `cross`, `triangle`, `square`, `l`, `r`),
 and `"SE"` auto-detects the console's own enter button (circle on Japanese units,
-cross elsewhere) and resolves to `"XB"` or `"XBA"`. The older spellings
-`img_scale` and `res_scale` are still accepted.
+cross elsewhere) and resolves to `"XB"` or `"XBA"`. Any other value warns and
+falls back to `"XB"`. The older spellings `img_scale` and `res_scale` are still
+accepted.
 
 ### `game/conf.lua` (standard LÖVE config)
 
-A normal LÖVE `conf.lua` is loaded and `love.conf(t)` is called. The wrapper uses
-`t.identity` (save directory name, defaults to `"LOVE-WrapLua"`) and
-`t.window.title`. Window size and flags are ignored: consoles are always
+A normal LÖVE `conf.lua` is loaded and `love.conf(t)` is called when it is
+defined. The wrapper uses `t.identity` (save directory name on the Vita and 3DS,
+defaults to `"LOVE-WrapLua"`) and `t.window.title`. Window size and flags are ignored: consoles are always
 fullscreen at their native resolution.
 
 ---
@@ -321,7 +323,8 @@ fullscreen at their native resolution.
 - Key repeat is off by default; `love.keyboard.setKeyRepeat(true)` enables it
   (first repeat after 0.4s, then every 0.05s).
 - If your game only defines `love.gamepadpressed` / `love.gamepadreleased`, the
-  wrapper forwards presses to them using the first joystick.
+  wrapper forwards presses to them using the first joystick, with the d-pad
+  under its gamepad names (`dpup`, `dpdown`, `dpleft`, `dpright`).
 - `love.joystick.getJoysticks()[1]` always returns a connected virtual gamepad;
   use `:isGamepadDown(...)`, `:getGamepadAxis(...)`, `:getAxis(n)`, `:getHat(n)`.
 - `keyconf` picks the physical to logical layout, see [Configuration](#configuration).
@@ -331,8 +334,9 @@ fullscreen at their native resolution.
 ## Running the tests
 
 Tests run on desktop Lua (5.1 / 5.3 / 5.4 / LuaJIT), no console needed. The
-harness mocks each console SDK, including the real native argument orders, and
-runs the shared suites under all four backends (`OneLua`, `PSP`, `lpp-vita`, `PS3`).
+harness mocks each console SDK, grounded in the SDK sources (native argument
+orders, integer-only arguments, which calls exist), and runs the shared suites
+under every backend (`OneLua`, `PSP`, `lpp-vita`, `PS3`, `3DS`).
 
 ```bash
 lua tests/run_all.lua           # full suite, exits non-zero on failure
@@ -357,7 +361,8 @@ Honest current state. These are platform or design limits, not regressions.
 Per-function detail is in [`Implemented.md`](Implemented.md).
 
 - **Canvas** is a stub on every backend (`getSupported().canvas == false`).
-  `renderTo(fn)` runs `fn()` but draws to the screen, not to an offscreen target.
+  `renderTo(fn)` runs `fn()` but draws to the screen, not to an offscreen target,
+  and drawing the Canvas afterwards does nothing.
   Native paths exist and are not wired yet: lpp-vita/vita2d has rendertarget
   textures with no Lua bind (a small upstream patch), and PS3 tiny3D has
   scene-to-texture surfaces. OneLua exposes none.
@@ -376,13 +381,13 @@ Per-function detail is in [`Implemented.md`](Implemented.md).
   parallelism). A thread body that loops forever hangs the app. `Channel:supply`
   is an immediate push and `Channel:demand` is a non-blocking pop.
 - **Transforms** are one shared software stack on every backend
-  (translate/scale/rotate/push/pop), folded into images and primitives alike.
-  Scissor is enforced in software on lpp-vita and on the GPU on the 3DS, and
-  only tracked elsewhere. `shear` is a stub everywhere.
-- **PS3 graphics** are position-only blits: quads are accepted but ignored, and
-  primitives are stubs pending SDK confirmation.
+  (translate/scale/rotate/push/pop), folded into images, shapes and text alike.
+  The stack keeps an offset, a scale and an angle per level, so `rotate` turns
+  what is drawn but does not rotate the positions that follow it, and `shear` is
+  a stub. Scissor is enforced in software on lpp-vita and on the GPU on the 3DS,
+  and only tracked elsewhere.
 - **love.audio**: OneLua supports about 2 simultaneous channels; PS3 supports
-  stream sources only.
+  stream sources only, one at a time.
 - **love.data.hash / compress / decompress** are real (vendored `sha2.lua` and
   LibDeflate, byte-compatible with desktop LÖVE for `deflate` and `zlib`), but
   pure Lua and slow on device, so cache results. `gzip` and `lz4` fall back to
@@ -435,8 +440,7 @@ for a smoke test but give you less diagnostic output than the standalone builds.
   ([#4109](https://github.com/Vita3K/Vita3K/issues/4109),
   [#422](https://github.com/Vita3K/Vita3K/issues/422)) and differ between OpenGL,
   Vulkan and MoltenVK. Never sign off a blend-dependent or readback-dependent
-  look there. This is one reason the wrapper keeps blend modes a stub and Canvas
-  unsupported: the fallback is at least consistent.
+  look there.
 - **Vita3K** can lose writes when the emulator is closed
   ([#3918](https://github.com/Vita3K/Vita3K/issues/3918),
   [#3659](https://github.com/Vita3K/Vita3K/issues/3659)). The wrapper closes
@@ -471,7 +475,7 @@ end
 
 - **PSP textures** must be power-of-two and at most 512x512. Split larger
   spritesheets. lpp-vita allows up to 1024x1024 and non-power-of-two.
-- **Screen sizes:** PSP 480x272, PS3 720x480, Vita 960x544. Use
+- **Screen sizes:** PSP 480x272, PS3 720x480, Vita 960x544, 3DS 400x240. Use
   `love.graphics.getDimensions()` rather than hardcoding.
 - **Spritesheet edge bleed:** leave a 1px gutter between frames (Grid `border`)
   or use nearest filtering to avoid neighbouring frames bleeding in.
@@ -490,30 +494,33 @@ script.lua      <- wrapper bootstrap: ordered core/* steps, then the main loop
 index.lua       <- lpp-vita and 3DS entry point
 app.lua         <- PS3 entry point
 LOVE-WrapLua/
-  core/         <- backend-agnostic: loader, util, transform stack, word wrap,
-                   capabilities, polygon fill, texture inset, primitives,
-                   graphics state (colour/line/blend/filter), graphics objects
-                   (Canvas/Shader/SpriteBatch/Text), runtime, config, module
-                   list, require shim, callbacks
+  core/         <- backend-agnostic: loader, util, transform stack and its
+                   love.graphics surface, word wrap, capabilities, polygon
+                   fill, texture inset, primitives, graphics state, Image,
+                   Font and printf, objects (Canvas/Shader/SpriteBatch/Text),
+                   ParticleSystem, Mesh, audio Source, input, timestep,
+                   runtime, config, module list, require shim, callbacks
   math.lua      <- entry point over math/{random,noise,transform,geometry,color}
   filesystem.lua / data.lua / window.lua / joystick.lua / system.lua
   love-functions/thread.lua
   vendor/       <- sha2.lua, LibDeflate (love.data)
-  OneLua/       <- Vita modules (graphics/) + PSP modules (psp/)
+  OneLua/       <- Vita modules (graphics/), PSP modules (psp/), and the image
+                   draw both share (imagedraw.lua)
   lpp-vita/     <- lpp-vita platform modules (graphics/)
   PS3/          <- PS3 Lua Player platform modules (graphics/)
   3DS/          <- lpp-3ds platform modules (graphics/, fileio.lua)
-tests/          <- unit tests (desktop Lua), one suite per area + 4 backends
+tests/          <- unit tests (desktop Lua), one suite per area, every backend
 Implemented.md  <- detailed per-backend API coverage table
-FIX_PLAN.md     <- roadmap and task status
-AGENTS.md       <- AI agent orientation guide
+Changelog.md    <- what changed, newest first
+CODE_REVIEW.md  <- the latest whole-repository review and QA pass
+AGENTS.md       <- orientation guide for contributors and AI agents
 ```
 
 ---
 
 ## Notes
 
-- Tested primarily on PSP and Vita; PS3 is the least complete backend, see
+- Tested primarily on PSP and Vita; the 3DS is the least confirmed backend, see
   [Support tiers](#support-tiers).
 - Sample assets are from [Kenney](https://kenney.nl/assets/scribble-dungeons) and
   [game-endeavor](https://game-endeavor.itch.io/mystic-woods), go support them.
@@ -531,12 +538,12 @@ contribute a native feature:
 |---|---|---|
 | PSP 2D + fonts | [OSLib / OSLib MOD](https://github.com/PSP-Archive/oslibmodv2) | Mature C 2D lib with an animated **Sprites Lib** and **intraFont** text (UTF-8, fixed-width blit). Confirms native text width and blend/alpha are available on PSP. |
 | Vita 2D | [vita2d](https://github.com/xerpi/libvita2d) | The C lib lpp-vita wraps. Has tint/rotate/scale/part draw calls (quad plus rotation in one shot), texture filters, freetype fonts, and `create_empty_texture_rendertarget`, the hook a future **Canvas** would use. |
-| PS3 2D/3D | [tiny3D](https://github.com/cloned67/tiny3d) + [Mini2D](https://github.com/Dnawrkshp/mini2d) | Scene-to-texture **surfaces** (PS3 Canvas is feasible), a pixel-shader pipeline, and TTF fonts. A model for turning the PS3 backend from stub into a real one. |
+| PS3 2D/3D | [tiny3D](https://github.com/cloned67/tiny3d) + [Mini2D](https://github.com/Dnawrkshp/mini2d) | What the PS3 backend draws through. Scene-to-texture **surfaces** make a PS3 Canvas feasible, and there is a pixel-shader pipeline. |
 | Whole-framework | [raylib4PlayStation](https://github.com/raylib4PlayStation/raylib4PlayStation) / [raylib-ps3](https://github.com/nbe1233/raylib-ps3) | raylib runs on Vita/PS4/PS3. A clean, zlib-licensed reference for module boundaries and a possible alternative native layer (no PSP target, though). |
 
-If you want to help push past the current limits (Canvas, blend modes, shaders,
-a first-class PS3 backend), the `FIX_PLAN.md` "Console OSS engines & frameworks"
-notes point at the exact native calls to build on.
+If you want to help push past the current limits (Canvas, blend modes on the
+Vita, shaders), the projects above are where the native calls to build on live;
+[`docs/adr/`](docs/adr/) records the decisions already taken.
 
 ---
 

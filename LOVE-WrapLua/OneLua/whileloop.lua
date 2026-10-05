@@ -1,12 +1,4 @@
 local mask = {"up", "down", "left", "right", "cross", "circle", "square", "triangle", "r", "l", "start", "select", "home", "volup", "voldown"}
-local homeHeldtime = 0
-local homeCallbackThreshold = 0.04 --Next to 3 frames
-local homeCallbackCancel = 1
-local homeTime = 545
-
-dofile(lv1lua.dataloc.."LOVE-WrapLua/"..lv1lua.mode.."/callbacks.lua")
-
---Live area will be handled manually
 
 local buttonMap = {
     circle   = lv1lua.keyset[1],
@@ -41,7 +33,6 @@ function lv1lua.update()
 end
 
 function lv1lua.updatecontrols()
-    -- buttons.homepopup(0)
     buttons.read()
 
     -- Update joystick analog axes (-1..1)
@@ -70,7 +61,6 @@ function lv1lua.updatecontrols()
     lv1lua.checkGameRestart()
     if not lv1lua.isPSP and love.touch.__getFrontTouches then
         lv1lua.updateFrontTouch()
-        -- lv1lua.checkHomePress()
     end
 end
 
@@ -81,43 +71,41 @@ function lv1lua.checkGameRestart()
     end
 end
 
---WIP
-function lv1lua.checkHomePress()
-    --When all analogs are 0 and not flicking, it means that home is pressed
-    if(buttons.analoglx == 0 and buttons.analogly == 0 and buttons.analogrx == 0 and buttons.analogry == 0) then
-        homeHeldtime = homeHeldtime + (lv1lua.dt or 0)
-    else
-        if(homeHeldtime>= homeCallbackThreshold and homeHeldtime < homeCallbackCancel) then
-            lv1lua.goLiveArea()
-        end
-        lv1lua.resumeFromLiveArea()
-    end
-end
+-- Touches seen last frame, by id, so press / move / release are edges. The
+-- first finger is also the mouse (button 1, istouch true), as on a phone.
+local lastTouches = {}
 
-function lv1lua.goLiveArea()
-    lv1lua.onLiveArea()
-    os.golivearea()
-    os.delay(homeTime)
-end
-
-function lv1lua.resumeFromLiveArea()
-    if(homeHeldtime>= homeCallbackThreshold and homeHeldtime < homeCallbackCancel) then
-        while(buttons.waitforkey(__HOME)) do
-            os.delay(1)
-        end
-        homeHeldtime = 0
-        lv1lua.onResume()
-    end
+local function emit(name, ...)
+    if love[name] then love[name](...) end
 end
 
 function lv1lua.updateFrontTouch()
-    local lastMouseDown = love.mouse.isDown()
     touch.read()
     love.touch.__getFrontTouches(touch)
     love.mouse.__updateMouse()
 
-    local newMouseDown = love.mouse.isDown()
-    if(not lastMouseDown and newMouseDown) then
-        love.mousepressed(love.mouse.getX(), love.mouse.getY(), 1)
+    local now = {}
+    for id = 1, love.touch._count do
+        local t = love.touch._touches[id]
+        if t then now[id] = { x = t.x, y = t.y } end
     end
+
+    for id, p in pairs(now) do
+        local was = lastTouches[id]
+        if not was then
+            emit("touchpressed", id, p.x, p.y, 0, 0, 1)
+            if id == 1 then emit("mousepressed", p.x, p.y, 1, true, 1) end
+        elseif was.x ~= p.x or was.y ~= p.y then
+            local dx, dy = p.x - was.x, p.y - was.y
+            emit("touchmoved", id, p.x, p.y, dx, dy, 1)
+            if id == 1 then emit("mousemoved", p.x, p.y, dx, dy, true) end
+        end
+    end
+    for id, p in pairs(lastTouches) do
+        if not now[id] then
+            emit("touchreleased", id, p.x, p.y, 0, 0, 1)
+            if id == 1 then emit("mousereleased", p.x, p.y, 1, true, 1) end
+        end
+    end
+    lastTouches = now
 end

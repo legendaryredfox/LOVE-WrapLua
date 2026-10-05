@@ -83,6 +83,20 @@ T.describe("love.filesystem.lines", function()
         T.eq(lines[3], "gamma")
     end)
 
+    T.it("a trailing newline does not add an empty last line", function()
+        love.filesystem.write("lines_nl.txt", "a\nb\n")
+        local n = 0
+        for _ in love.filesystem.lines("lines_nl.txt") do n = n + 1 end
+        T.eq(n, 2)
+    end)
+
+    T.it("strips the carriage return of CRLF lines", function()
+        love.filesystem.write("lines_crlf.txt", "a\r\nb")
+        local it = love.filesystem.lines("lines_crlf.txt")
+        T.eq(it(), "a")
+        T.eq(it(), "b")
+    end)
+
     T.it("returns empty iterator for missing file", function()
         local count = 0
         for _ in love.filesystem.lines("missing_lines.txt") do count = count + 1 end
@@ -118,6 +132,14 @@ T.describe("love.filesystem.getIdentity / setIdentity", function()
     T.it("setIdentity updates loveconf.identity", function()
         love.filesystem.setIdentity("new_id")
         T.eq(lv1lua.loveconf.identity, "new_id")
+        lv1lua.saveloc = TMPDIR
+    end)
+
+    T.it("setIdentity moves the save directory, as in LOVE", function()
+        love.filesystem.setIdentity("other_game")
+        local dir = love.filesystem.getSaveDirectory()
+        lv1lua.saveloc = TMPDIR
+        T.ok(dir:find("other_game", 1, true) ~= nil, dir)
     end)
 end)
 
@@ -164,8 +186,7 @@ T.describe("love.filesystem.getInfo", function()
         T.istype(info.modtime, "number")
     end)
 
-    -- T6.3: size used to be hardcoded 0, so a game could not tell an empty
-    -- save from a full one.
+    -- A game tells an empty save from a full one by its size.
     T.it("size is the real byte count", function()
         love.filesystem.write("size_12.txt", "123456789012")
         T.eq(love.filesystem.getInfo("size_12.txt").size, 12)
@@ -194,7 +215,7 @@ T.describe("love.filesystem.getInfo", function()
     end)
 end)
 
--- ── isFile / isDirectory (T6.3) ──────────────────────────────────
+-- ── isFile / isDirectory ──────────────────────────────────
 T.describe("love.filesystem.isFile / isDirectory", function()
     T.it("a file is a file and not a directory", function()
         love.filesystem.write("plain.txt", "x")
@@ -214,7 +235,7 @@ T.describe("love.filesystem.isFile / isDirectory", function()
     end)
 end)
 
--- ── getDirectoryItems merges both roots (T6.3) ───────────────────
+-- ── getDirectoryItems merges both roots ───────────────────
 T.describe("love.filesystem.getDirectoryItems", function()
     -- The mock `files` VFS stands in for the console's native listing; the game
     -- root and the save root are separate directories there.
@@ -277,6 +298,14 @@ T.describe("love.filesystem.newFile", function()
         T.eq(f:getFilename(), "dummy.txt")
     end)
 
+    T.it("newFile(name, mode) opens the file in that mode", function()
+        local f = love.filesystem.newFile("nf_mode.txt", "w")
+        T.ok(f:isOpen())
+        f:write("saved")
+        f:close()
+        T.eq(love.filesystem.read("nf_mode.txt"), "saved")
+    end)
+
     T.it("isOpen returns false before open() is called", function()
         local f = love.filesystem.newFile("dummy2.txt")
         T.nok(f:isOpen())
@@ -293,7 +322,7 @@ T.describe("love.filesystem.newFile", function()
     end)
 end)
 
--- ── close-on-quit sweep (T8.3) ───────────────────────────────────
+-- ── close-on-quit sweep ───────────────────────────────────
 T.describe("love.filesystem close-on-quit", function()
     T.it("closeOpenFiles closes a handle left open by the game", function()
         local f = love.filesystem.newFile("quit_open.txt")

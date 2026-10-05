@@ -4,7 +4,7 @@
 lv1lua.util = lv1lua.util or {}
 local util = lv1lua.util
 
--- Round half away from zero (LÖVE blits on whole pixels).
+-- Round half up, toward +inf (LÖVE blits on whole pixels).
 function util.round(value)
     local remain = value % 1
     if remain >= 0.5 then return value + 1 - remain end

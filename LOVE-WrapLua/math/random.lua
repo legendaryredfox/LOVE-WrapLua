@@ -10,13 +10,12 @@
 -- Why this one:
 --   * Every intermediate product stays below 2^53 (the largest is about
 --     8.6e13), so it is exact in a double and gives the *same* sequence on
---     Lua 5.1, 5.3, 5.4 and LuaJIT. The previous LCG multiplied a 32-bit state
---     by 1103515245, which overflows a double's exact range and silently
---     produced a different stream per Lua version.
+--     Lua 5.1, 5.3, 5.4 and LuaJIT. A 32-bit LCG (state * 1103515245)
+--     overflows that range and gives a different stream per Lua version.
 --   * It needs no bitwise operators, which the console SDKs' Lua 5.1 lacks.
 --   * It has two independent state words, so LÖVE's setSeed(low, high) can
 --     actually use both instead of dropping the second.
---   * Period is about 2.3e18, against 2^32 for the old LCG.
+--   * Period is about 2.3e18.
 
 local M1, M2 = 2147483563, 2147483399
 local A1, A2 = 40014, 40692

@@ -51,6 +51,7 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx)
 
     local _x, _y, _r, _sx, _sy, _ox, _oy
     local u0, v0, u1, v1 = 0, 0, 1, 1
+    local w, h = drawable._w, drawable._h
 
     if type(xOrQuad) == "table" and xOrQuad.getViewport then
         -- draw(drawable, quad, x, y, r, sx, sy, ox, oy)
@@ -63,6 +64,7 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx)
         local tw, th         = xOrQuad:getTextureDimensions()
         u0, v0 = qx/tw,       qy/th
         u1, v1 = (qx+qw)/tw,  (qy+qh)/th
+        w, h   = qw, qh
     else
         -- draw(drawable, x, y, r, sx, sy, ox, oy)
         _x,  _y  = xOrQuad or 0, y or 0
@@ -72,12 +74,18 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx)
         _ox, _oy = ox or 0, oy or 0
     end
 
-    local absSx   = math.abs(_sx or 1)
-    local absSy   = math.abs(_sy or 1)
+    -- A negative scale mirrors: the texture runs the other way across the
+    -- quad, and the origin counts from the opposite edge, so the sprite grows
+    -- left (or up) from its anchor as in LOVE.
+    _sx, _sy = _sx or 1, _sy or 1
+    if _sx < 0 then u0, u1 = u1, u0; _ox = w - _ox end
+    if _sy < 0 then v0, v1 = v1, v0; _oy = h - _oy end
+    local absSx   = math.abs(_sx)
+    local absSy   = math.abs(_sy)
     local gscale  = lv1lua.gfx.scale
     local yo      = lv1lua.gfx.yOffset
-    local sw      = drawable._w * absSx * gscale
-    local sh      = drawable._h * absSy * gscale
+    local sw      = w * absSx * gscale
+    local sh      = h * absSy * gscale
 
     -- anchor: the screen-space position of the (ox, oy) handle point
     local anchorX = (_x * t._scaleX + t._offsetX) * gscale

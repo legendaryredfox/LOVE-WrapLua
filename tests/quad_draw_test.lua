@@ -1,5 +1,4 @@
--- Quad drawing details found in the whole-repo review (CODE_REVIEW R3, R8, R9,
--- R10).
+-- Quad drawing details found in the whole-repo review.
 --
 -- The quad path is the one a spritesheet game leans on every frame, and it had
 -- drifted away from the plain image path: a rebuilt scale buffer freed the
@@ -18,37 +17,53 @@ end
 -- ── OneLua ───────────────────────────────────────────────────────
 load_backend("OneLua", "LOVE-WrapLua/OneLua/graphics.lua")
 
-T.describe("OneLua quad buffer", function()
-    T.it("rebuilding the scaled buffer does not free the source image", function()
+T.describe("OneLua scaled copies", function()
+    -- Each quad used to keep its own scaled copy of the whole sheet, so an
+    -- animation of N frames at 2x held N copies at four times the sheet's
+    -- memory. Copies are now per sheet and scale.
+    T.it("quads cut from one sheet share one scaled copy", function()
+        local img = love.graphics.newImage("sheet.png")
+        local a = love.graphics.newQuad(0, 0, 16, 16, img)
+        local b = love.graphics.newQuad(16, 0, 16, 16, img)
+        __rec.reset()
+        love.graphics.draw(img, a, 0, 0, 0, 2, 2)
+        love.graphics.draw(img, b, 0, 0, 0, 2, 2)
+        T.eq(__rec.count("image.copyscale"), 1)
+    end)
+
+    T.it("never frees or flips the source sheet", function()
         local img = love.graphics.newImage("sheet.png")
         local q   = love.graphics.newQuad(0, 0, 16, 16, img)
         local lost = {}
         local realLost = image.lost
         image.lost = function(h) lost[#lost + 1] = h end
-
+        __rec.reset()
         love.graphics.draw(img, q, 0, 0, 0, 1, 1)
-        love.graphics.draw(img, q, 0, 0, 0, 2, 2)  -- scale change rebuilds it
-
+        love.graphics.draw(img, q, 0, 0, 0, -2, 2)
+        love.graphics.draw(img, q, 0, 0, 0, 3, 3)
         image.lost = realLost
-        for _, h in ipairs(lost) do
-            T.ok(h ~= img.imgData, "the source sheet must never be freed")
+        for _, h in ipairs(lost) do T.ok(h ~= img.imgData, "source freed") end
+        for _, c in ipairs(__rec.all("image.fliph")) do
+            T.ok(c.args[1] ~= img.imgData, "source flipped in place")
         end
     end)
 
-    T.it("the freed handle is the stale buffer", function()
+    T.it("a mirrored draw does not leave a mirrored copy for an upright one", function()
+        local img = love.graphics.newImage("sheet.png")
+        __rec.reset()
+        love.graphics.draw(img, 0, 0, 0, -2, 2)
+        love.graphics.draw(img, 0, 0, 0, 2, 2)
+        T.eq(__rec.count("image.copyscale"), 2)
+        T.eq(__rec.count("image.fliph"), 1)
+    end)
+
+    T.it("a mirrored quad grows left from its anchor by the quad's width", function()
+        love.graphics.origin()
         local img = love.graphics.newImage("sheet.png")
         local q   = love.graphics.newQuad(0, 0, 16, 16, img)
-        local lost = {}
-        local realLost = image.lost
-        image.lost = function(h) lost[#lost + 1] = h end
-
-        love.graphics.draw(img, q, 0, 0, 0, 1, 1)
-        local firstBuffer = q._bufferImage
-        love.graphics.draw(img, q, 0, 0, 0, 3, 3)
-
-        image.lost = realLost
-        T.eq(#lost, 1)
-        T.ok(lost[1] == firstBuffer, "expected the previous buffer to be freed")
+        __rec.reset()
+        love.graphics.draw(img, q, 100, 0, 0, -1, 1)
+        T.eq(__rec.last("image.blit").args[2], 84)
     end)
 end)
 

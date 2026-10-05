@@ -1,5 +1,5 @@
 -- Boot-level modules: config, require, callbacks, touch/mouse and the frame
--- loop's input handling (CODE_REVIEW R1, R2, R4, R5, R6, R7, R21).
+-- loop's input handling.
 --
 -- These were the only modules with no coverage at all, which is exactly why a
 -- Vita build could crash on its first frame with the default configuration and
@@ -17,7 +17,21 @@ local function fresh(mode, keyconf)
     dofile("LOVE-WrapLua/core/config.lua")
 end
 
--- ── Vita input modules are not tied to the button layout (R1) ────
+-- ── Vita input modules are not tied to the button layout ────
+T.describe("core/config button layout", function()
+    T.it("an unknown keyconf falls back to XB instead of leaving keyset nil", function()
+        __MODE = "OneLua"
+        dofile("tests/setup.lua")
+        lv1luaconf = { keyconf = "typo", imgscale = false, resscale = false }
+        lv1lua.keyset = nil
+        dofile("LOVE-WrapLua/core/util.lua")
+        dofile("LOVE-WrapLua/core/input.lua")
+        dofile("LOVE-WrapLua/core/config.lua")
+        T.ok(lv1lua.keyset ~= nil, "keyset must exist")
+        T.eq(lv1lua.keyset[1], "b")
+    end)
+end)
+
 T.describe("core/config loads the Vita input modules", function()
     T.it("touch and mouse exist with the default XB layout", function()
         fresh("OneLua", "XB")
@@ -49,7 +63,7 @@ T.describe("core/config loads the Vita input modules", function()
     end)
 end)
 
--- ── touch positions (R4) ─────────────────────────────────────────
+-- ── touch positions ─────────────────────────────────────────
 T.describe("love.touch", function()
     T.it("reports the position of the first touch", function()
         fresh("OneLua", "XB")
@@ -87,7 +101,7 @@ T.describe("love.touch", function()
     end)
 end)
 
--- ── require shim (R7) ────────────────────────────────────────────
+-- ── require shim ────────────────────────────────────────────
 -- The shim replaces the global `require`, so the interpreter's own is put back
 -- once these cases are done: later suites (and the vendored libraries they
 -- load) still need it.
@@ -136,6 +150,17 @@ T.describe("core/require", function()
         T.ok(a == b)
     end)
 
+    T.it("OneLua: an error inside a game module is not reported as 'not found'", function()
+        loadRequire("OneLua")
+        lv1lua.exists = function(p) return p:find("game/broken.lua", 1, true) ~= nil end
+        package.preload["game/broken"] = function() error("inner boom") end
+        local ok, err = pcall(require, "broken")
+        package.preload["game/broken"] = nil
+        package.loaded["game/broken"] = nil
+        T.nok(ok)
+        T.ok(tostring(err):find("inner boom", 1, true), tostring(err))
+    end)
+
     T.it("a module that is not in game/ falls back to the interpreter", function()
         loadRequire("lpp-vita")
         -- The vendored crypto asks LuaJIT for "bit" this way; on plain Lua the
@@ -148,7 +173,7 @@ end)
 
 require = systemRequire
 
--- ── gamepad bridging (R21 coverage) ──────────────────────────────
+-- ── gamepad bridging ──────────────────────────────
 T.describe("core/callbacks", function()
     local function wire(setup)
         __MODE = "OneLua"
@@ -165,6 +190,18 @@ T.describe("core/callbacks", function()
         end)
         love.keypressed("a")
         T.eq(got, "a")
+    end)
+
+    T.it("the d-pad reaches gamepadpressed under its gamepad name", function()
+        local got, rel
+        wire(function()
+            love.gamepadpressed  = function(js, button) got = button end
+            love.gamepadreleased = function(js, button) rel = button end
+        end)
+        love.keypressed("up")
+        love.keyreleased("left")
+        T.eq(got, "dpup")
+        T.eq(rel, "dpleft")
     end)
 
     T.it("a game's own keypressed is left alone", function()
@@ -188,7 +225,7 @@ T.describe("core/callbacks", function()
     end)
 end)
 
--- ── the frame loop's pad handling (R5, R6) ───────────────────────
+-- ── the frame loop's pad handling ───────────────────────
 local function loadLoop()
     fresh("OneLua", "XB")
     dofile("LOVE-WrapLua/joystick.lua")
@@ -226,6 +263,43 @@ T.describe("OneLua frame loop", function()
         -- keyset[2] ("a" in the XB layout) is the cross button.
         T.ok(js:isGamepadDown("a"), "cross should read as the gamepad's a")
         T.nok(js:isGamepadDown("b"), "circle is not held")
+    end)
+
+    -- A touch used to raise mousepressed and nothing else: no release (so a
+    -- button a game arms on press and fires on release never fired), no
+    -- motion, and none of the touch callbacks a touch game is written for.
+    T.it("a touch raises press, move and release on both callback sets", function()
+        loadLoop()
+        local log = {}
+        local function rec(name) return function(...) log[#log + 1] = { name, ... } end end
+        love.touchpressed, love.touchmoved, love.touchreleased =
+            rec("touchpressed"), rec("touchmoved"), rec("touchreleased")
+        love.mousepressed, love.mousemoved, love.mousereleased =
+            rec("mousepressed"), rec("mousemoved"), rec("mousereleased")
+
+        touch.front = { count = 1, [1] = { x = 10, y = 20, pressed = true } }
+        lv1lua.updatecontrols()
+        touch.front = { count = 1, [1] = { x = 15, y = 20, pressed = true } }
+        lv1lua.updatecontrols()
+        touch.front = { count = 0 }
+        lv1lua.updatecontrols()
+
+        local names = {}
+        for i, e in ipairs(log) do names[i] = e[1] end
+        local seq = table.concat(names, ",")
+        T.ok(seq:find("touchpressed", 1, true), seq)
+        T.ok(seq:find("mousepressed", 1, true), seq)
+        T.ok(seq:find("touchmoved", 1, true), seq)
+        T.ok(seq:find("mousemoved", 1, true), seq)
+        T.ok(seq:find("touchreleased", 1, true), seq)
+        T.ok(seq:find("mousereleased", 1, true), seq)
+        for _, e in ipairs(log) do
+            if e[1] == "mousereleased" then
+                T.eq(e[2], 15); T.eq(e[3], 20); T.eq(e[4], 1)
+            elseif e[1] == "touchmoved" then
+                T.eq(e[5], 5)   -- dx
+            end
+        end
     end)
 
     T.it("the d-pad drives the hat", function()

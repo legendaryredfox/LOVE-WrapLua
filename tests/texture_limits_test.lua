@@ -1,4 +1,4 @@
--- PSP texture-constraint validation (FIX_PLAN T8.1).
+-- PSP texture-constraint validation.
 --
 -- The PSP GPU needs power-of-two, <=512x512 textures. newImage / newQuad must
 -- warn (never silently corrupt) when a sheet violates that, and stay quiet for a
@@ -111,5 +111,5 @@ T.describe("lpp-vita texture limits", function()
     end)
 end)
 
-io.write("\n=== texture limits (T8.1) ===\n")
+io.write("\n=== texture limits ===\n")
 return T.summary()

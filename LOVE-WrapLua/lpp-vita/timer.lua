@@ -1,7 +1,6 @@
 lv1lua.timer = Timer.new()
 local gtimer  = Timer.new()
--- The main loop stores the frame delta on lv1lua.dt (see whileloop.lua); the
--- old file-global `dt` was never updated, so getDelta always read 0.
+-- The main loop stores the update slice on lv1lua.dt (core/timestep.lua).
 lv1lua.dt = lv1lua.dt or 0
 
 function love.timer.getTime()
@@ -14,7 +13,7 @@ end
 
 function love.timer.getFPS()
     -- The render rate, which the fixed-timestep accumulator (core/timestep.lua)
-    -- keeps separate from the update rate, so 1/dt is no longer the answer.
+    -- keeps separate from the update rate.
     return lv1lua.core.getFPS()
 end
 

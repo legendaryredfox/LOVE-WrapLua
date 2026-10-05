@@ -1,10 +1,4 @@
--- Shared Font objects: one prototype, one cache, four backends.
---
--- Each backend used to carry its own newFont/setFont/getFont/setNewFont and its
--- own ad-hoc font table, and they had drifted: only OneLua cached faces, only
--- OneLua answered hasGlyph/getKerning/getDPIScale, setLineHeight was a no-op
--- everywhere, and resizing a font through setFont silently resized the cached
--- object the game still held.
+-- Shared Font objects: one prototype and one face cache for every backend.
 --
 -- What is genuinely native is a hook the backend installs on
 -- `lv1lua.gfx.fontHooks` before this file loads:

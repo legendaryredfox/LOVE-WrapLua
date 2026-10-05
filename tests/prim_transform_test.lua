@@ -1,11 +1,10 @@
--- Primitives honour the transform stack (FIX_PLAN T5.2).
+-- Primitives honour the transform stack.
 --
 -- Images already followed push/translate/scale on OneLua and lpp-vita while
 -- primitives followed only the scale (OneLua) or nothing at all (lpp-vita), so
 -- a translated scene drew its sprites and its shapes in different places.
 --
--- The PSP joined the stack in T7.7 and is asserted here too; PS3 and the 3DS
--- are covered by their own suites.
+-- PS3 and the 3DS are covered by their own suites.
 
 local T = dofile("tests/runner.lua")
 
@@ -186,7 +185,7 @@ T.describe("primitives follow the transform [lpp-vita]", function()
     end)
 end)
 
--- ── PSP (same draw.* calls as OneLua; the stack arrived in T7.7) ──
+-- ── PSP (the same draw.* calls as OneLua) ───────────────────────
 load_backend("PSP")
 T.describe("primitives follow the transform [PSP]", function()
     T.it("translate shifts a filled rectangle", function()
@@ -214,6 +213,52 @@ T.describe("primitives follow the transform [PSP]", function()
         T.eq(a[3], 8)
         T.eq(a[4], 8)
         love.graphics.origin()
+    end)
+end)
+
+T.describe("primitive details [PSP]", function()
+    T.it("an open arc is not closed back to its start", function()
+        love.graphics.origin()
+        __rec.reset()
+        love.graphics.arc("line", "open", 0, 0, 10, 0, math.pi / 2, 4)
+        T.eq(__rec.count("draw.line"), 4)
+    end)
+
+    T.it("a closed arc is closed once", function()
+        __rec.reset()
+        love.graphics.arc("line", "closed", 0, 0, 10, 0, math.pi / 2, 4)
+        T.eq(__rec.count("draw.line"), 5)
+    end)
+
+    T.it("resscale moves every shape, not only rectangles", function()
+        love.graphics.origin()
+        lv1luaconf.resscale = true
+        __rec.reset()
+        love.graphics.rectangle("fill", 100, 0, 1, 1)
+        local rx = __rec.last("draw.fillrect").args[1]
+        love.graphics.line(100, 0, 101, 0)
+        local lx = __rec.last("draw.line").args[1]
+        love.graphics.circle("fill", 100, 0, 10)
+        local c = __rec.last("draw.circle").args
+        lv1luaconf.resscale = false
+        T.eq(lx, rx)
+        T.eq(c[1], rx)
+        T.eq(c[3], 10 * lv1lua.gfx.scale)
+    end)
+end)
+
+-- The 3DS has no downscale factor; the flags must not reach a nil there.
+T.describe("primitive details [3DS]", function()
+    T.it("resscale on a backend without a scale factor draws unscaled", function()
+        __MODE = "3DS"
+        dofile("tests/setup.lua")
+        dofile("LOVE-WrapLua/3DS/graphics.lua")
+        lv1lua.gfx.beginFrame()
+        lv1luaconf.resscale = true
+        local ok, err = pcall(love.graphics.rectangle, "fill", 10, 0, 1, 1)
+        lv1luaconf.resscale = false
+        lv1lua.gfx.endFrame()
+        T.ok(ok, tostring(err))
     end)
 end)
 

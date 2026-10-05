@@ -1,7 +1,8 @@
--- OneLua graphics: Mesh stub.
+-- Shared Mesh stub.
 --
--- Meshes need arbitrary vertex submission, which OneLua does not expose. The
--- object answers the API so games load, but draws nothing; see Implemented.md.
+-- Meshes need arbitrary vertex submission, which no SDK here exposes to Lua.
+-- The object answers the API so games load, but draws nothing; see
+-- Implemented.md.
 
 function love.graphics.newMesh(vertices, mode, usage)
     local mesh = { _verts=vertices, _mode=mode, _tex=nil }

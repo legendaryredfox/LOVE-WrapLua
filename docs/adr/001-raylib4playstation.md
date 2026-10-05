@@ -1,8 +1,7 @@
 # ADR-001: Evaluate raylib4PlayStation as an alternative native layer
 
 **Date:** 2026-09-27
-**Status:** Decided -- NO GO
-**Task:** T6.7
+**Status:** Decided: NO GO
 
 ---
 
@@ -50,7 +49,7 @@ consolidate the Vita and PS3 backends.
 
 2. **PS3 tiny3D is already bound in Lua.** The PS3 player exposes tiny3D as a
    `gfx` table of ~64 functions alongside the legacy globals the current backend
-   uses. T6.6 (first-class PS3) needs only a Lua wrapper, not new C. Adding
+   uses. A first-class PS3 backend needs only a Lua wrapper, not new C. Adding
    a raylib layer would introduce a heavy C dependency to do what an already-
    present binding can do.
 
@@ -65,16 +64,17 @@ consolidate the Vita and PS3 backends.
 
 5. **Module split is useful as a reference, not a dependency.** raylib's clean
    `rtextures`/`rshapes`/`rtext`/`raudio` boundary influenced the `core/`
-   module split already completed in T5.1. That value is captured without
+   module split already completed. That value is captured without
    taking the dependency.
 
 ---
 
 ## Consequences
 
-- T6.6 proceeds with tiny3D + Mini2D on PS3. No C patches or new dependencies
+- The first-class PS3 backend proceeds with tiny3D + Mini2D. No C patches or new dependencies
   required.
 - The Vita backends (OneLua, lpp-vita) continue on their respective SDKs.
 - If PS4 ever enters scope, raylib4PlayStation can be re-evaluated then, in
   isolation from the existing four backends.
-- This ADR is the last gate before T6.6 begins.
+- This ADR was the last gate before the PS3 backend work began (it has since
+  landed on tiny3D).

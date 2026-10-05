@@ -14,7 +14,7 @@ local keysetReverse = {
     [lv1lua.keyset[6]] = function() return pad.R1(0)       > 0 end,
 }
 
-function love.keyboard.isDown(key)
+local function isDown(key)
     if key == "up"    then return pad.up(0)    > 0 end
     if key == "down"  then return pad.down(0)  > 0 end
     if key == "left"  then return pad.left(0)  > 0 end
@@ -24,6 +24,10 @@ function love.keyboard.isDown(key)
     local fn = keysetReverse[key]
     if fn then return fn() end
     return false
+end
+
+function love.keyboard.isDown(...)
+    return lv1lua.core.anyDown(isDown, ...)
 end
 
 function love.keyboard.isScancodeDown(sc) return love.keyboard.isDown(sc) end

@@ -41,7 +41,7 @@ snd = {
 -- puts its constants on this table; the values below are the ones tiny3d.h
 -- defines (RGB in the low half, alpha in the high half), so a wrapper that
 -- combines the wrong pair fails here.
--- T6.6 added quad-draw, texture-load, and TTF text functions.
+-- Quad draw, texture load and TTF text are the tiny3D calls the backend uses.
 gfx = {
     -- Frame mode.
     Mode2D = function(...) __rec.log("gfx.Mode2D", ...) end,

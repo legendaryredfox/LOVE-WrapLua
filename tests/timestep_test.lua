@@ -1,4 +1,4 @@
--- Fixed-timestep accumulator (FIX_PLAN T7.2).
+-- Fixed-timestep accumulator.
 --
 -- Before this, every backend ran love.update only once its native timer had
 -- passed 16 ms and then handed it the whole elapsed time: updates were capped

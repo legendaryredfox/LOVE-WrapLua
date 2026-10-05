@@ -1,5 +1,5 @@
--- Capability table: honest getSupported/getSystemLimits (T4.5) plus the
--- emulator / renderer-sensitivity metadata (T8.4).
+-- Capability table: honest getSupported/getSystemLimits plus the
+-- emulator / renderer-sensitivity metadata.
 --
 -- The docs (README dev target matrix, Implemented.md caveats) are written from
 -- this table, so a drift here is a drift in the documentation too.
@@ -52,8 +52,8 @@ for _, mode in ipairs(MODES) do
             T.nok(love.graphics.getSupported().shader)
         end)
 
-        -- Since T6.5 blending is real where the SDK exposes it (PSP, PS3) and
-        -- still a stub on both Vita backends, so the flag has to agree with the
+        -- Blending is real where the SDK exposes it (PSP, PS3) and a stub on
+        -- both Vita backends, so the flag has to agree with the
         -- mode list rather than being false everywhere.
         T.it("the blend feature flag matches the mode list", function()
             local blend = love._backend.blend
@@ -102,9 +102,9 @@ end)
 
 load_backend("PS3")
 T.describe("capabilities [PS3 specifics]", function()
-    -- T6.6 promoted PS3 from tier 3 to tier 2 (textured quads, transforms,
-    -- primitives, TTF text); Canvas RTT still deferred.
-    T.it("is the partial tier after T6.6 (T8.5 + T6.6)", function()
+    -- Tier 2: textured quads, transforms, primitives and TTF text draw
+    -- through tiny3D; there is still no render target.
+    T.it("is the partial tier", function()
         T.eq(love._backend.tier, 2)
     end)
 
@@ -114,7 +114,7 @@ T.describe("capabilities [PS3 specifics]", function()
         end
     end)
 
-    T.it("reports real primitives and quad draw after T6.6", function()
+    T.it("reports real primitives and quad draw", function()
         T.ok(love._backend.features.primitives)
         T.ok(love._backend.features.quaddraw)
     end)

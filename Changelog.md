@@ -1,5 +1,63 @@
 ## Changelog
 
+### 2026-10-05, branch `fix/r2-review` (second whole-repository review)
+
+A full read of the code plus a QA pass against the mocks (see
+`CODE_REVIEW.md`). Every defect below was reproduced first and has a test.
+
+**Fixes, every backend**
+- Nested `push` levels composed in the wrong order: `scale(2) push()
+  translate(-10)`, the usual pixel-art camera, mapped x to 2x - 10 instead of
+  2(x - 10). `applyTransform` also dropped a Transform's rotation.
+- Drawing a Canvas crashed on OneLua Vita and the 3DS and handed a Lua table to
+  the native blit elsewhere; it is now a no-op (its content is already on
+  screen).
+- `draw(batch, x, y, r, sx, sy, ox, oy)` on a SpriteBatch, Text or
+  ParticleSystem used only x and y; the whole call now places the object.
+  `SpriteBatch:set` from a quad to a position kept the quad; `Text:addf` left
+  the size at zero.
+- `arc("line", "open", ...)` drew its closing chord. `imgscale` / `resscale`
+  reached rectangles only, and raised on the 3DS, which has no scale factor.
+- `love.keyboard.isDown(k1, k2, ...)` checked the first key only. The gamepad
+  bridge sent the d-pad as `up` instead of `dpup`, and key repeats as presses.
+  An unknown `keyconf` left the button map nil.
+- `love.quit` returning true did not cancel the quit.
+- `love.filesystem.newFile(name, mode)` never opened the file, so writes were
+  lost; `lines()` yielded an empty last line after a final newline and kept
+  `\r`; `setIdentity` did not move the save directory.
+- A thread that raised took the game down; errors now reach `getError` and
+  `love.threaderror`, and `newThread` accepts Lua source.
+- `love.audio`: play restarted a playing source (LÖVE 11 does nothing) and did
+  not resume a paused one; `release` kept every source alive in the registry;
+  `play` / `stop` / `pause` took only one source.
+- `love.data.encode`, `decode` and `hash` returned a second value.
+- A `conf.lua` without `love.conf` crashed the boot.
+
+**Fixes, per backend**
+- OneLua (Vita and PSP) share one image draw (`OneLua/imagedraw.lua`). On the
+  Vita each Quad held its own scaled copy of the whole sheet, a mirrored draw
+  flipped the shared source so a cached copy came back mirrored, and a mirrored
+  quad was offset by the sheet's width.
+- `print` ignored the transform stack on the PSP and lpp-vita and dropped the
+  translation on OneLua Vita.
+- ParticleSystem and Mesh existed on OneLua Vita only.
+- Vita touch raised `mousepressed` and nothing else; every touch and mouse
+  callback now fires. The OneLua `require` reported an error inside a game
+  module as the module being missing.
+- PS3: quads were drawn at the whole sheet's size and mirroring was ignored; a
+  second stream source stole the voice at load and replay after `stop` was
+  silent; `love.timer.getTime` counted whole seconds.
+- lpp-vita, grounded in `luaSound.cpp`: a fractional volume raised
+  (`luaL_checkinteger`), `play` reset the volume, `resume` started a duplicate
+  track, and stop leaked a paused audio thread. Fractional font pixel sizes,
+  which also raise there, are rounded.
+
+**Cleanup**
+- Removed dead code (`OneLua/font.lua`, the unreachable Live Area WIP, the
+  `loadsound` alias) and comments that narrated history or cited task IDs.
+- README, Implemented.md, AGENTS.md and the vendor notes rewritten against the
+  current code.
+
 ### 2026-10-05, branch `feat/t7.7-psp-transforms`
 
 **Features**
@@ -152,7 +210,7 @@ Backend-independent sprite drawing and the desAnim8 rework.
   `love._backend.features` table (transform/quaddraw/scissor/…) for the docs.
 - Canvas documented honestly per backend (T4.3): `Implemented.md` and `README.md`
   now state that offscreen rendering is unsupported everywhere today
-  (`canvas=false`), and record the concrete native path for each backend —
+  (`canvas=false`), and record the concrete native path for each backend:
   lpp-vita/vita2d rendertarget bind (small upstream patch), PS3 tiny3D
   scene-to-texture surfaces (T6.6), OneLua none. Also refreshed stale README/
   Implemented notes (polygon fill, transforms, lpp-vita quad/line bugs) that the
@@ -161,7 +219,7 @@ Backend-independent sprite drawing and the desAnim8 rework.
 **Tests**
 - `test_primitives` gained lpp-vita cases for the quad/rotation draw and the
   transform-stack + scissor behaviour.
-- New `test_desanim8`: the library runs under all four backend mocks —
+- New `test_desanim8`: the library runs under all four backend mocks:
   integer-dt frame advance, independent `clone():flipH()`, one-shot play-once
   callback, and the source image is never resized.
 

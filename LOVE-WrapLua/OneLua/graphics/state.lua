@@ -18,7 +18,7 @@ lv1lua.gfx = {
     -- origin.
     fontUnit     = 18.5,
     fonts        = nil,  -- font cache, built in graphics/font.lua
-    transform    = nil,  -- transform stack, built in graphics/transform.lua
+    transform    = nil,  -- transform stack, built by core/transformapi.lua
 
     -- Native hooks for core/state.lua.
     nativeColor  = function(r, g, b, a) return color.new(r, g, b, a) end,
@@ -29,6 +29,27 @@ lv1lua.gfx = {
         return name
     end,
 }
+
+-- Hooks for the shared OneLua draw (OneLua/imagedraw.lua). The Vita port of
+-- ONElua has no additive or subtractive blit, so a whole-image draw is a tinted
+-- blit when the colour is not white and a plain one otherwise.
+function lv1lua.gfx.blitImage(img, x, y)
+    local c = lv1lua.current
+    local rgba = c.colorRGBA
+    if rgba[1] ~= 1 or rgba[2] ~= 1 or rgba[3] ~= 1 then
+        return image.blittint(img, x, y, c.color)
+    end
+    return image.blit(img, x, y, color.a(c.color))
+end
+
+-- A scaled copy takes the current default filter, as the source did.
+function lv1lua.gfx.prepareCopy(img)
+    local f = lv1lua.gfx.filter
+    image.setfilter(img, f.mag, f.min)
+end
+
+-- LOVE blits on whole pixels.
+lv1lua.gfx.snap = function(v) return lv1lua.util.round(v) end
 
 lv1lua.current = {
     -- Font object, assigned in graphics/font.lua once newFont exists.

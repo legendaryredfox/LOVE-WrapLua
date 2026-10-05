@@ -1,13 +1,12 @@
 -- Shared love.audio: one Source object over per-backend native hooks.
 --
--- The three backends carried three near-identical Source tables that all
--- stubbed the same four methods (`seek`, `tell`, `getDuration`, `isPaused`) and
--- disagreed about the rest. The native part is a hook table the backend
--- installs on `lv1lua.audio.hooks` before loading this file:
+-- The native part is a hook table the backend installs on
+-- `lv1lua.audio.hooks` before loading this file:
 --
 --   resolve(name) -> path        game-relative name to the path the SDK wants
 --   load(path, sourcetype)       native handle (nil = the backend cannot load it)
 --   play(src) / stop(src) / pause(src) / resume(src)
+--   release(src)                 optional: free the native handle
 --   setVolume(src, v)            v is LOVE's 0-1; the backend scales it
 --   getVolume(src) -> v          0-1, or nil to use the tracked value
 --   isPlaying(src) -> bool       or nil to use the tracked value
@@ -20,8 +19,7 @@
 --
 -- Position: no SDK here reports a playback position, so it is timed from
 -- love.timer.getTime() across play/pause/resume/seek. That is accurate for a
--- stream playing straight through (what a music-sync game needs) and it is why
--- `tell` no longer always answers 0.
+-- stream playing straight through, which is what a music-sync game needs.
 
 lv1lua.audio = lv1lua.audio or {}
 local hooks  = lv1lua.audio.hooks or {}
@@ -74,10 +72,27 @@ Source.__index = Source
 function Source:type()        return "Source" end
 function Source:typeOf(t)     return t == "Source" or t == "Object" end
 function Source:getType()     return self._type end
-function Source:release()     love.audio.stop(self); return true end
+-- Releasing drops the source from the registry (which otherwise holds every
+-- source a game ever made, a real cost on a 32MB PSP) and frees the native
+-- handle where the SDK can.
+function Source:release()
+    if self._released then return false end
+    self:stop()
+    if self._handle then call("release", self) end
+    self._handle = nil
+    self._released = true
+    for i = #sources, 1, -1 do
+        if sources[i] == self then table.remove(sources, i) end
+    end
+    return true
+end
 
+-- LOVE 11: play on a playing source does nothing, and on a paused one it
+-- resumes; only stop rewinds.
 function Source:play()
     if not self._handle then return false end
+    if self._paused then self:resume(); return true end
+    if self._playing and self:isPlaying() then return true end
     self._offset    = 0
     self._startedAt = now()
     self._playing   = true
@@ -90,7 +105,7 @@ function Source:stop()
     self._offset    = 0
     self._playing   = false
     self._paused    = false
-    call("stop", self)
+    if self._handle then call("stop", self) end
 end
 
 function Source:pause()
@@ -210,6 +225,13 @@ function Source:isRelative()       return true end
 lv1lua.audio.Source = Source
 
 -- ── love.audio ───────────────────────────────────────────────────
+-- play / stop / pause take one source, several, or one list of them, as in
+-- LOVE; with none, they act on every source.
+local function each(fn, first, ...)
+    local list = (type(first) == "table" and getmetatable(first) ~= Source) and first
+                 or { first, ... }
+    for _, s in ipairs(list) do fn(s) end
+end
 function love.audio.newSource(name, sourcetype)
     sourcetype = sourcetype or "static"
     local path = call("resolve", name) or name
@@ -229,26 +251,26 @@ function love.audio.newSource(name, sourcetype)
     }, Source)
 
     src._handle = call("load", path, sourcetype)
-    -- `loadsound` is the name the older per-backend sources used; game code and
-    -- the whileloops still read it.
-    src.loadsound = src._handle
 
     sources[#sources + 1] = src
     return src
 end
 
-function love.audio.play(source)
-    if source then return source:play() end
+function love.audio.play(source, ...)
+    if getmetatable(source) == Source and select("#", ...) == 0 then
+        return source:play()
+    end
+    if source then return each(function(s) s:play() end, source, ...) end
     for _, s in ipairs(sources) do s:play() end
 end
 
-function love.audio.stop(source)
-    if source then return source:stop() end
+function love.audio.stop(source, ...)
+    if source then return each(function(s) s:stop() end, source, ...) end
     for _, s in ipairs(sources) do s:stop() end
 end
 
-function love.audio.pause(source)
-    if source then return source:pause() end
+function love.audio.pause(source, ...)
+    if source then return each(function(s) s:pause() end, source, ...) end
     local paused = {}
     for _, s in ipairs(sources) do
         if s:isPlaying() then

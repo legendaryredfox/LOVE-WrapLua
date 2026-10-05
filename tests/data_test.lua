@@ -148,5 +148,25 @@ T.describe("love.data.getSize", function()
     end)
 end)
 
+-- LOVE returns exactly one value from these; string.gsub's match count used
+-- to leak out as a second one, which shifts every argument after it in a
+-- call like print(love.data.encode(...), x) or table.insert(t, hash(...)).
+T.describe("love.data single return values", function()
+    T.it("encode / decode hex return one value", function()
+        T.eq(select("#", love.data.encode("string", "hex", "ab")), 1)
+        T.eq(select("#", love.data.decode("string", "hex", "6162")), 1)
+    end)
+
+    T.it("hash returns one value", function()
+        T.eq(select("#", love.data.hash("md5", "x")), 1)
+    end)
+
+    T.it("the 'data' container gives a ByteData from encode / decode", function()
+        local bd = love.data.encode("data", "base64", "hi")
+        T.eq(bd:getString(), "aGk=")
+        T.eq(love.data.decode("data", "base64", "aGk="):getString(), "hi")
+    end)
+end)
+
 io.write("\n=== love.data ===\n")
 return T.summary()

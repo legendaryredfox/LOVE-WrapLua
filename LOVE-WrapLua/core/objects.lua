@@ -2,10 +2,7 @@
 --
 -- None of these need native calls: they are pure Lua over the public
 -- love.graphics surface (draw / print / printf / setFont), so one copy serves
--- every backend and a backend only has to implement the native primitives. Each
--- backend used to keep its own near-identical copy, which is how the PSP,
--- lpp-vita and PS3 SpriteBatch ended up dropping the quad and drawing the whole
--- sheet per sprite.
+-- every backend and a backend only has to implement the native primitives.
 --
 -- Requires: lv1lua.current (from the backend's state.lua) and
 -- lv1lua.screenWidth/Height (from core/runtime.lua).
@@ -13,11 +10,37 @@
 -- `unpack` is a global in Lua 5.1/LuaJIT and moved to table.unpack in 5.2+.
 local unpack = unpack or table.unpack
 
+lv1lua.core = lv1lua.core or {}
+
+-- draw(object, x, y, r, sx, sy, ox, oy) places a whole batch, text or particle
+-- system the way it places one sprite. The object replays its own draws inside
+-- that transform, pushed onto the stack every backend folds into its draws.
+function lv1lua.core.withDrawTransform(x, y, r, sx, sy, ox, oy, fn)
+    local lg = love.graphics
+    sx = sx or 1; sy = sy or sx
+    lg.push()
+    lg.translate(x or 0, y or 0)
+    if r and r ~= 0 then lg.rotate(r) end
+    if sx ~= 1 or sy ~= 1 then lg.scale(sx, sy) end
+    if (ox and ox ~= 0) or (oy and oy ~= 0) then lg.translate(-(ox or 0), -(oy or 0)) end
+    local ok, err = pcall(fn)
+    lg.pop()
+    if not ok then error(err, 0) end
+end
+local withDrawTransform = lv1lua.core.withDrawTransform
+
 -- ── Canvas ───────────────────────────────────────────────────────
 -- No backend exposes a render target (getSupported().canvas is false), so a
 -- Canvas exists only so call sites do not crash; renderTo draws to the screen.
+-- Drawing the canvas afterwards is therefore a no-op: its content is already
+-- on screen, and handing the Lua table to a native blit raises on device.
 local Canvas = {}
 Canvas.__index = Canvas
+local CANVAS_TYPES = { Canvas = true, Texture = true, Drawable = true, Object = true }
+function Canvas:type()      return "Canvas" end
+function Canvas:typeOf(t)   return CANVAS_TYPES[t] == true end
+function Canvas:_draw()     end
+function Canvas:release()   return false end
 function Canvas:getWidth()  return self._width end
 function Canvas:getHeight() return self._height end
 function Canvas:getDimensions() return self._width, self._height end
@@ -31,11 +54,10 @@ function Canvas:newImageData() return nil end
 function Canvas:renderTo(fn) if fn then fn() end end
 
 function love.graphics.newCanvas(width, height, settings)
-    return setmetatable({
+    return lv1lua.util.registerDrawObject(setmetatable({
         _width  = width  or lv1lua.screenWidth,
         _height = height or lv1lua.screenHeight,
-        imgData = nil,
-    }, Canvas)
+    }, Canvas))
 end
 
 function love.graphics.setCanvas(canvas)
@@ -95,6 +117,7 @@ function love.graphics.newSpriteBatch(image, maxsprites, usage)
         if type(quad_or_x) == "table" and quad_or_x.getViewport then
             e.quad,e.x,e.y,e.r,e.sx,e.sy,e.ox,e.oy = quad_or_x,x,y,r,sx,sy,ox,oy
         else
+            e.quad = nil
             e.x,e.y,e.r,e.sx,e.sy,e.ox,e.oy = quad_or_x,x,y,r,sx,sy,ox
         end
     end
@@ -105,16 +128,17 @@ function love.graphics.newSpriteBatch(image, maxsprites, usage)
     function sb:setColor(r,g,b,a) self._color={r,g,b,a} end
     function sb:getColor() return self._color and unpack(self._color) end
     function sb:attachAttribute() end
-    function sb:_draw(bx, by, br, bsx, bsy)
-        for _, s in ipairs(self._sprites) do
-            local dx = (s.x or 0) + (bx or 0)
-            local dy = (s.y or 0) + (by or 0)
-            if s.quad then
-                love.graphics.draw(self._image, s.quad, dx, dy, s.r, s.sx, s.sy, s.ox, s.oy)
-            else
-                love.graphics.draw(self._image, dx, dy, s.r, s.sx, s.sy, s.ox, s.oy)
+    function sb:_draw(x, y, r, sx, sy, ox, oy)
+        local sprites, image = self._sprites, self._image
+        withDrawTransform(x, y, r, sx, sy, ox, oy, function()
+            for _, s in ipairs(sprites) do
+                if s.quad then
+                    love.graphics.draw(image, s.quad, s.x or 0, s.y or 0, s.r, s.sx, s.sy, s.ox, s.oy)
+                else
+                    love.graphics.draw(image, s.x or 0, s.y or 0, s.r, s.sx, s.sy, s.ox, s.oy)
+                end
             end
-        end
+        end)
     end
     return lv1lua.util.registerDrawObject(sb)
 end
@@ -157,6 +181,11 @@ end
 
 function Text:addf(text, wraplimit, align, x, y)
     table.insert(self._batches, {text=text, x=x or 0, y=y or 0, wrap=wraplimit, align=align})
+    local widest, lines = self._font:getWrap(text, wraplimit)
+    local lineH = lv1lua.core.lineHeight and lv1lua.core.lineHeight(self._font)
+                  or self._font:getHeight()
+    self._width  = math.max(self._width,  widest + (x or 0))
+    self._height = math.max(self._height, #lines * lineH + (y or 0))
     return #self._batches
 end
 
@@ -169,16 +198,17 @@ function Text:getWidth()      return self._width end
 function Text:getHeight()     return self._height end
 function Text:getDimensions() return self._width, self._height end
 
-function Text:_draw(x, y, r, sx, sy)
-    local prev = lv1lua.current.font
+function Text:_draw(x, y, r, sx, sy, ox, oy)
+    local prev, batches = lv1lua.current.font, self._batches
     love.graphics.setFont(self._font)
-    for _, b in ipairs(self._batches) do
-        local dx, dy = (x or 0) + b.x, (y or 0) + b.y
-        if b.wrap then
-            love.graphics.printf(b.text, dx, dy, b.wrap, b.align)
-        else
-            love.graphics.print(b.text, dx, dy)
+    withDrawTransform(x, y, r, sx, sy, ox, oy, function()
+        for _, b in ipairs(batches) do
+            if b.wrap then
+                love.graphics.printf(b.text, b.x, b.y, b.wrap, b.align)
+            else
+                love.graphics.print(b.text, b.x, b.y)
+            end
         end
-    end
+    end)
     love.graphics.setFont(prev)
 end

@@ -1,4 +1,4 @@
--- Shared Font object + shared printf suite (FIX_PLAN T5.1, font/text slice).
+-- Shared Font object + shared printf suite.
 --
 -- Every backend used to carry its own newFont/setFont/printf copy, and they had
 -- drifted: setLineHeight was a no-op everywhere, only OneLua cached faces, only

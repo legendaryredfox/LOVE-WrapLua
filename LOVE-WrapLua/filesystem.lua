@@ -18,30 +18,33 @@ function lv1lua.core.closeOpenFiles()
     for _, f in ipairs(pending) do f:close() end
 end
 
-if lv1lua.isPSP then
-    lv1lua.saveloc = "ms0:/PSP/GAME/LOVE-WrapLua/savedata/"
-elseif lv1lua.mode == "PS3" then
-    lv1lua.saveloc = lv1lua.dataloc.."savedata/"
-elseif lv1lua.mode == "3DS" then
-    -- Not under dataloc: a CIA build runs from romfs:/, which is read-only.
-    lv1lua.saveloc = "/3ds/data/"..lv1lua.loveconf.identity.."/"
-else
-    lv1lua.saveloc = "ux0:/data/"..lv1lua.loveconf.identity.."/savedata/"
+-- The save directory follows the identity where the console keeps per-title
+-- data (Vita, 3DS), as LOVE's does; the PSP and PS3 builds keep one folder
+-- beside the game, which a single-game install does not need to split.
+local function saveDirectory(identity)
+    if lv1lua.isPSP then return "ms0:/PSP/GAME/LOVE-WrapLua/savedata/" end
+    if lv1lua.mode == "PS3" then return lv1lua.dataloc .. "savedata/" end
+    -- Not under dataloc: a 3DS CIA runs from romfs:/, which is read-only.
+    if lv1lua.mode == "3DS" then return "/3ds/data/" .. identity .. "/" end
+    return "ux0:/data/" .. identity .. "/savedata/"
 end
 
-if lv1lua.mode == "OneLua" then
-    if not files.exists(lv1lua.saveloc) then
-        files.mkdir(lv1lua.saveloc)
+local function makeSaveDirectory()
+    if lv1lua.mode == "OneLua" then
+        if not files.exists(lv1lua.saveloc) then files.mkdir(lv1lua.saveloc) end
+    elseif lv1lua.mode == "lpp-vita" then
+        if not System.doesDirExist(lv1lua.saveloc) then
+            System.createDirectory("ux0:/data/" .. lv1lua.loveconf.identity)
+            System.createDirectory(lv1lua.saveloc)
+        end
+    elseif fileio().mkdir then
+        if lv1lua.mode == "3DS" then fileio().mkdir("/3ds/data/") end
+        fileio().mkdir(lv1lua.saveloc)
     end
-elseif lv1lua.mode == "lpp-vita" then
-    if not System.doesDirExist(lv1lua.saveloc) then
-        System.createDirectory("ux0:/data/"..lv1lua.loveconf.identity)
-        System.createDirectory(lv1lua.saveloc)
-    end
-elseif fileio().mkdir then
-    fileio().mkdir("/3ds/data/")
-    fileio().mkdir(lv1lua.saveloc)
 end
+
+lv1lua.saveloc = saveDirectory(lv1lua.loveconf.identity)
+makeSaveDirectory()
 
 -- ── Paths, stat and listing ──────────────────────────────────────
 -- A game-relative name lives in one of two places: the writable save directory
@@ -206,12 +209,15 @@ function love.filesystem.getDirectoryItems(path)
     return items
 end
 
+-- LOVE yields each line without its terminator ("\n" or "\r\n") and no empty
+-- line after a final newline.
 function love.filesystem.lines(file)
     local content = love.filesystem.read(file)
     if not content then return function() end end
+    if content:sub(-1) ~= "\n" then content = content .. "\n" end
     local lines = {}
-    for line in (content.."\n"):gmatch("([^\n]*)\n") do
-        lines[#lines+1] = line
+    for line in content:gmatch("([^\n]*)\n") do
+        lines[#lines+1] = (line:gsub("\r$", ""))
     end
     local i = 0
     return function()
@@ -254,6 +260,8 @@ function love.filesystem.newFile(filename, mode)
     function file:isOpen()   return self._handle ~= nil end
     function file:getFilename() return self._name end
     function file:getMode()  return self._mode end
+    -- LOVE opens the file straight away when a mode is given; "c" is closed.
+    if mode and mode ~= "c" then file:open(mode) end
     return file
 end
 
@@ -279,6 +287,8 @@ end
 
 function love.filesystem.setIdentity(name)
     lv1lua.loveconf.identity = name
+    lv1lua.saveloc = saveDirectory(name)
+    makeSaveDirectory()
 end
 
 function love.filesystem.getWorkingDirectory()

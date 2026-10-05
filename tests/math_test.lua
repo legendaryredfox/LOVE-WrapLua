@@ -251,7 +251,7 @@ T.describe("love.math.newRandomGenerator", function()
 
     -- Golden vector: the L'Ecuyer recurrence computed independently here.
     -- Every product stays under 2^53, so these values must be identical on
-    -- Lua 5.1, 5.3, 5.4 and LuaJIT (#11).
+    -- Lua 5.1, 5.3, 5.4 and LuaJIT.
     T.it("matches the reference recurrence for a fixed seed", function()
         local M1, M2 = 2147483563, 2147483399
         local s1 = (12345 % (M1 - 1)) + 1

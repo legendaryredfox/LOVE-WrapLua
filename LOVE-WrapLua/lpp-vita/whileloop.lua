@@ -19,9 +19,8 @@ local keys = lv1lua.core.newKeyTracker()
 
 function lv1lua.update()
     -- Timer.getTime is milliseconds since the last reset; the shared
-    -- accumulator (core/timestep.lua) turns that into fixed update slices and
-    -- carries the remainder, so short frames are no longer thrown away.
-    -- lv1lua.dt is set there.
+    -- accumulator (core/timestep.lua) turns that into fixed update slices,
+    -- carries the remainder and sets lv1lua.dt.
     local ms = Timer.getTime(lv1lua.timer)
     Timer.reset(lv1lua.timer)
     lv1lua.core.step(ms / 1000)

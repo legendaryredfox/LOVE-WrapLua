@@ -39,8 +39,11 @@ function lv1lua.update()
 
     --Check ingame XMB
     local ret = sys.UtilCheckCallback(g_status)
+    -- Quitting from the XMB is the system's call, so love.quit is told but
+    -- cannot cancel it.
     if ret == sys.SYSUTIL_EXIT_GAME then
-        love.event.quit() --quit game over ingame XMB
+        if love.quit then love.quit() end
+        lv1lua.shutdown()
     end
 
     --Play audio
@@ -69,8 +72,8 @@ function lv1lua.updatecontrols()
     keys:update(held, lv1lua.frameDelta or lv1lua.dt)
     lv1lua.core.syncJoystick(physical)
 
-    --force quit
+    -- L3 + R3 is the wrapper's force quit: it does not ask love.quit.
     if pad.L3(0) > 0 and pad.R3(0) > 0 then
-        love.event.quit()
+        lv1lua.shutdown()
     end
 end

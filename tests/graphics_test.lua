@@ -2,7 +2,7 @@ local T = dofile("tests/runner.lua")
 dofile("tests/mock_platform.lua")
 dofile("LOVE-WrapLua/OneLua/graphics.lua")
 
--- ── Default font (#9) ────────────────────────────────────────────
+-- ── Default font ────────────────────────────────────────────
 -- Runs first, before any test calls setFont, so it sees the initial state.
 T.describe("love.graphics default font", function()
     T.it("getFont returns a Font object, not the font path string", function()
@@ -143,7 +143,7 @@ T.describe("love.graphics transform stack", function()
     end)
 end)
 
--- ── Source-image immutability (#6) ───────────────────────────────
+-- ── Source-image immutability ───────────────────────────────
 T.describe("love.graphics.draw does not mutate the source image", function()
     T.it("drawing sx=2 then sx=1 leaves source dimensions unchanged", function()
         love.graphics.reset()

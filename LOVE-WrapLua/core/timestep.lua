@@ -1,12 +1,8 @@
 -- Fixed-timestep accumulator, shared by every backend.
 --
--- Each backend used to gate love.update behind "has the native timer passed
--- 16 ms", then hand it the whole elapsed time. Three things followed: updates
--- could not exceed ~62 per second, anything under 16 ms was discarded instead
--- of carried over, and dt moved with the render rate so game logic ran at a
--- different speed on every backend. Here the measured frame time goes into an
--- accumulator and love.update is called in fixed slices, with the remainder
--- kept for the next frame.
+-- The measured frame time goes into an accumulator and love.update is called
+-- in fixed slices, with the remainder kept for the next frame, so game logic
+-- runs at the same speed whatever the render rate of the console.
 --
 -- Backends call lv1lua.core.step(elapsedSeconds) once per frame. A backend
 -- with no timer at all (PS3) passes nil and gets exactly one slice.
@@ -42,7 +38,7 @@ local function configuredMaxSteps()
 end
 
 -- Rolling mean of the real frame time; love.timer.getFPS reports the render
--- rate, which is no longer the same number as the update rate.
+-- rate, which differs from the update rate.
 local function recordFrame(self, elapsed)
     self.frameDelta = elapsed
     local i = self.frameIndex % AVERAGE_WINDOW + 1
@@ -59,6 +55,7 @@ function Timestep:advance(elapsed, fn)
     elapsed = tonumber(elapsed) or self.step
     if elapsed < 0 then elapsed = 0 end
     recordFrame(self, elapsed)
+    self.clock = self.clock + elapsed
 
     if self.variable then
         -- LOVE's desktop loop: one update per frame with the measured time,
@@ -122,6 +119,8 @@ function lv1lua.core.newTimestep(opts)
         frameCount  = 0,
         frameIndex  = 0,
         frameDelta  = 0,
+        -- Sum of every frame time seen: a clock for a backend with no timer.
+        clock       = 0,
     }, Timestep)
 end
 

@@ -1,4 +1,4 @@
--- desAnim8 smoke suite (FIX_PLAN T9.1).
+-- desAnim8 smoke suite.
 --
 -- Runs the reworked library under every backend mock. The library must draw
 -- only through love.graphics.draw(image, quad, ...), so the same code path

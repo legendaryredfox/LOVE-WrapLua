@@ -1,7 +1,8 @@
--- OneLua graphics: ParticleSystem.
+-- Shared ParticleSystem.
 --
--- Particles are simulated in Lua and drawn as individual sprites: no size,
--- colour or rotation curves (those setters are accepted and ignored).
+-- Particles are simulated in Lua and drawn as individual sprites through
+-- love.graphics.draw, so every backend gets the same object: no size, colour
+-- or rotation curves (those setters are accepted and ignored).
 
 function love.graphics.newParticleSystem(image, buffer)
     local ps = {
@@ -60,10 +61,13 @@ function love.graphics.newParticleSystem(image, buffer)
         end
         self._particles = alive
     end
-    function ps:_draw(x,y)
-        for _, p in ipairs(self._particles) do
-            love.graphics.draw(self._image, p.x+(x or 0), p.y+(y or 0))
-        end
+    function ps:_draw(x, y, r, sx, sy, ox, oy)
+        local particles, image = self._particles, self._image
+        lv1lua.core.withDrawTransform(x, y, r, sx, sy, ox, oy, function()
+            for _, p in ipairs(particles) do
+                love.graphics.draw(image, p.x, p.y)
+            end
+        end)
     end
     function ps:clone()
         return love.graphics.newParticleSystem(self._image, self._buffer)

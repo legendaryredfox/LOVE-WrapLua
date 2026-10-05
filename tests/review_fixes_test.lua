@@ -1,5 +1,4 @@
--- Fixes from the whole-repository review that have no other home
--- (CODE_REVIEW R11, R12, R13, R17, R19).
+-- Fixes from the whole-repository review that have no other home.
 
 local T = dofile("tests/runner.lua")
 
@@ -17,7 +16,7 @@ local function load_backend(mode)
     __rec.reset()
 end
 
--- ── The transform API exists on every backend (R13) ──────────────
+-- ── The transform API exists on every backend ──────────────
 for _, mode in ipairs({"OneLua", "PSP", "lpp-vita", "PS3"}) do
     load_backend(mode)
     T.describe("transform API surface [" .. mode .. "]", function()
@@ -52,7 +51,7 @@ for _, mode in ipairs({"OneLua", "PSP", "lpp-vita", "PS3"}) do
     end)
 end
 
--- ── OneLua clears before drawing (R17) ───────────────────────────
+-- ── OneLua clears before drawing ───────────────────────────
 load_backend("OneLua")
 T.describe("OneLua frame", function()
     T.it("the frame is cleared before love.draw runs", function()
@@ -69,7 +68,7 @@ T.describe("OneLua frame", function()
     end)
 end)
 
--- ── lpp-vita IME is collected on a later frame (R12) ─────────────
+-- ── lpp-vita IME is collected on a later frame ─────────────
 load_backend("lpp-vita")
 T.describe("lpp-vita text input", function()
     local function loadKeyboard()
@@ -111,7 +110,7 @@ T.describe("lpp-vita text input", function()
     end)
 end)
 
--- ── PS3 quit survives a missing shutdown entry point (R11) ───────
+-- ── PS3 quit survives a missing shutdown entry point ───────
 T.describe("PS3 quit", function()
     T.it("quitting works when the player exports no EndGFX", function()
         __MODE = "PS3"
@@ -135,7 +134,7 @@ T.describe("PS3 quit", function()
     end)
 end)
 
--- ── love.data rejects a format it cannot do (R19) ────────────────
+-- ── love.data rejects a format it cannot do ────────────────
 T.describe("love.data", function()
     T.it("an unknown encode format errors instead of passing data through", function()
         __MODE = "OneLua"

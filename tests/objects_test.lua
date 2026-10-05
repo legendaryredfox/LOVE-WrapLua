@@ -104,6 +104,43 @@ for _, mode in ipairs(MODES) do
             T.ok(c:typeOf("Texture"))
         end)
 
+        -- ── Draw-call transform ─────────────────────────────────
+        -- draw(batch, x, y, r, sx, sy) positions the whole batch in LOVE; the
+        -- copies only added x and y and dropped the rest, so a batch drawn at
+        -- 2x (the usual pixel-art upscale) came out at 1x.
+        T.it("draw(batch, x, y, 0, 2, 2) scales and places every sprite", function()
+            local sb = love.graphics.newSpriteBatch(love.graphics.newImage("s.png"))
+            sb:add(5, 0)
+            love.graphics.origin()
+            local at
+            local real = love.graphics.draw
+            love.graphics.draw = function(_, x, y)
+                at = { love.graphics.transformPoint(x, y) }
+            end
+            local ok, err = pcall(sb._draw, sb, 10, 0, 0, 2, 2)
+            love.graphics.draw = real
+            if not ok then error(err, 0) end
+            T.eq(at[1], 20)
+            love.graphics.origin()
+            T.eq((love.graphics.transformPoint(1, 0)), 1)
+        end)
+
+        T.it("SpriteBatch:set from a quad to a position drops the quad", function()
+            local img = love.graphics.newImage("s.png")
+            local sb = love.graphics.newSpriteBatch(img)
+            local id = sb:add(love.graphics.newQuad(0, 0, 8, 8, 64, 64), 0, 0)
+            sb:set(id, 4, 4)
+            local calls = capture_draws(function() sb:_draw() end)
+            T.eq(type(calls[1][2]), "number")
+        end)
+
+        T.it("Text:addf grows the text's dimensions", function()
+            local t = love.graphics.newText(love.graphics.getFont())
+            t:addf("hello", 200, "left", 0, 0)
+            T.ok(t:getWidth() > 0)
+            T.ok(t:getHeight() > 0)
+        end)
+
         -- ── ParticleSystem / Mesh ───────────────────────────────
         T.it("a ParticleSystem emits, ages and draws one sprite per particle", function()
             local ps = love.graphics.newParticleSystem(love.graphics.newImage("p.png"), 10)
@@ -163,11 +200,22 @@ for _, mode in ipairs(MODES) do
             local quad = love.graphics.newQuad(16, 32, 16, 16, 64, 64)
             local sb   = love.graphics.newSpriteBatch(img, 10)
             sb:add(quad, 5, 7)
-            local calls = capture_draws(function() sb:_draw(100, 200) end)
+            love.graphics.origin()
+            local at
+            local calls = capture_draws(function()
+                local inner = love.graphics.draw
+                love.graphics.draw = function(...)
+                    local a = {...}
+                    at = { love.graphics.transformPoint(a[3], a[4]) }
+                    return inner(...)
+                end
+                sb:_draw(100, 200)
+            end)
             T.eq(#calls, 1)
             T.ok(calls[1][2] == quad, "the quad should be passed through to draw")
-            T.eq(calls[1][3], 105)  -- sprite x plus batch x
-            T.eq(calls[1][4], 207)
+            -- The batch position reaches the sprite through the stack.
+            T.eq(at[1], 105)
+            T.eq(at[2], 207)
         end)
 
         -- love.graphics.draw(batch) has to reach the object's replay on every

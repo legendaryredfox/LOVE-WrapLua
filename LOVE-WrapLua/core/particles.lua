@@ -61,10 +61,13 @@ function love.graphics.newParticleSystem(image, buffer)
         end
         self._particles = alive
     end
-    function ps:_draw(x,y)
-        for _, p in ipairs(self._particles) do
-            love.graphics.draw(self._image, p.x+(x or 0), p.y+(y or 0))
-        end
+    function ps:_draw(x, y, r, sx, sy, ox, oy)
+        local particles, image = self._particles, self._image
+        lv1lua.core.withDrawTransform(x, y, r, sx, sy, ox, oy, function()
+            for _, p in ipairs(particles) do
+                love.graphics.draw(image, p.x, p.y)
+            end
+        end)
     end
     function ps:clone()
         return love.graphics.newParticleSystem(self._image, self._buffer)

@@ -73,7 +73,7 @@ Graphics = {
 -- ── Font ─────────────────────────────────────────────────────────
 Font = {
     load          = function(path) return { _path=path, _px=12 } end,
-    setPixelSizes = function(f, px) if type(f)=="table" then f._px = px end end,
+    setPixelSizes = function(f, px) __rec.log("Font.setPixelSizes", f, px); if type(f)=="table" then f._px = px end end,
     print         = function(f, x, y, text, c) __rec.log("Font.print", f, x, y, text, c) end,
     -- Real native call: returns pixel width of `text` in `font`.
     getTextWidth  = function(f, text)

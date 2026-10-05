@@ -75,5 +75,62 @@ for _, mode in ipairs({ "PSP", "PS3", "OneLua", "lpp-vita", "3DS" }) do
     end)
 end
 
+-- print follows the stack. PS3 and the 3DS already did; the Vita and PSP
+-- builds dropped the translation (and lpp-vita the scale too), so a world
+-- label drifted away from the sprite it belonged to.
+local PRINT = { ["OneLua"] = "screen.print", ["PSP"] = "screen.print",
+                ["lpp-vita"] = "Font.print" }
+
+for _, mode in ipairs({ "PSP", "OneLua", "lpp-vita" }) do
+    __MODE = mode
+    dofile("tests/setup.lua")
+    dofile(GFX[mode])
+    local lg = love.graphics
+
+    T.describe("print follows the stack [" .. mode .. "]", function()
+        T.it("translate moves the text", function()
+            lg.origin()
+            lg.translate(50, 0)
+            __rec.reset()
+            lg.print("hi", 10, 0)
+            T.eq(__rec.last(PRINT[mode]).args[2], 60)
+            lg.origin()
+        end)
+
+        T.it("scale moves the text", function()
+            lg.origin()
+            lg.scale(2)
+            __rec.reset()
+            lg.print("hi", 10, 0)
+            T.eq(__rec.last(PRINT[mode]).args[2], 20)
+            lg.origin()
+        end)
+    end)
+end
+
+T.describe("print scales the glyphs [lpp-vita]", function()
+    T.it("a scaled print sets the pixel size for the call and restores it", function()
+        love.graphics.origin()
+        love.graphics.scale(2)
+        __rec.reset()
+        love.graphics.print("hi", 0, 0)
+        local sizes = __rec.all("Font.setPixelSizes")
+        T.ok(#sizes >= 2, "size set and restored")
+        T.eq(sizes[1].args[2], 24)
+        T.eq(sizes[#sizes].args[2], 12)
+        love.graphics.origin()
+    end)
+
+    T.it("a fractional scaled size reaches the SDK as an integer", function()
+        love.graphics.origin()
+        love.graphics.scale(1.1)
+        __rec.reset()
+        love.graphics.print("hi", 0, 0)
+        local px = __rec.all("Font.setPixelSizes")[1].args[2]
+        T.eq(px, math.floor(px))
+        love.graphics.origin()
+    end)
+end)
+
 io.write("\n=== transform surface ===\n")
 return T.summary()

@@ -20,8 +20,8 @@ function love.graphics.print(text, x, y)
     local fontScale  = (t._scaleX + t._scaleY) / 2
     local fontsize   = lv1lua.current.font.size / lv1lua.gfx.fontUnit * fontScale
     local heightOff  = lv1lua.current.font:getHeight() * fontScale
-    x = (x or 0) * t._scaleX
-    y = (y or 0) * t._scaleY
+    x = (x or 0) * t._scaleX + t._offsetX
+    y = (y or 0) * t._scaleY + t._offsetY
     -- screen.print anchors on the native baseline; pull it up to LÖVE's top-left.
     y = y - (lv1lua.gfx.fontUnit - heightOff)
     love.graphics._defaultPrint(text, x, y, fontsize)

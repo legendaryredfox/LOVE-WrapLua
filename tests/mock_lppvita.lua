@@ -90,18 +90,33 @@ Screen = {
 }
 
 -- ── Sound ────────────────────────────────────────────────────────
+-- Grounded in lpp-vita source/luaSound.cpp: every handle and the volume are
+-- read with luaL_checkinteger; play resets the volume to 32767 and, on a
+-- track already in an audio thread, starts a duplicate instead; there is no
+-- stop (close / pause / resume only) and no seek, tell, duration or pitch.
 local _snd = {}
 Sound = {
     init      = function() end,
     term      = function() end,
-    open      = function(f) local h={_f=f}; _snd[h]={playing=false,vol=32767}; return h end,
-    close     = function(h) _snd[h]=nil end,
-    play      = function(h, loop) if _snd[h] then _snd[h].playing=true; _snd[h].loop=loop end end,
-    pause     = function(h) if _snd[h] then _snd[h].playing=false end end,
-    resume    = function(h) if _snd[h] then _snd[h].playing=true end end,
-    stop      = function(h) if _snd[h] then _snd[h].playing=false end end,
+    open      = function(f)
+        local h = {_f=f}; _snd[h] = {playing=false, vol=32767, loaded=false}
+        __rec.log("Sound.open", f); return h
+    end,
+    close     = function(h) __rec.log("Sound.close", h); _snd[h]=nil end,
+    play      = function(h, loop)
+        __rec.log("Sound.play", h, loop)
+        local s = _snd[h]
+        if not s then return end
+        if s.loaded then __rec.log("Sound.play.duplicate", h) end
+        s.loaded = true; s.playing = true; s.loop = loop; s.vol = 32767
+    end,
+    pause     = function(h) __rec.log("Sound.pause", h); if _snd[h] then _snd[h].playing=false end end,
+    resume    = function(h) __rec.log("Sound.resume", h); if _snd[h] then _snd[h].playing=true end end,
     isPlaying = function(h) return (_snd[h] and _snd[h].playing) or false end,
-    setVolume = function(h, v) if _snd[h] then _snd[h].vol=v end end,
+    setVolume = function(h, v)
+        __checkInteger("Sound.setVolume", 2, v)
+        if _snd[h] then _snd[h].vol=v end
+    end,
     getVolume = function(h) return _snd[h] and _snd[h].vol or 0 end,
 }
 

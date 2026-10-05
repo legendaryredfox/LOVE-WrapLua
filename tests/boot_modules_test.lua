@@ -265,6 +265,43 @@ T.describe("OneLua frame loop", function()
         T.nok(js:isGamepadDown("b"), "circle is not held")
     end)
 
+    -- A touch used to raise mousepressed and nothing else: no release (so a
+    -- button a game arms on press and fires on release never fired), no
+    -- motion, and none of the touch callbacks a touch game is written for.
+    T.it("a touch raises press, move and release on both callback sets", function()
+        loadLoop()
+        local log = {}
+        local function rec(name) return function(...) log[#log + 1] = { name, ... } end end
+        love.touchpressed, love.touchmoved, love.touchreleased =
+            rec("touchpressed"), rec("touchmoved"), rec("touchreleased")
+        love.mousepressed, love.mousemoved, love.mousereleased =
+            rec("mousepressed"), rec("mousemoved"), rec("mousereleased")
+
+        touch.front = { count = 1, [1] = { x = 10, y = 20, pressed = true } }
+        lv1lua.updatecontrols()
+        touch.front = { count = 1, [1] = { x = 15, y = 20, pressed = true } }
+        lv1lua.updatecontrols()
+        touch.front = { count = 0 }
+        lv1lua.updatecontrols()
+
+        local names = {}
+        for i, e in ipairs(log) do names[i] = e[1] end
+        local seq = table.concat(names, ",")
+        T.ok(seq:find("touchpressed", 1, true), seq)
+        T.ok(seq:find("mousepressed", 1, true), seq)
+        T.ok(seq:find("touchmoved", 1, true), seq)
+        T.ok(seq:find("mousemoved", 1, true), seq)
+        T.ok(seq:find("touchreleased", 1, true), seq)
+        T.ok(seq:find("mousereleased", 1, true), seq)
+        for _, e in ipairs(log) do
+            if e[1] == "mousereleased" then
+                T.eq(e[2], 15); T.eq(e[3], 20); T.eq(e[4], 1)
+            elseif e[1] == "touchmoved" then
+                T.eq(e[5], 5)   -- dx
+            end
+        end
+    end)
+
     T.it("the d-pad drives the hat", function()
         loadLoop()
         buttons.held = { up = true }

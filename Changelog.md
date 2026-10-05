@@ -1,5 +1,49 @@
 ## Changelog
 
+### 2026-10-05, branch `feat/t7.7-psp-transforms`
+
+**Features**
+- The PSP runs on the real transform stack. `push`, `pop`, `translate`,
+  `scale`, `rotate`, `applyTransform` and `transformPoint` were identity stubs
+  there, so a game that places its scene through the stack (a camera, UI
+  scaling) drew wrong on the highest-priority target only. Images, quads and
+  primitives now all follow it.
+
+**Fixes**
+- OneLua Vita folded the stack into image draws two different wrong ways: with
+  `scale(2)` and `translate(10, 0)` active, `draw(img, 5, 0)` landed at x=45
+  and the same draw through a full-sheet quad at x=25, while a rectangle in
+  the same frame (and LOVE) land on 30. Both paths now map the anchor as
+  `p*S+O`, like primitives and every other backend.
+- `intersectScissor` replaced the active scissor instead of shrinking it to
+  the overlap, so a clipped panel inside a clipped window could draw outside
+  its parent. It now intersects (disjoint rectangles give an empty scissor),
+  on every backend through the shared transform surface.
+
+**Refactor**
+- The love.graphics transform and scissor surface is one shared file,
+  `core/transformapi.lua`, instead of four near-identical backend copies. The
+  3DS hardware scissor is the optional `lv1lua.gfx.applyScissor` hook.
+- Tests: `tests/draw_transform_test.lua` checks that an image, a quad and a
+  rectangle agree under the stack on PSP and OneLua Vita.
+
+### 2026-10-03, branch `feat/t7.6-image-objects`
+
+**Fixes**
+- `newImage` returns a real Image object on every backend (`core/image.lua`).
+  lpp-vita, the 3DS and the PSP handed the game the bare SDK handle (an integer
+  on lpp-vita and lpp-3ds), so any Image method, including the
+  `image:getWidth()` that anim8 and desAnim8 call, crashed on device; the PS3
+  object had only the three size getters. The object carries the full LOVE
+  Image/Texture surface: `type`/`typeOf`, size and pixel-size getters,
+  `getFilter`/`setFilter` (native on lpp-vita through
+  `Graphics.setImageFilters`), `getWrap`/`setWrap`, the texture queries and
+  `release` (frees the texture on lpp-vita and the 3DS). Draws unwrap it with
+  `lv1lua.core.texture`, so the SDK still receives its own handle.
+- Tests: the lpp-vita mock now returns integer texture handles, as the console
+  does, and `tests/image_test.lua` checks the Image surface and the native
+  handle on all five backends.
+
 ### 2026-10-03, branch `fix/t7.5-native-grounding`
 
 Native contracts re-checked against upstream source (lpp-vita, libvita2d,

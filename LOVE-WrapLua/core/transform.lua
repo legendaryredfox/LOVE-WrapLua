@@ -75,6 +75,20 @@ end
 -- Marks the flattened transform stale. Call after mutating a level in place.
 function Stack:invalidate() self._dirty = true end
 
+-- LOVE space to screen space: a point takes the scale and the offset, a size
+-- only the scale. Rotation is left to the native image draw.
+function Stack:mapPoint(x, y)
+    self:updateTransform()
+    local t = self.transform
+    return x * t._scaleX + t._offsetX, y * t._scaleY + t._offsetY
+end
+
+function Stack:mapScale(w, h)
+    self:updateTransform()
+    local t = self.transform
+    return w * t._scaleX, h * t._scaleY
+end
+
 function lv1lua.core.newTransformStack()
     return setmetatable({
         transform = Level.new(),

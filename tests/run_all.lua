@@ -9,6 +9,8 @@ local test_files = {
     "tests/boot_modules_test.lua",
     "tests/review_fixes_test.lua",
     "tests/prim_transform_test.lua",
+    "tests/draw_transform_test.lua",
+    "tests/scissor_test.lua",
     "tests/math_test.lua",
     "tests/data_test.lua",
     "tests/thread_test.lua",
@@ -34,6 +36,7 @@ local test_files = {
     "tests/globals_test.lua",
     "tests/audio_test.lua",
     "tests/ps3_draw_test.lua",
+    "tests/image_test.lua",
 }
 
 local total_fail = 0

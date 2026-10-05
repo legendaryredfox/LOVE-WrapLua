@@ -39,7 +39,7 @@
 
 | Function | OL | PSP | LPP | PS3 |
 |---|---|---|---|---|
-| newImage(filename, settings) | ✓ warns if >512 | ✓ warns if >512 / NPOT | ✓ warns if >1024 | ✓ no validation |
+| newImage(filename, settings) | ✓ Image object, warns if >512 | ✓ Image object, warns if >512 / NPOT | ✓ Image object, warns if >1024 | ✓ Image object, no validation |
 | newQuad(x,y,w,h,sw,sh or img) | ✓ warns if >512 | ✓ warns if >512 / NPOT | ✓ warns if >1024 | ✓ no validation |
 | setTextureInset / getTextureInset | ✓ | ✓ | ✓ | — |
 | draw(drawable, …) | ✓ | ✓ quad sub-rect + scale/flip via a cached copy, source never mutated | ✓ quad + rotation + scale via drawImageExtended | ✓ position only (quad accepted but ignored) |
@@ -66,13 +66,13 @@
 | arc(mode, type, x,y,r,a1,a2) | ✓ | ✓ | ✓ | stub |
 | line(…) | ✓ | ✓ | ✓ | stub |
 | points(…) | ✓ | ✓ | ✓ | stub |
-| push / pop | ✓ | stub (identity, never nil) | ✓ | stub (identity, never nil) |
-| translate / scale / rotate | ✓ images **and** primitives | stub | ✓ images **and** primitives | stub |
+| push / pop | ✓ | ✓ | ✓ | ✓ |
+| translate / scale / rotate | ✓ images **and** primitives | ✓ images **and** primitives | ✓ images **and** primitives | ✓ images **and** primitives |
 | shear | stub | stub | stub | stub |
 | origin / reset | ✓ | ✓ | ✓ | ✓ |
-| applyTransform / replaceTransform | ✓ | stub | ✓ | stub |
-| transformPoint / inverseTransformPoint | ✓ | identity | ✓ | identity |
-| setScissor / getScissor / intersectScissor | ✓ | stub | ✓ software reject | stub |
+| applyTransform / replaceTransform | ✓ | ✓ | ✓ | ✓ |
+| transformPoint / inverseTransformPoint | ✓ | ✓ | ✓ | ✓ |
+| setScissor / getScissor / intersectScissor | ✓ | tracked only | ✓ software reject | tracked only |
 | stencil / setStencilTest / getStencilTest | stub | stub | stub | stub |
 | setDefaultFilter / getDefaultFilter | ✓ reaches the native filter | tracked only | tracked only | tracked only |
 | getDimensions / getWidth / getHeight | ✓ | ✓ | ✓ | ✓ |
@@ -107,6 +107,26 @@ measuring and face loading are native.
 
 printf line spacing is LOVE's `getHeight() * getLineHeight()` on all four
 backends, and wrapping is measured with the font itself, never by byte count.
+
+### Image object methods
+
+`newImage` returns the same shared Image object on every backend
+(`core/image.lua`), with the SDK's texture inside. Before T7.6, lpp-vita, the
+3DS and the PSP returned the bare handle (an integer on lpp-vita and lpp-3ds), so
+any method call on it, including the `image:getWidth()` anim8 makes, crashed on
+device.
+
+| Method | All backends | Native where |
+|---|---|---|
+| type / typeOf | `"Image"`; also a Texture, Drawable and Object | |
+| getWidth / getHeight / getDimensions | ✓ | OneLua reads the handle live (imgscale resizes it) |
+| getPixelWidth / getPixelHeight / getPixelDimensions / getDPIScale | ✓ (`1`) | |
+| getFilter / setFilter | ✓ starts at the default filter | lpp-vita: `Graphics.setImageFilters` (point / linear); elsewhere tracked |
+| getWrap / setWrap | ✓ tracked | no SDK samples outside a quad |
+| getMipmapFilter / setMipmapFilter | no mipmaps (`nil` / no-op) | |
+| getTextureType / getFormat / isCompressed / isReadable / getMipmapCount | `"2d"` / `"rgba8"` / false / true / 1 | |
+| replacePixels | no-op | |
+| release | ✓ returns true once | lpp-vita and 3DS free the texture (`Graphics.freeImage`) |
 
 ---
 
@@ -406,8 +426,9 @@ vs RPCS3) is in the README under "Testing and validation targets".
   exits), so a save is not lost when the app or emulator closes (Vita3K #3918 /
   #3659). Still, call `File:close()` yourself when done for the earliest flush.
 - **Mesh** is a stub
-- **love.graphics.rotate/translate/scale/push/pop** work on OneLua/Vita,
-  lpp-vita, PS3 and the 3DS (software transform stack); on PSP they are no-ops
+- **love.graphics.rotate/translate/scale/push/pop** work on every backend
+  (one shared software transform stack, `core/transformapi.lua`). On the PSP a
+  quad drawn with a rotation turns the whole scaled copy (no per-region rotate)
 - **polygon fill** is a real even-odd scanline fill on every backend
 - **Audio**: OneLua supports only 2 simultaneous channels; PS3 supports stream only
 - **love.timer.sleep** on lpp-vita busy-waits if `Timer.delay` is unavailable

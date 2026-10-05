@@ -48,8 +48,11 @@ LOVE-WrapLua/
 │   ├── core/                   ← Backend-agnostic, no native calls.
 │   │   ├── loader.lua          ← lv1lua.load / loadOnce: dofile with the data prefix.
 │   │   ├── fileio.lua          ← File access seam (open / loadfile); lpp-3ds has no io.open.
+│   │   ├── image.lua           ← Shared Image object around each SDK's texture handle.
 │   │   ├── util.lua            ← Rounding, 0-1↔0-255 colour, UTF-8 glyph iteration.
 │   │   ├── transform.lua       ← Software transform stack (push/pop/flatten).
+│   │   ├── transformapi.lua    ← Shared love.graphics transform + scissor surface
+│   │   │                         over that stack (optional gfx.applyScissor hook).
 │   │   ├── textwrap.lua        ← Greedy word wrap, measured by the font itself.
 │   │   ├── font.lua            ← Shared Font prototype + face cache over gfx.fontHooks.
 │   │   ├── text.lua            ← Shared printf: wrap, align, getHeight×getLineHeight.
@@ -74,11 +77,11 @@ LOVE-WrapLua/
 │   │   └── thread.lua          ← love.thread (coroutine-based pseudo-threads + channels).
 │   ├── OneLua/
 │   │   ├── graphics.lua        ← Entry: love.graphics for Vita (OneLua SDK).
-│   │   ├── graphics/           ← state, transform, image, draw, font, text,
+│   │   ├── graphics/           ← state, image, draw, font, text,
 │   │   │                         primitives, canvas, spritebatch, textobject,
 │   │   │                         mesh, particles, info.
 │   │   ├── graphics_psp.lua    ← Entry: love.graphics for PSP.
-│   │   ├── psp/                ← state, transform, image, font, text,
+│   │   ├── psp/                ← state, image, font, text,
 │   │   │                         primitives, objects, info.
 │   │   ├── audio.lua           ← love.audio (OneLua sound.* API, 2 channels).
 │   │   ├── keyboard.lua        ← love.keyboard (OneLua buttons.* API).
@@ -92,7 +95,7 @@ LOVE-WrapLua/
 │   │   └── shader.lua          ← Pixel-cache shader stub.
 │   ├── lpp-vita/
 │   │   ├── graphics.lua        ← Entry: love.graphics (lpp-vita Graphics.* API).
-│   │   ├── graphics/           ← state, transform, image, draw, font, text,
+│   │   ├── graphics/           ← state, image, draw, font, text,
 │   │   │                         primitives, objects, info.
 │   │   ├── audio.lua           ← love.audio (lpp-vita Sound.* API).
 │   │   ├── keyboard.lua        ← love.keyboard (lpp-vita Controls.* API).
@@ -101,13 +104,13 @@ LOVE-WrapLua/
 │   │   └── event.lua           ← love.event.
 │   ├── 3DS/
 │   │   ├── graphics.lua        ← Entry: love.graphics (lpp-3ds Graphics/Font, sf2d).
-│   │   ├── graphics/           ← state (GPU frame), transform, image, draw, font,
+│   │   ├── graphics/           ← state (GPU frame), scissor, image, draw, font,
 │   │   │                         text (deferred CPU print), primitives, info.
 │   │   ├── fileio.lua          ← io-like files over System.openFile/readFile/writeFile.
 │   │   ├── audio.lua / keyboard.lua / timer.lua / whileloop.lua / event.lua
 │   └── PS3/
 │       ├── graphics.lua        ← Entry: love.graphics (PS3 Lua Player, tiny3D gfx.*).
-│       ├── graphics/           ← state, transform, image, font, text,
+│       ├── graphics/           ← state, image, font, text,
 │       │                         primitives, objects, info.
 │       ├── audio.lua           ← love.audio (snd.* PS3 API, stream only).
 │       ├── keyboard.lua        ← love.keyboard (pad.* API).
@@ -137,6 +140,7 @@ LOVE-WrapLua/
     ├── text_test.lua           ← Text metrics + printf across all 4 backends.
     ├── font_test.lua           ← Shared Font object + printf layout, all 4 backends.
     ├── prim_transform_test.lua ← Primitives vs the transform stack, per backend.
+    ├── image_test.lua          ← Image object surface + native handle, all 5 backends.
     ├── system_test.lua         ← love.system across all 4 backends.
     ├── math_test.lua
     ├── data_test.lua
@@ -203,15 +207,18 @@ end
 
 `love.graphics.draw` dispatches on the drawable argument type:
 
-1. If `drawable._draw` exists → call `drawable:_draw(x, y, r, sx, sy, ox, oy)`.  This covers SpriteBatch, Text/TextBatch, ParticleSystem, Mesh.
-2. If `drawable.imgData` exists → it is a wrapped image; use `drawable.imgData` for the platform blit call.
-3. Otherwise → treat as a raw platform image handle.
+1. If `lv1lua.util.isDrawObject(drawable)` → call `drawable:_draw(x, y, r, sx, sy, ox, oy)`.  This covers SpriteBatch, Text/TextBatch, ParticleSystem, Mesh.
+2. Otherwise unwrap with `lv1lua.core.texture(drawable)`: an Image (`core/image.lua`, what every backend's `newImage` returns) gives its native handle in `_tex`; anything else is taken as a raw handle a library passed in. OneLua's Image also keeps the handle as `imgData` for its draw path.
+
+`newImage` must return `lv1lua.core.wrapImage(handle, w, h)`, never the bare
+handle: lpp-vita and lpp-3ds return textures as integers, and a game calling
+`img:getWidth()` on one crashes (T7.6).
 
 When creating new drawable types, implement `_draw(self, x, y, r, sx, sy, ox, oy)`.
 
 ---
 
-## Transform stack (OneLua/Vita graphics only)
+## Transform stack
 
 ```
 _transformStack.stack   -- array of Transform objects
@@ -226,8 +233,9 @@ Phase 1 work — do **not** revert to plain assignment; `translate(10,0)` then
 `translate(5,0)` must equal `translate(15,0)`.) `updateTransform()` is called
 lazily before any draw operation and multiplies the stack levels together.
 
-lpp-vita, PS3 and the 3DS share the same stack and fold it into both images
-and primitives. PSP transform functions are still no-ops.
+Every backend shares the same stack (`core/transform.lua`) and the same
+love.graphics surface over it (`core/transformapi.lua`), and folds it into
+both images and primitives: a point maps as `p*S+O`, a size as `w*S`.
 
 Primitives reach the stack through two hooks on `lv1lua.gfx.prims`:
 `mapPoint(x,y)` for every emitted vertex and `mapScale(w,h)` for every size
@@ -349,7 +357,7 @@ To add a backend-specific test, dofile `setup.lua` with the right `__MODE`, load
 | love.audio (PS3) | One background voice; a `static` source loads nothing |
 | Source:seek / setPitch | Position and rate are tracked in software; the audio itself only seeks where the SDK exposes a seek call |
 | Source:getDuration | Native where exposed, else read from a WAV header, else 0 |
-| Transforms (PSP) | Identity stubs from `core/transform_stub.lua` (never nil); OneLua, lpp-vita, PS3 and 3DS carry a real software stack |
+| Transforms | One shared software stack on all five backends; `shear` is a stub, and on the PSP a rotated quad turns the whole scaled copy |
 | love.touch / love.mouse | Vita (OneLua) only; the mouse is the last touch position and a touch is button 1 |
 | Source:seek | Moves the reported position; the audio only really seeks where the SDK exposes a seek call |
 | Blend modes | Real where the SDK exposes one (T6.5): PSP `add`/`subtract` on whole-image draws, PS3 all eight via `gfx.BlendFunction`. Both Vita backends have no blend call, so the mode is tracked and alpha renders |

@@ -1,18 +1,28 @@
--- OneLua graphics: transform stack + scissor.
+-- love.graphics transform and scissor surface, shared by every backend.
 --
--- The heavy lifting lives in core/transform.lua; this file only maps the
--- love.graphics surface onto it.
+-- No console SDK exposes a matrix stack, so the stack is the software one in
+-- core/transform.lua and each backend folds the flattened result into its own
+-- draw calls. This file used to exist as four near-identical copies, one per
+-- backend; the only real difference between them was the 3DS hardware
+-- scissor, which a backend now supplies as the optional hook
+-- `lv1lua.gfx.applyScissor()`, called whenever the active scissor can change.
 
-lv1lua.gfx.transform = lv1lua.core.newTransformStack()
-local stack = lv1lua.gfx.transform
+local gfx = lv1lua.gfx
+gfx.transform = lv1lua.core.newTransformStack()
+local stack = gfx.transform
+
+local function applyScissor()
+    if gfx.applyScissor then gfx.applyScissor() end
+end
 
 function love.graphics.push(kind)
     stack:push()
 end
-love.graphics.push()  -- LÖVE always has one active level
+love.graphics.push()  -- LOVE always has one active level
 
 function love.graphics.pop()
     stack:pop()
+    applyScissor()
 end
 
 function love.graphics.translate(offsetX, offsetY)
@@ -44,8 +54,8 @@ function love.graphics.rotate(angle)
     end
 end
 
+-- No SDK here can shear an image; documented as unsupported in Implemented.md.
 function love.graphics.shear(kx, ky)
-    -- No native shear in OneLua; documented as unsupported in Implemented.md.
 end
 
 function love.graphics.origin()
@@ -63,7 +73,8 @@ function love.graphics.reset()
     love.graphics.push()
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setBackgroundColor(0, 0, 0)
-    lv1lua.gfx.lineWidth = 1
+    gfx.lineWidth = 1
+    applyScissor()
 end
 
 function love.graphics.applyTransform(transform)
@@ -80,9 +91,7 @@ function love.graphics.replaceTransform(transform)
 end
 
 function love.graphics.transformPoint(x, y)
-    stack:updateTransform()
-    local t = stack.transform
-    return x * t._scaleX + t._offsetX, y * t._scaleY + t._offsetY
+    return stack:mapPoint(x, y)
 end
 
 function love.graphics.inverseTransformPoint(x, y)
@@ -92,9 +101,6 @@ function love.graphics.inverseTransformPoint(x, y)
     return (x - t._offsetX) / t._scaleX, (y - t._offsetY) / t._scaleY
 end
 
--- ── Scissor ──────────────────────────────────────────────────────
--- OneLua exposes no clip rectangle, so the region is only tracked; draws are
--- not rejected against it yet.
 function love.graphics.setScissor(x, y, w, h)
     local top = stack:top()
     if top then
@@ -103,6 +109,7 @@ function love.graphics.setScissor(x, y, w, h)
         top._scissorWidth, top._scissorHeight = w, h
         stack:invalidate()
     end
+    applyScissor()
 end
 
 function love.graphics.getScissor()
@@ -112,6 +119,25 @@ function love.graphics.getScissor()
     return t._scissorX, t._scissorY, t._scissorWidth, t._scissorHeight
 end
 
+-- Shrinks the active scissor to its overlap with the given rectangle; with
+-- none active this is setScissor. Disjoint rectangles leave an empty one.
 function love.graphics.intersectScissor(x, y, w, h)
-    love.graphics.setScissor(x, y, w, h)
+    local cx, cy, cw, ch = love.graphics.getScissor()
+    if not cx then return love.graphics.setScissor(x, y, w, h) end
+    local x1, y1 = math.max(x, cx), math.max(y, cy)
+    local x2 = math.min(x + w, cx + cw)
+    local y2 = math.min(y + h, cy + ch)
+    love.graphics.setScissor(x1, y1, math.max(0, x2 - x1), math.max(0, y2 - y1))
+end
+
+-- True when the [x,y,w,h] screen-space box lies entirely outside the active
+-- scissor and the draw can be skipped. No scissor set means never reject.
+function gfx.scissorRejects(x, y, w, h)
+    stack:updateTransform()
+    local t = stack.transform
+    if not t._usingScissor then return false end
+    local sx, sy = t._scissorX, t._scissorY
+    local sw, sh = t._scissorWidth, t._scissorHeight
+    return (x + w) <= sx or x >= (sx + sw)
+        or (y + h) <= sy or y >= (sy + sh)
 end

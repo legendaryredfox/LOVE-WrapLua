@@ -22,14 +22,6 @@ gfx.prims = {
         if gfx.canDraw() then Graphics.drawCircle(x, y, math.floor(r + 0.5), c) end
     end,
 
-    mapPoint = function(x, y)
-        stack:updateTransform()
-        local t = stack.transform
-        return x * t._scaleX + t._offsetX, y * t._scaleY + t._offsetY
-    end,
-    mapScale = function(w, h)
-        stack:updateTransform()
-        local t = stack.transform
-        return w * t._scaleX, h * t._scaleY
-    end,
+    mapPoint = function(x, y) return stack:mapPoint(x, y) end,
+    mapScale = function(w, h) return stack:mapScale(w, h) end,
 }

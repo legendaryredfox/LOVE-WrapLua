@@ -104,14 +104,14 @@ local CAPS = {
         -- the PSP's additive and subtractive blits, so alpha is all there is.
         blend     = blendcaps(),
     },
-    -- OneLua on PSP: power-of-two textures, no transform stack.
+    -- OneLua on PSP: power-of-two textures, software transform stack.
     ["PSP"] = {
         renderer  = "OneLua PSP",
         tier      = 1,
         limits    = { pointsize = 1, texturesize = 512, multicanvas = 1, canvasmsaa = 0,
                       potonly = true },
         supported = supported(),
-        features  = { transform = false, quaddraw = true, polygonfill = true,
+        features  = { transform = true, quaddraw = true, polygonfill = true,
                       primitives = true, scissor = false, blendmode = true },
         -- PPSSPP: texel bleed at quad edges (#14977) and framebuffer/texture
         -- sizing differences from hardware (#3085).

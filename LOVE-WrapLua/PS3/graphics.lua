@@ -21,7 +21,8 @@ local GRAPHICS = "LOVE-WrapLua/PS3/graphics/"
 
 lv1lua.load(GRAPHICS .. "state.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/state.lua")
-lv1lua.load(GRAPHICS .. "transform.lua")
+lv1lua.loadOnce("LOVE-WrapLua/core/transformapi.lua")
+lv1lua.loadOnce("LOVE-WrapLua/core/image.lua")
 lv1lua.load(GRAPHICS .. "image.lua")
 lv1lua.load(GRAPHICS .. "font.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/font.lua")

@@ -4,9 +4,8 @@
 -- primitives followed only the scale (OneLua) or nothing at all (lpp-vita), so
 -- a translated scene drew its sprites and its shapes in different places.
 --
--- PSP and PS3 have no transform stack, so their primitives must stay exactly
--- where the game put them: that is asserted too, so a later "fix" cannot
--- quietly start offsetting them.
+-- The PSP joined the stack in T7.7 and is asserted here too; PS3 and the 3DS
+-- are covered by their own suites.
 
 local T = dofile("tests/runner.lua")
 
@@ -187,18 +186,34 @@ T.describe("primitives follow the transform [lpp-vita]", function()
     end)
 end)
 
--- ── PSP: no transform stack, coordinates must pass through ───────
+-- ── PSP (same draw.* calls as OneLua; the stack arrived in T7.7) ──
 load_backend("PSP")
-T.describe("primitives ignore transforms [PSP]", function()
-    T.it("translate is a no-op for a rectangle", function()
+T.describe("primitives follow the transform [PSP]", function()
+    T.it("translate shifts a filled rectangle", function()
+        love.graphics.origin()
         love.graphics.translate(50, 20)
         __rec.reset()
         love.graphics.rectangle("fill", 10, 10, 30, 40)
         local a = __rec.last("draw.fillrect").args
-        T.eq(a[1], 10)
-        T.eq(a[2], 10)
+        T.eq(a[1], 60)
+        T.eq(a[2], 30)
         T.eq(a[3], 30)
         T.eq(a[4], 40)
+        love.graphics.origin()
+    end)
+
+    T.it("translate and scale compose for a rectangle", function()
+        love.graphics.origin()
+        love.graphics.scale(2, 2)
+        love.graphics.translate(10, 5)
+        __rec.reset()
+        love.graphics.rectangle("fill", 1, 1, 4, 4)
+        local a = __rec.last("draw.fillrect").args
+        T.eq(a[1], 22)
+        T.eq(a[2], 12)
+        T.eq(a[3], 8)
+        T.eq(a[4], 8)
+        love.graphics.origin()
     end)
 end)
 

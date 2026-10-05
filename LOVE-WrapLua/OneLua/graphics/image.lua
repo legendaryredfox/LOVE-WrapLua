@@ -20,24 +20,14 @@ function love.graphics.newImage(filename, settings)
     if lv1luaconf.imgscale == true then
         image.scale(img, lv1lua.gfx.scale * 100)
     end
-    local w = setmetatable({
-        imgData = img,
-        flipX   = false,
-        flipY   = false,
-        getWidth      = function(self) return imageWidth(self) end,
-        getHeight     = function(self) return imageHeight(self) end,
-        getDimensions = function(self) return imageWidth(self), imageHeight(self) end,
-        getFilter     = function(self) return "linear","linear",1 end,
-        setFilter     = function(self) end,
-        getWrap       = function(self) return "clamp","clamp" end,
-        setWrap       = function(self) end,
-        getMipmapFilter= function(self) return nil, 0 end,
-        setMipmapFilter= function(self) end,
-        isCompressed  = function(self) return false end,
-        getFormat     = function(self) return "rgba8" end,
-        getPixelDimensions = function(self) return imageWidth(self), imageHeight(self) end,
-        getDPIScale   = function(self) return 1 end,
-    }, {})
+    -- The shared Image object (core/image.lua) carries the LOVE surface; the
+    -- handle stays reachable as imgData, which draw.lua and older libraries
+    -- read, and the size is read live because imgscale resizes the handle.
+    local w = lv1lua.core.wrapImage(img, image.getrealw(img), image.getrealh(img))
+    w.imgData = img
+    w.flipX, w.flipY = false, false
+    function w:getWidth()  return imageWidth(self) end
+    function w:getHeight() return imageHeight(self) end
     -- OneLua has no negative scaling: flip the handle instead, tracking the
     -- current flip state so repeated draws don't double-flip.
     function w:__handleNegativeScale(x, y, sx, sy)

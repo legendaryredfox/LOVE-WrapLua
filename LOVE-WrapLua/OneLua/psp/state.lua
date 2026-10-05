@@ -1,8 +1,8 @@
 -- PSP graphics: platform constants and the native hooks core/state.lua drives.
 --
--- The PSP runs OneLua too, but with a 480x272 screen, the bundled PGF system
--- font and no transform support, so it has its own thin backend instead of
--- branching the Vita one everywhere.
+-- The PSP runs OneLua too, but with a 480x272 screen and the bundled PGF
+-- system font, so it has its own thin backend instead of branching the Vita
+-- one everywhere.
 
 lv1lua.gfx = {
     -- The PGF system font ships with OneLua; TTF loading is Vita-only.

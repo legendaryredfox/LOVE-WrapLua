@@ -135,9 +135,9 @@ that backend, so calling it errors.
 | Module | OL | PSP | LPP | PS3 | 3DS | Notes |
 |---|---|---|---|---|---|---|
 | love.graphics (images, quads, draw) | full | partial | full | full | full | PSP draws quads as sub-rect blits (no rotation); PS3 and 3DS draw rotated, scaled, tinted quads |
-| love.graphics (primitives) | full | full | full | full | full | rectangle/circle/ellipse/arc/line/points/polygon fill; they follow the transform stack on OL, LPP, PS3 and 3DS |
+| love.graphics (primitives) | full | full | full | full | full | rectangle/circle/ellipse/arc/line/points/polygon fill; they follow the transform stack on every backend |
 | love.graphics (fonts, print, printf) | full | full | full | full | partial | real text metrics per backend; 3DS text always lands on top of the frame |
-| love.graphics (transform stack) | full | stub | full | full | full | push/pop/translate/scale/rotate; `shear` is a stub everywhere |
+| love.graphics (transform stack) | full | full | full | full | full | push/pop/translate/scale/rotate; `shear` is a stub everywhere |
 | love.graphics (scissor) | full | stub | partial | stub | full | lpp-vita rejects out-of-scissor draws in software; 3DS clips on the GPU |
 | love.graphics (SpriteBatch, Text) | full | full | full | partial | full | shared implementation (`core/objects.lua`); each backend honours what its own draw supports |
 | love.graphics (ParticleSystem) | partial | none | none | none | none | basic emitter, OneLua/Vita only |
@@ -375,9 +375,10 @@ Per-function detail is in [`Implemented.md`](Implemented.md).
 - **love.thread** pseudo-threads run **synchronously** on a coroutine (no real
   parallelism). A thread body that loops forever hangs the app. `Channel:supply`
   is an immediate push and `Channel:demand` is a non-blocking pop.
-- **Transforms** are a full software stack on OneLua/Vita and lpp-vita
-  (translate/scale/rotate/push/pop, plus software scissor on lpp-vita); on PSP and
-  PS3 they are no-ops. `shear` is a stub everywhere.
+- **Transforms** are one shared software stack on every backend
+  (translate/scale/rotate/push/pop), folded into images and primitives alike.
+  Scissor is enforced in software on lpp-vita and on the GPU on the 3DS, and
+  only tracked elsewhere. `shear` is a stub everywhere.
 - **PS3 graphics** are position-only blits: quads are accepted but ignored, and
   primitives are stubs pending SDK confirmation.
 - **love.audio**: OneLua supports about 2 simultaneous channels; PS3 supports

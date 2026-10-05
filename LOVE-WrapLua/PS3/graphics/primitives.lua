@@ -1,6 +1,6 @@
 -- PS3 graphics: primitive hooks for core/primitives.lua.
 -- Uses tiny3D untextured quads for filled and outlined shapes, and thin
--- oriented rectangles for lines. Before this task, all prim calls were no-ops.
+-- oriented rectangles for lines.
 
 local function gfxTable() return rawget(_G, "gfx") end
 
@@ -44,9 +44,9 @@ local function thickLine(g, x1, y1, x2, y2, color)
     g.End()
 end
 
--- Converts a LOVE-space coordinate to PS3 screen space.
--- configScale in core/primitives.lua applies gfx.scale when lv1luaconf.imgscale
--- is set; when it is not, the hook does the conversion itself.
+-- Converts a LOVE-space coordinate to PS3 screen space. core/primitives.lua
+-- already applies gfx.scale when lv1luaconf.imgscale or resscale is set; when
+-- neither is, the hook does the conversion itself.
 local function toScreen(x, y)
     local s  = (lv1luaconf.imgscale or lv1luaconf.resscale) and 1 or lv1lua.gfx.scale
     return x * s, y * s + lv1lua.gfx.yOffset

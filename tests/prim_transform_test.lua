@@ -217,5 +217,36 @@ T.describe("primitives follow the transform [PSP]", function()
     end)
 end)
 
+T.describe("primitive details [PSP]", function()
+    T.it("an open arc is not closed back to its start", function()
+        love.graphics.origin()
+        __rec.reset()
+        love.graphics.arc("line", "open", 0, 0, 10, 0, math.pi / 2, 4)
+        T.eq(__rec.count("draw.line"), 4)
+    end)
+
+    T.it("a closed arc is closed once", function()
+        __rec.reset()
+        love.graphics.arc("line", "closed", 0, 0, 10, 0, math.pi / 2, 4)
+        T.eq(__rec.count("draw.line"), 5)
+    end)
+
+    T.it("resscale moves every shape, not only rectangles", function()
+        love.graphics.origin()
+        lv1luaconf.resscale = true
+        __rec.reset()
+        love.graphics.rectangle("fill", 100, 0, 1, 1)
+        local rx = __rec.last("draw.fillrect").args[1]
+        love.graphics.line(100, 0, 101, 0)
+        local lx = __rec.last("draw.line").args[1]
+        love.graphics.circle("fill", 100, 0, 10)
+        local c = __rec.last("draw.circle").args
+        lv1luaconf.resscale = false
+        T.eq(lx, rx)
+        T.eq(c[1], rx)
+        T.eq(c[3], 10 * lv1lua.gfx.scale)
+    end)
+end)
+
 io.write("\n=== primitives vs transform stack ===\n")
 return T.summary()

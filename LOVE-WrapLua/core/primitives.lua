@@ -16,12 +16,13 @@
 -- different one (lpp-vita passes both x values before both y values) adapts in
 -- its own one-line hook instead of in every shape.
 --
--- Transforms: every vertex a shape emits goes through `mapPoint` once,
--- so translate/scale move primitives exactly as they move images. Backends
--- without a transform stack (PSP, PS3) install no hook and their coordinates
--- pass through untouched. Shapes built out of other shapes (circle outline,
--- ellipse, arc) generate their vertices in LOVE space and let `polygon` do the
--- single mapping; the native emit calls are already in device space.
+-- Transforms: every vertex a shape emits goes through `mapPoint` once, and
+-- every size through `mapScale`, so translate/scale move primitives exactly as
+-- they move images. Shapes built out of other shapes (circle outline, ellipse,
+-- arc) generate their vertices in LOVE space and let `polygon` do the single
+-- mapping; the native emit calls are already in device space. The optional
+-- imgscale/resscale downscale is applied in the same place, so every shape
+-- shrinks with the sprites.
 
 local TWO_PI = math.pi * 2
 
@@ -35,34 +36,34 @@ local function coords(...)
     return {...}
 end
 
--- The wrapper's optional 75% downscale for small screens.
-local function configScale(x, y, w, h)
+-- The wrapper's optional downscale for small screens (lv1luaconf).
+local function configFactor()
     if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then
-        local s = lv1lua.gfx.scale
-        return x * s, y * s, w * s, h * s
+        return lv1lua.gfx.scale
     end
-    return x, y, w, h
+    return 1
 end
 
 -- A point in LOVE space to a point on the device.
 local function mapPoint(x, y)
     local m = prims().mapPoint
-    if m then return m(x, y) end
-    return x, y
+    if m then x, y = m(x, y) end
+    local k = configFactor()
+    return x * k, y * k
 end
 
 -- A size in LOVE space to a size on the device (no translation).
 local function mapScale(w, h)
     local m = prims().mapScale
-    if m then return m(w, h) end
-    return w, h
+    if m then w, h = m(w, h) end
+    local k = configFactor()
+    return w * k, h * k
 end
 
 function love.graphics.rectangle(mode, x, y, w, h, rx, ry)
     local p = prims()
     x, y = mapPoint(x, y)
     w, h = mapScale(w, h)
-    x, y, w, h = configScale(x, y, w, h)
     if mode == "fill" then
         p.fillRect(x, y, w, h, color())
     elseif mode == "line" then
@@ -87,9 +88,9 @@ function love.graphics.points(...)
     end
 end
 
-function love.graphics.polygon(mode, vertices, ...)
-    local src = (type(vertices) == "table" and vertices or {vertices, ...})
-    local p   = prims()
+-- `open` leaves the outline unclosed; only arc("line", "open", ...) asks.
+local function polygon(mode, src, open)
+    local p = prims()
     if #src < 4 then return end
     -- Mapped once, here: the emit calls below are already device coordinates.
     local v = {}
@@ -106,8 +107,14 @@ function love.graphics.polygon(mode, vertices, ...)
         for i = 1, #v - 2, 2 do
             p.line(v[i], v[i+1], v[i+2], v[i+3], color())
         end
-        p.line(v[#v-1], v[#v], v[1], v[2], color())  -- close
+        if not open then
+            p.line(v[#v-1], v[#v], v[1], v[2], color())
+        end
     end
+end
+
+function love.graphics.polygon(mode, vertices, ...)
+    polygon(mode, type(vertices) == "table" and vertices or {vertices, ...})
 end
 
 function love.graphics.circle(mode, x, y, radius, segments)
@@ -167,8 +174,7 @@ function love.graphics.arc(mode, arctype, x, y, radius, angle1, angle2, segments
         pts[#pts+1] = x + radius * math.cos(a)
         pts[#pts+1] = y + radius * math.sin(a)
     end
-    if arctype == "closed" then
-        pts[#pts+1] = pts[1]; pts[#pts+1] = pts[2]
-    end
-    love.graphics.polygon(mode, pts)
+    -- "closed" and "pie" outlines close back to their first point; "open"
+    -- stops at the last arc vertex. A filled arc is always a closed region.
+    polygon(mode, pts, mode == "line" and arctype == "open")
 end

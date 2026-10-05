@@ -31,7 +31,7 @@ local BLIT = {
     subtract = "blitsub",
 }
 
-function lv1lua.gfx.blitWithBlend(img, x, y)
+function lv1lua.gfx.blitImage(img, x, y)
     local c = lv1lua.current
     local native = BLIT[c.blendMode]
     if native and type(image[native]) == "function" then

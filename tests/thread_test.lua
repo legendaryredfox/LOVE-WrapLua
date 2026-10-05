@@ -150,6 +150,27 @@ T.describe("thread registry + channel API", function()
         th:start(7, 9)
         T.eq(captured[1], 7); T.eq(captured[2], 9)
     end)
+
+    -- A thread that raises reports through getError and love.threaderror in
+    -- LOVE; here it used to propagate out of start() and take the game down.
+    T.it("an error in the thread body is caught and reported", function()
+        love.filesystem.load = function(_) return function() error("boom") end end
+        local reported
+        love.threaderror = function(t, msg) reported = msg end
+        local th = love.thread.newThread("bad.lua")
+        local ok = pcall(th.start, th)
+        love.threaderror = nil
+        T.ok(ok, "start must not raise")
+        T.ok(th:getError() and th:getError():find("boom", 1, true), tostring(th:getError()))
+        T.ok(reported and reported:find("boom", 1, true), "threaderror called")
+        T.nok(th:isRunning())
+    end)
+
+    T.it("newThread accepts Lua source as well as a file name", function()
+        local th = love.thread.newThread("local a = ... ; love.thread.getChannel('src'):push(a * 2)")
+        th:start(21)
+        T.eq(love.thread.getChannel("src"):pop(), 42)
+    end)
 end)
 
 io.write("\n=== love.thread ===\n")

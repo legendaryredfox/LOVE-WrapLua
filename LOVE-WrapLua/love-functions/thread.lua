@@ -62,22 +62,42 @@ function love.thread.getChannel(name)
     return channels[name]
 end
 
+-- LOVE takes a file name or the thread's Lua source. A string with a newline
+-- is source; otherwise it is a file when it ends in ".lua" or names one.
+local function compile(code)
+    local isFile = not code:find("\n", 1, true)
+        and (code:find("%.lua$") or (love.filesystem.getInfo and love.filesystem.getInfo(code)))
+    if isFile then return love.filesystem.load(code) end
+    return (loadstring or load)(code, "=thread")
+end
+
+-- Threads run synchronously on a coroutine. An error in the body is caught
+-- like LOVE catches it: getError returns it and love.threaderror is called,
+-- instead of the error unwinding through the caller of start().
 function love.thread.newThread(filename)
     local thread = {
         running = false,
+        _error  = nil,
         start = function(self, ...)
             self.running = true
+            self._error  = nil
             local args = { ... }
             local nargs = select("#", ...)
-            local chunk, err = love.filesystem.load(filename)
+            local chunk, err = compile(filename)
             if not chunk then
-                error("Failed to load thread file: " .. tostring(err))
-            end
-
-            coroutine.wrap(function()
-                chunk(unpack(args, 1, nargs))
                 self.running = false
-            end)()
+                self._error = "Failed to load thread: " .. tostring(err)
+            else
+                local co = coroutine.create(function()
+                    chunk(unpack(args, 1, nargs))
+                end)
+                local ok, res = coroutine.resume(co)
+                if not ok then self._error = tostring(res) end
+                if coroutine.status(co) == "dead" then self.running = false end
+            end
+            if self._error and love.threaderror then
+                love.threaderror(self, self._error)
+            end
         end,
         isRunning = function(self)
             return self.running
@@ -86,7 +106,7 @@ function love.thread.newThread(filename)
             -- Threads run synchronously, so nothing to wait on.
         end,
         getError = function(self)
-            return nil
+            return self._error
         end,
     }
     threads[filename] = thread

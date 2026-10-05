@@ -150,6 +150,17 @@ T.describe("core/require", function()
         T.ok(a == b)
     end)
 
+    T.it("OneLua: an error inside a game module is not reported as 'not found'", function()
+        loadRequire("OneLua")
+        lv1lua.exists = function(p) return p:find("game/broken.lua", 1, true) ~= nil end
+        package.preload["game/broken"] = function() error("inner boom") end
+        local ok, err = pcall(require, "broken")
+        package.preload["game/broken"] = nil
+        package.loaded["game/broken"] = nil
+        T.nok(ok)
+        T.ok(tostring(err):find("inner boom", 1, true), tostring(err))
+    end)
+
     T.it("a module that is not in game/ falls back to the interpreter", function()
         loadRequire("lpp-vita")
         -- The vendored crypto asks LuaJIT for "bit" this way; on plain Lua the

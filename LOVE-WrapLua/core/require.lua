@@ -23,11 +23,15 @@ end
 local systemRequire = require
 
 if lv1lua.mode == "OneLua" then
-    -- OneLua's require does have a working search path; just prefix it.
+    -- OneLua's require does have a working search path; just prefix it. The
+    -- file is looked for first: a pcall around require could not tell "not in
+    -- game/" from "in game/ but raised", and reported every error inside a
+    -- game module as the module being missing.
     lv1lua.core.oldRequire = systemRequire
     function require(param)
-        local ok, result = pcall(systemRequire, "game/" .. param)
-        if ok then return result end
+        if lv1lua.exists(lv1lua.dataloc .. "game/" .. resolvePath(param)) then
+            return systemRequire("game/" .. param)
+        end
         return systemRequire(param)
     end
 else

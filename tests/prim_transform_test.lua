@@ -247,5 +247,20 @@ T.describe("primitive details [PSP]", function()
     end)
 end)
 
+-- The 3DS has no downscale factor; the flags must not reach a nil there.
+T.describe("primitive details [3DS]", function()
+    T.it("resscale on a backend without a scale factor draws unscaled", function()
+        __MODE = "3DS"
+        dofile("tests/setup.lua")
+        dofile("LOVE-WrapLua/3DS/graphics.lua")
+        lv1lua.gfx.beginFrame()
+        lv1luaconf.resscale = true
+        local ok, err = pcall(love.graphics.rectangle, "fill", 10, 0, 1, 1)
+        lv1luaconf.resscale = false
+        lv1lua.gfx.endFrame()
+        T.ok(ok, tostring(err))
+    end)
+end)
+
 io.write("\n=== primitives vs transform stack ===\n")
 return T.summary()

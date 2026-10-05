@@ -36,10 +36,11 @@ local function coords(...)
     return {...}
 end
 
--- The wrapper's optional downscale for small screens (lv1luaconf).
+-- The wrapper's optional downscale for small screens (lv1luaconf). A backend
+-- with no factor (the 3DS) draws unscaled.
 local function configFactor()
     if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then
-        return lv1lua.gfx.scale
+        return lv1lua.gfx.scale or 1
     end
     return 1
 end

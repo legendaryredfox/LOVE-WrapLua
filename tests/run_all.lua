@@ -10,6 +10,7 @@ local test_files = {
     "tests/review_fixes_test.lua",
     "tests/prim_transform_test.lua",
     "tests/draw_transform_test.lua",
+    "tests/scissor_test.lua",
     "tests/math_test.lua",
     "tests/data_test.lua",
     "tests/thread_test.lua",

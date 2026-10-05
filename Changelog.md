@@ -15,6 +15,10 @@
   and the same draw through a full-sheet quad at x=25, while a rectangle in
   the same frame (and LOVE) land on 30. Both paths now map the anchor as
   `p*S+O`, like primitives and every other backend.
+- `intersectScissor` replaced the active scissor instead of shrinking it to
+  the overlap, so a clipped panel inside a clipped window could draw outside
+  its parent. It now intersects (disjoint rectangles give an empty scissor),
+  on every backend through the shared transform surface.
 
 **Refactor**
 - The love.graphics transform and scissor surface is one shared file,

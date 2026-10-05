@@ -119,8 +119,15 @@ function love.graphics.getScissor()
     return t._scissorX, t._scissorY, t._scissorWidth, t._scissorHeight
 end
 
+-- Shrinks the active scissor to its overlap with the given rectangle; with
+-- none active this is setScissor. Disjoint rectangles leave an empty one.
 function love.graphics.intersectScissor(x, y, w, h)
-    love.graphics.setScissor(x, y, w, h)
+    local cx, cy, cw, ch = love.graphics.getScissor()
+    if not cx then return love.graphics.setScissor(x, y, w, h) end
+    local x1, y1 = math.max(x, cx), math.max(y, cy)
+    local x2 = math.min(x + w, cx + cw)
+    local y2 = math.min(y + h, cy + ch)
+    love.graphics.setScissor(x1, y1, math.max(0, x2 - x1), math.max(0, y2 - y1))
 end
 
 -- True when the [x,y,w,h] screen-space box lies entirely outside the active

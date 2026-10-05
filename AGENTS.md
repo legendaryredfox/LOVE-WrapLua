@@ -218,7 +218,7 @@ When creating new drawable types, implement `_draw(self, x, y, r, sx, sy, ox, oy
 
 ---
 
-## Transform stack (OneLua/Vita graphics only)
+## Transform stack
 
 ```
 _transformStack.stack   -- array of Transform objects
@@ -233,8 +233,9 @@ Phase 1 work — do **not** revert to plain assignment; `translate(10,0)` then
 `translate(5,0)` must equal `translate(15,0)`.) `updateTransform()` is called
 lazily before any draw operation and multiplies the stack levels together.
 
-lpp-vita, PS3 and the 3DS share the same stack and fold it into both images
-and primitives. PSP transform functions are still no-ops.
+Every backend shares the same stack (`core/transform.lua`) and the same
+love.graphics surface over it (`core/transformapi.lua`), and folds it into
+both images and primitives: a point maps as `p*S+O`, a size as `w*S`.
 
 Primitives reach the stack through two hooks on `lv1lua.gfx.prims`:
 `mapPoint(x,y)` for every emitted vertex and `mapScale(w,h)` for every size
@@ -356,7 +357,7 @@ To add a backend-specific test, dofile `setup.lua` with the right `__MODE`, load
 | love.audio (PS3) | One background voice; a `static` source loads nothing |
 | Source:seek / setPitch | Position and rate are tracked in software; the audio itself only seeks where the SDK exposes a seek call |
 | Source:getDuration | Native where exposed, else read from a WAV header, else 0 |
-| Transforms (PSP) | Identity stubs from `core/transform_stub.lua` (never nil); OneLua, lpp-vita, PS3 and 3DS carry a real software stack |
+| Transforms | One shared software stack on all five backends; `shear` is a stub, and on the PSP a rotated quad turns the whole scaled copy |
 | love.touch / love.mouse | Vita (OneLua) only; the mouse is the last touch position and a touch is button 1 |
 | Source:seek | Moves the reported position; the audio only really seeks where the SDK exposes a seek call |
 | Blend modes | Real where the SDK exposes one (T6.5): PSP `add`/`subtract` on whole-image draws, PS3 all eight via `gfx.BlendFunction`. Both Vita backends have no blend call, so the mode is tracked and alpha renders |

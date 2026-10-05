@@ -1,5 +1,18 @@
 -- PSP graphics: Image, Quad and the draw call.
 
+local stack = lv1lua.gfx.transform
+
+-- Folds the transform stack into one draw: the anchor maps as a point, the
+-- scale multiplies, the rotation adds. The origin offset is applied after, in
+-- the folded scale, so it stays a pivot in image pixels as in LOVE.
+local function _fold(x, y, r, sx, sy)
+    stack:updateTransform()
+    local t = stack.transform
+    sx = sx or 1; sy = sy or sx
+    return (x or 0) * t._scaleX + t._offsetX, (y or 0) * t._scaleY + t._offsetY,
+           (r or 0) + t._rotation, sx * t._scaleX, sy * t._scaleY
+end
+
 function love.graphics.newImage(filename, settings)
     local img = image.load(lv1lua.dataloc .. "game/" .. filename)
     -- PSP textures must be power-of-two and <=512; warn before a scale/blit
@@ -38,7 +51,7 @@ end
 -- and the quad viewport is remapped into that copy. Rotation with a quad rotates
 -- the whole copy (no per-region rotate on PSP) and is documented as limited.
 local function _quadDraw(drawable, quad, x, y, r, sx, sy, ox, oy)
-    sx = sx or 1; sy = sy or sx
+    x, y, r, sx, sy = _fold(x, y, r, sx, sy)
     ox = ox or 0; oy = oy or 0
     local qx, qy, qw, qh = quad:getViewport()
     -- Half-texel inset keeps linear sampling inside the frame.
@@ -82,9 +95,8 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy)
         return _quadDraw(drawable, xOrQuad, y, r, sx, sy, ox, oy)
     end
 
-    local x = xOrQuad
-    sx = sx or 1
-    sy = sy or sx
+    local x
+    x, y, r, sx, sy = _fold(xOrQuad, y, r, sx, sy)
     x = (x or 0) - (ox or 0) * math.abs(sx)
     y = (y or 0) - (oy or 0) * math.abs(sy)
     if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then

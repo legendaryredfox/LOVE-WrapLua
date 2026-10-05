@@ -66,13 +66,13 @@
 | arc(mode, type, x,y,r,a1,a2) | ✓ | ✓ | ✓ | stub |
 | line(…) | ✓ | ✓ | ✓ | stub |
 | points(…) | ✓ | ✓ | ✓ | stub |
-| push / pop | ✓ | stub (identity, never nil) | ✓ | stub (identity, never nil) |
-| translate / scale / rotate | ✓ images **and** primitives | stub | ✓ images **and** primitives | stub |
+| push / pop | ✓ | ✓ | ✓ | ✓ |
+| translate / scale / rotate | ✓ images **and** primitives | ✓ images **and** primitives | ✓ images **and** primitives | ✓ images **and** primitives |
 | shear | stub | stub | stub | stub |
 | origin / reset | ✓ | ✓ | ✓ | ✓ |
-| applyTransform / replaceTransform | ✓ | stub | ✓ | stub |
-| transformPoint / inverseTransformPoint | ✓ | identity | ✓ | identity |
-| setScissor / getScissor / intersectScissor | ✓ | stub | ✓ software reject | stub |
+| applyTransform / replaceTransform | ✓ | ✓ | ✓ | ✓ |
+| transformPoint / inverseTransformPoint | ✓ | ✓ | ✓ | ✓ |
+| setScissor / getScissor / intersectScissor | ✓ | tracked only | ✓ software reject | tracked only |
 | stencil / setStencilTest / getStencilTest | stub | stub | stub | stub |
 | setDefaultFilter / getDefaultFilter | ✓ reaches the native filter | tracked only | tracked only | tracked only |
 | getDimensions / getWidth / getHeight | ✓ | ✓ | ✓ | ✓ |
@@ -426,8 +426,9 @@ vs RPCS3) is in the README under "Testing and validation targets".
   exits), so a save is not lost when the app or emulator closes (Vita3K #3918 /
   #3659). Still, call `File:close()` yourself when done for the earliest flush.
 - **Mesh** is a stub
-- **love.graphics.rotate/translate/scale/push/pop** work on OneLua/Vita,
-  lpp-vita, PS3 and the 3DS (software transform stack); on PSP they are no-ops
+- **love.graphics.rotate/translate/scale/push/pop** work on every backend
+  (one shared software transform stack, `core/transformapi.lua`). On the PSP a
+  quad drawn with a rotation turns the whole scaled copy (no per-region rotate)
 - **polygon fill** is a real even-odd scanline fill on every backend
 - **Audio**: OneLua supports only 2 simultaneous channels; PS3 supports stream only
 - **love.timer.sleep** on lpp-vita busy-waits if `Timer.delay` is unavailable

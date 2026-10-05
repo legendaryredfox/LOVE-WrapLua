@@ -139,7 +139,7 @@ T.describe("PSP native order", function()
 
     T.it("reports the PSP capability profile (T4.5)", function()
         T.eq(love.graphics.getSystemLimits().texturesize, 512)
-        T.nok(love._backend.features.transform, "PSP has no transform stack")
+        T.ok(love._backend.features.transform, "PSP has a transform stack")
         T.ok(love._backend.features.quaddraw, "PSP has quad sub-rect blit")
     end)
 end)

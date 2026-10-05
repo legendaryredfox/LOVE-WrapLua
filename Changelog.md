@@ -1,5 +1,10 @@
 ## Changelog
 
+## 0.8.0 (2026-10-05)
+
+First release of this continuation of LOVE-WrapLua. It covers every entry
+below down to the original project's history.
+
 ### 2026-10-05, branch `fix/r2-review` (second whole-repository review)
 
 A full read of the code plus a QA pass against the mocks (see

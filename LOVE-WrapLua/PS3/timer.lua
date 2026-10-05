@@ -2,8 +2,10 @@
 -- overwrites lv1lua.dt each frame (whileloop.lua), so honour it if already set.
 lv1lua.dt = lv1lua.dt or 1 / 60
 
+-- os.time() counts whole seconds, too coarse for anything a game times. The
+-- frame clock advances by the same dt the game sees.
 function love.timer.getTime()
-    return os.time()
+    return lv1lua.timestep and lv1lua.timestep.clock or os.time()
 end
 
 function love.timer.getDelta()

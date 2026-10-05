@@ -59,6 +59,7 @@ function Timestep:advance(elapsed, fn)
     elapsed = tonumber(elapsed) or self.step
     if elapsed < 0 then elapsed = 0 end
     recordFrame(self, elapsed)
+    self.clock = self.clock + elapsed
 
     if self.variable then
         -- LOVE's desktop loop: one update per frame with the measured time,
@@ -122,6 +123,8 @@ function lv1lua.core.newTimestep(opts)
         frameCount  = 0,
         frameIndex  = 0,
         frameDelta  = 0,
+        -- Sum of every frame time seen: a clock for a backend with no timer.
+        clock       = 0,
     }, Timestep)
 end
 

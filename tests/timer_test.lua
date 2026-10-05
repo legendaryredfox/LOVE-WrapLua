@@ -23,8 +23,8 @@ T.describe("love.timer.getDelta", function()
 end)
 
 -- ── getFPS ───────────────────────────────────────────────────────
--- Since T7.2 the render rate is measured by the accumulator instead of being
--- inferred from the update dt, which is now fixed.
+-- The render rate is measured by the accumulator; the update dt is a fixed
+-- slice and says nothing about it.
 T.describe("love.timer.getFPS", function()
     T.it("returns a positive integer once frames have been timed", function()
         for _ = 1, 10 do lv1lua.core.step(0.02) end

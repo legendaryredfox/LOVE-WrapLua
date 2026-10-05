@@ -1,4 +1,4 @@
--- love.audio across the backends (FIX_PLAN T6.2).
+-- love.audio across the backends.
 --
 -- One shared Source implementation (core/audio.lua) sits over each backend's
 -- native hooks, so the same suite runs everywhere. What used to be stubbed in

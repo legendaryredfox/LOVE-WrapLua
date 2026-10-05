@@ -15,8 +15,7 @@ if lv1lua.exists(lv1lua.dataloc .. "game/conf.lua") then
 end
 
 -- Outside the branch on purpose: love.filesystem builds the save path from the
--- identity, so a game shipped without a conf.lua used to hit a nil there the
--- first time it saved.
+-- identity, and a game may ship without a conf.lua.
 if not lv1lua.loveconf.identity then
     lv1lua.loveconf.identity = "LOVE-WrapLua"
 end
@@ -38,9 +37,8 @@ if lv1luaconf.resscale == nil then lv1luaconf.resscale = lv1luaconf.res_scale or
 
 -- ── Vita-only input modules ──────────────────────────────────────
 -- The front touchscreen exists on the Vita whatever the button layout is, and
--- the frame loop calls into love.touch / love.mouse every frame, so these are
--- loaded here rather than inside the keyconf branch below (where they used to
--- sit, leaving every non-"SE" Vita build to die on its first frame).
+-- the frame loop calls into love.touch / love.mouse every frame, so these
+-- load for every keyconf.
 if lv1lua.mode == "OneLua" and not lv1lua.isPSP then
     lv1lua.load("LOVE-WrapLua/OneLua/touch.lua")
     lv1lua.load("LOVE-WrapLua/OneLua/mouse.lua")
@@ -69,8 +67,7 @@ elseif lv1luaconf.keyconf == "XBA" then
 elseif lv1luaconf.keyconf == "PS" then
     lv1lua.keyset = {"circle","cross","triangle","square","l","r"}
 else
-    -- Every backend's input map is built from keyset, so a typo here used to
-    -- crash the first keyboard module that loaded.
+    -- Every backend's input map is built from keyset, so it must always exist.
     lv1lua.util.warn("lv1luaconf.keyconf '" .. tostring(lv1luaconf.keyconf)
                      .. "' is not XB, XBA, PS or SE; using XB")
     lv1luaconf.keyconf = "XB"

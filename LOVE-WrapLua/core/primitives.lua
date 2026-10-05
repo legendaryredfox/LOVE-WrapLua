@@ -2,7 +2,7 @@
 --
 -- Every backend that can draw at all draws primitives out of the same four
 -- native calls, so the geometry (ellipse, arc, polygon outline, circle outline,
--- points, the old LOVE arc signature) belongs here once. A backend supplies
+-- points, the pre-0.10 arc signature) belongs here once. A backend supplies
 -- `lv1lua.gfx.prims` before loading this file:
 --
 --   fillRect(x, y, w, h, color)          required
@@ -149,9 +149,8 @@ function love.graphics.ellipse(mode, x, y, rx, ry, segments)
 end
 
 function love.graphics.arc(mode, arctype, x, y, radius, angle1, angle2, segments)
-    -- Pre-0.10 LOVE had no arctype: arc(mode, x, y, radius, a1, a2, segments).
-    -- The old per-backend copies shifted every argument by one here, including
-    -- `mode` into `x`, which drew the arc at a string coordinate.
+    -- Pre-0.10 LOVE had no arctype: arc(mode, x, y, radius, a1, a2, segments),
+    -- so every argument after `mode` sits one slot to the left.
     if type(arctype) == "number" then
         segments = angle2; angle2 = angle1; angle1 = radius
         radius   = y; y = x; x = arctype

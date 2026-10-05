@@ -1,5 +1,5 @@
 -- Boot-level modules: config, require, callbacks, touch/mouse and the frame
--- loop's input handling (CODE_REVIEW R1, R2, R4, R5, R6, R7, R21).
+-- loop's input handling.
 --
 -- These were the only modules with no coverage at all, which is exactly why a
 -- Vita build could crash on its first frame with the default configuration and
@@ -17,7 +17,7 @@ local function fresh(mode, keyconf)
     dofile("LOVE-WrapLua/core/config.lua")
 end
 
--- ── Vita input modules are not tied to the button layout (R1) ────
+-- ── Vita input modules are not tied to the button layout ────
 T.describe("core/config button layout", function()
     T.it("an unknown keyconf falls back to XB instead of leaving keyset nil", function()
         __MODE = "OneLua"
@@ -63,7 +63,7 @@ T.describe("core/config loads the Vita input modules", function()
     end)
 end)
 
--- ── touch positions (R4) ─────────────────────────────────────────
+-- ── touch positions ─────────────────────────────────────────
 T.describe("love.touch", function()
     T.it("reports the position of the first touch", function()
         fresh("OneLua", "XB")
@@ -101,7 +101,7 @@ T.describe("love.touch", function()
     end)
 end)
 
--- ── require shim (R7) ────────────────────────────────────────────
+-- ── require shim ────────────────────────────────────────────
 -- The shim replaces the global `require`, so the interpreter's own is put back
 -- once these cases are done: later suites (and the vendored libraries they
 -- load) still need it.
@@ -173,7 +173,7 @@ end)
 
 require = systemRequire
 
--- ── gamepad bridging (R21 coverage) ──────────────────────────────
+-- ── gamepad bridging ──────────────────────────────
 T.describe("core/callbacks", function()
     local function wire(setup)
         __MODE = "OneLua"
@@ -225,7 +225,7 @@ T.describe("core/callbacks", function()
     end)
 end)
 
--- ── the frame loop's pad handling (R5, R6) ───────────────────────
+-- ── the frame loop's pad handling ───────────────────────
 local function loadLoop()
     fresh("OneLua", "XB")
     dofile("LOVE-WrapLua/joystick.lua")

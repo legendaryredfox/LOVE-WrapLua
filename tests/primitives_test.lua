@@ -3,7 +3,7 @@
 -- Runs the same shared checks under OneLua, lpp-vita and PS3 (each with a fresh
 -- mock environment), plus per-backend native-argument-order assertions.  The
 -- lpp-vita mock encodes the real native contract from luaGraphics.cpp, so a
--- wrapper that passes primitive coordinates in the wrong order (#12) fails here
+-- wrapper that passes primitive coordinates in the wrong order fails here
 -- instead of mis-rendering on device.
 
 local T = dofile("tests/runner.lua")
@@ -90,7 +90,7 @@ T.describe("OneLua native order", function()
         T.eq(c.args[3], 10); T.eq(c.args[4], 20)
     end)
 
-    T.it("polygon fill rasterises spans, not outline lines (T4.2)", function()
+    T.it("polygon fill rasterises spans, not outline lines", function()
         __rec.reset()
         love.graphics.polygon("fill", {0,0, 10,0, 10,10, 0,10})
         T.ok(__rec.count("draw.fillrect") > 0, "fill should emit filled spans")
@@ -100,7 +100,7 @@ T.describe("OneLua native order", function()
         T.eq(c.args[4], 1)   -- one scanline tall
     end)
 
-    T.it("reports honest capabilities (T4.5)", function()
+    T.it("reports honest capabilities", function()
         T.nok(love.graphics.getSupported().canvas)
         T.nok(love.graphics.getSupported().glsl3)
         T.eq(love.graphics.getSystemLimits().texturesize, 512)
@@ -130,14 +130,14 @@ T.describe("PSP native order", function()
         T.eq(love.graphics.getSystemLimits().texturesize, 512)
     end)
 
-    T.it("polygon fill rasterises spans, not outline lines (T4.2)", function()
+    T.it("polygon fill rasterises spans, not outline lines", function()
         __rec.reset()
         love.graphics.polygon("fill", {0,0, 10,0, 10,10, 0,10})
         T.ok(__rec.count("draw.fillrect") > 0, "fill should emit filled spans")
         T.eq(__rec.count("draw.line"), 0)
     end)
 
-    T.it("reports the PSP capability profile (T4.5)", function()
+    T.it("reports the PSP capability profile", function()
         T.eq(love.graphics.getSystemLimits().texturesize, 512)
         T.ok(love._backend.features.transform, "PSP has a transform stack")
         T.ok(love._backend.features.quaddraw, "PSP has quad sub-rect blit")
@@ -145,7 +145,7 @@ T.describe("PSP native order", function()
 end)
 
 -- PSP images are raw native handles, so a scaling draw must copy instead of
--- resizing the shared source (#6).
+-- resizing the shared source.
 T.describe("PSP draw does not mutate the source image", function()
     T.it("drawing sx=2 then sx=1 leaves source dimensions unchanged", function()
         local img = love.graphics.newImage("s.png")
@@ -242,7 +242,7 @@ T.describe("lpp-vita native order (luaGraphics.cpp)", function()
         T.eq(c.args[4], 60)  -- y2 = y+h
     end)
 
-    T.it("polygon fill rasterises fillRect spans, not lines (T4.2)", function()
+    T.it("polygon fill rasterises fillRect spans, not lines", function()
         __rec.reset()
         love.graphics.polygon("fill", {0,0, 10,0, 10,10, 0,10})
         T.ok(__rec.count("Graphics.fillRect") > 0, "fill should emit spans")
@@ -252,7 +252,7 @@ T.describe("lpp-vita native order (luaGraphics.cpp)", function()
         T.eq(c.args[4] - c.args[3], 1)   -- one scanline tall (y2 - y1)
     end)
 
-    T.it("reports the lpp-vita capability profile (T4.5)", function()
+    T.it("reports the lpp-vita capability profile", function()
         T.eq(love.graphics.getSystemLimits().texturesize, 1024)
         T.ok(love.graphics.getSupported().fullnpot, "vita2d handles NPOT")
         T.ok(love._backend.features.scissor, "lpp-vita has software scissor")
@@ -260,7 +260,7 @@ T.describe("lpp-vita native order (luaGraphics.cpp)", function()
     end)
 end)
 
--- ── lpp-vita draw: quad + rotation (T2.1) ────────────────────────
+-- ── lpp-vita draw: quad + rotation ────────────────────────
 T.describe("lpp-vita draw (drawImageExtended)", function()
     T.it("an unrotated full-image draw uses the drawScaleImage fast path", function()
         __rec.reset()
@@ -358,7 +358,7 @@ T.describe("lpp-vita draw (drawImageExtended)", function()
     end)
 end)
 
--- ── lpp-vita transform stack folded into draws (T2.2) ────────────
+-- ── lpp-vita transform stack folded into draws ────────────
 T.describe("lpp-vita transform stack", function()
     T.it("translate shifts a subsequent draw", function()
         love.graphics.reset()
@@ -402,7 +402,7 @@ T.describe("lpp-vita transform stack", function()
     end)
 end)
 
--- ── lpp-vita software scissor (T2.2) ─────────────────────────────
+-- ── lpp-vita software scissor ─────────────────────────────
 T.describe("lpp-vita software scissor", function()
     T.it("rejects a draw whose box is entirely outside the scissor", function()
         love.graphics.reset()

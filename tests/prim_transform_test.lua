@@ -1,11 +1,10 @@
--- Primitives honour the transform stack (FIX_PLAN T5.2).
+-- Primitives honour the transform stack.
 --
 -- Images already followed push/translate/scale on OneLua and lpp-vita while
 -- primitives followed only the scale (OneLua) or nothing at all (lpp-vita), so
 -- a translated scene drew its sprites and its shapes in different places.
 --
--- The PSP joined the stack in T7.7 and is asserted here too; PS3 and the 3DS
--- are covered by their own suites.
+-- PS3 and the 3DS are covered by their own suites.
 
 local T = dofile("tests/runner.lua")
 
@@ -186,7 +185,7 @@ T.describe("primitives follow the transform [lpp-vita]", function()
     end)
 end)
 
--- ── PSP (same draw.* calls as OneLua; the stack arrived in T7.7) ──
+-- ── PSP (the same draw.* calls as OneLua) ───────────────────────
 load_backend("PSP")
 T.describe("primitives follow the transform [PSP]", function()
     T.it("translate shifts a filled rectangle", function()

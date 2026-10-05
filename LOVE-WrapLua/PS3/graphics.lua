@@ -2,10 +2,8 @@
 --
 -- Entry point only: each submodule owns one area of the API. `state` loads
 -- first because it brings up the native layer (InitGFX/InitFont) and defines
--- lv1lua.gfx / lv1lua.current.
---
--- T6.6 promoted PS3 from the "stub" tier: textured quad draws, a real
--- transform stack, filled primitives, and TTF text via tiny3D. See Implemented.md.
+-- lv1lua.gfx / lv1lua.current. Images, shapes and text all draw through
+-- tiny3D (gfx.*); see Implemented.md for what is not verifiable on RPCS3.
 
 if not lv1lua.load then
     dofile((lv1lua.dataloc or "") .. "LOVE-WrapLua/core/loader.lua")

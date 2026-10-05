@@ -1,4 +1,4 @@
--- love.system across the backends (FIX_PLAN T6.1).
+-- love.system across the backends.
 --
 -- Every call has to answer something sane on a console: either the native value
 -- or the documented fallback. Nothing here may error, because a game that asks

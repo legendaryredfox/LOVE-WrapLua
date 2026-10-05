@@ -1,4 +1,4 @@
--- Shared graphics objects (FIX_PLAN T5.1): Canvas, Shader, SpriteBatch, Text.
+-- Shared graphics objects: Canvas, Shader, SpriteBatch, Text.
 --
 -- core/objects.lua replaced four near-identical per-backend copies, so the same
 -- suite has to hold on every backend now. The quad case is the reason the
@@ -22,7 +22,7 @@ local BLIT = {
     ["OneLua"]   = "image.blit",
     ["PSP"]      = "image.blit",
     ["lpp-vita"] = "Graphics.drawScaleImage",
-    ["PS3"]      = "gfx.SetPolygon",  -- T6.6: textured quad draw
+    ["PS3"]      = "gfx.SetPolygon",  -- textured quad draw
     ["3DS"]      = "Graphics.drawScaleImage",
 }
 
@@ -31,7 +31,7 @@ local PRINT = {
     ["OneLua"]   = "screen.print",
     ["PSP"]      = "screen.print",
     ["lpp-vita"] = "Font.print",
-    ["PS3"]      = "gfx.FontDrawString",  -- T6.6: TTF text
+    ["PS3"]      = "gfx.FontDrawString",  -- TTF text
     ["3DS"]      = "Font.print",
 }
 

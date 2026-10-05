@@ -1,7 +1,6 @@
--- Blend modes (FIX_PLAN T6.5).
+-- Blend modes.
 --
--- setBlendMode used to store a string and nothing else. What each SDK really
--- exposes to Lua differs (see the T6.5 table in FIX_PLAN): PSP has additive and
+-- What each SDK exposes to Lua differs: PSP has additive and
 -- subtractive image blits, the PS3 player binds tiny3d's full blend function,
 -- and neither Vita backend exposes blend state at all. This suite checks the
 -- shared validation, the honest capability set, and that the two backends with
@@ -294,5 +293,5 @@ T.describe("lpp-vita blend", function()
     end)
 end)
 
-io.write("\n=== blend modes (T6.5) ===\n")
+io.write("\n=== blend modes ===\n")
 return T.summary()

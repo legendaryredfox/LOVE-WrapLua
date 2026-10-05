@@ -1,4 +1,4 @@
--- Half-texel quad inset (FIX_PLAN T8.2).
+-- Half-texel quad inset.
 --
 -- With the inset on, a quad's source rect shrinks by half a texel per side so
 -- linear filtering stops bleeding the neighbouring frame at a boundary. Off by
@@ -103,5 +103,5 @@ T.describe("quad inset [PSP]", function()
     end)
 end)
 
-io.write("\n=== quad inset (T8.2) ===\n")
+io.write("\n=== quad inset ===\n")
 return T.summary()

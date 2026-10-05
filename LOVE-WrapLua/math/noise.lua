@@ -2,9 +2,9 @@
 --
 -- Loads after math/random.lua, whose generator is used to shuffle the
 -- permutation table. That matters twice over: it keeps the shuffle off the
--- global RNG (loading this file used to call math.randomseed(12345), silently
--- resetting the game's random stream), and it makes the table identical on
--- every Lua version, since Lua's own math.random algorithm is not.
+-- global RNG, so loading this file never reseeds the game's random stream, and
+-- it makes the table identical on every Lua version, since Lua's own
+-- math.random algorithm is not.
 
 local PERM_SIZE = 256
 

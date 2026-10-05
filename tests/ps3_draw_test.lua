@@ -1,4 +1,4 @@
--- PS3 first-class graphics (FIX_PLAN T6.6).
+-- PS3 first-class graphics.
 -- Verifies that the PS3 backend now draws textured quads via tiny3D instead of
 -- the old BlitToScreen stub, that the transform stack works, that setColor
 -- tints through VertexColor, that quads carry non-trivial UV, that print
@@ -249,5 +249,5 @@ T.describe("PS3 filled primitives", function()
     end)
 end)
 
-io.write("\n=== PS3 first-class graphics (T6.6) ===\n")
+io.write("\n=== PS3 first-class graphics ===\n")
 return T.summary()

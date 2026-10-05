@@ -94,10 +94,8 @@ function Tracker:update(held, dt)
 end
 
 -- ── Joystick state ───────────────────────────────────────────────
--- love.joystick reads lv1lua.joystickState every frame. The backends used to
--- fill its `axes` only, so Joystick:isDown / isGamepadDown / getHat answered
--- false and "c" forever; a game polling the pad (instead of using the
--- callbacks) saw nothing at all.
+-- love.joystick reads lv1lua.joystickState every frame; each backend fills
+-- the axes, and syncJoystick below the buttons and the hat.
 --
 -- The table below is keyed by the *physical* console button, not by the LOVE
 -- key name, because the key names change with lv1luaconf.keyconf while the
@@ -151,8 +149,7 @@ function lv1lua.core.anyDown(isDown, ...)
     return false
 end
 
--- Owned here rather than in each backend's keyboard.lua, so the copies
--- cannot drift.
+-- Owned here, beside the repeat state the key tracker reads.
 function love.keyboard.setKeyRepeat(enable)
     lv1lua.input.keyRepeat = enable and true or false
 end

@@ -34,7 +34,6 @@ lv1lua.audio.hooks = {
     stop    = function(src)
         Sound.close(src._handle)
         src._handle = Sound.open(src._path)
-        src.loadsound = src._handle
     end,
     pause   = function(src) Sound.pause(src._handle) end,
     resume  = function(src) Sound.resume(src._handle) end,

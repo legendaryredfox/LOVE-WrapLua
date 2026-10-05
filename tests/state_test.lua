@@ -1,4 +1,4 @@
--- Shared graphics state (FIX_PLAN T5.1): colour, clear, line style, blend mode,
+-- Shared graphics state: colour, clear, line style, blend mode,
 -- default filter, stencil stubs.
 --
 -- core/state.lua replaced four per-backend copies that had drifted: only OneLua

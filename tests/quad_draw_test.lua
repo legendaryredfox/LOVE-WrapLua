@@ -1,5 +1,4 @@
--- Quad drawing details found in the whole-repo review (CODE_REVIEW R3, R8, R9,
--- R10).
+-- Quad drawing details found in the whole-repo review.
 --
 -- The quad path is the one a spritesheet game leans on every frame, and it had
 -- drifted away from the plain image path: a rebuilt scale buffer freed the

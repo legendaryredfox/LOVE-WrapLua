@@ -1,4 +1,4 @@
--- love.graphics Image objects across every backend (FIX_PLAN T7.6).
+-- love.graphics Image objects across every backend.
 --
 -- The SDKs hand back bare texture handles: an integer on lpp-vita and lpp-3ds,
 -- userdata on OneLua, a tiny3D table on the PS3. Games call Image methods on
@@ -171,5 +171,5 @@ T.describe("Image filters [lpp-vita native]", function()
     end)
 end)
 
-io.write("\n=== Image objects (T7.6) ===\n")
+io.write("\n=== Image objects ===\n")
 return T.summary()

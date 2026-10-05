@@ -1,9 +1,7 @@
 -- Shared love.audio: one Source object over per-backend native hooks.
 --
--- The three backends carried three near-identical Source tables that all
--- stubbed the same four methods (`seek`, `tell`, `getDuration`, `isPaused`) and
--- disagreed about the rest. The native part is a hook table the backend
--- installs on `lv1lua.audio.hooks` before loading this file:
+-- The native part is a hook table the backend installs on
+-- `lv1lua.audio.hooks` before loading this file:
 --
 --   resolve(name) -> path        game-relative name to the path the SDK wants
 --   load(path, sourcetype)       native handle (nil = the backend cannot load it)
@@ -21,8 +19,7 @@
 --
 -- Position: no SDK here reports a playback position, so it is timed from
 -- love.timer.getTime() across play/pause/resume/seek. That is accurate for a
--- stream playing straight through (what a music-sync game needs) and it is why
--- `tell` no longer always answers 0.
+-- stream playing straight through, which is what a music-sync game needs.
 
 lv1lua.audio = lv1lua.audio or {}
 local hooks  = lv1lua.audio.hooks or {}
@@ -82,7 +79,7 @@ function Source:release()
     if self._released then return false end
     self:stop()
     if self._handle then call("release", self) end
-    self._handle, self.loadsound = nil, nil
+    self._handle = nil
     self._released = true
     for i = #sources, 1, -1 do
         if sources[i] == self then table.remove(sources, i) end
@@ -254,9 +251,6 @@ function love.audio.newSource(name, sourcetype)
     }, Source)
 
     src._handle = call("load", path, sourcetype)
-    -- `loadsound` is the name the older per-backend sources used; game code and
-    -- the whileloops still read it.
-    src.loadsound = src._handle
 
     sources[#sources + 1] = src
     return src

@@ -2,10 +2,7 @@
 --
 -- None of these need native calls: they are pure Lua over the public
 -- love.graphics surface (draw / print / printf / setFont), so one copy serves
--- every backend and a backend only has to implement the native primitives. Each
--- backend used to keep its own near-identical copy, which is how the PSP,
--- lpp-vita and PS3 SpriteBatch ended up dropping the quad and drawing the whole
--- sheet per sprite.
+-- every backend and a backend only has to implement the native primitives.
 --
 -- Requires: lv1lua.current (from the backend's state.lua) and
 -- lv1lua.screenWidth/Height (from core/runtime.lua).

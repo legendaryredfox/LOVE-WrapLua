@@ -30,9 +30,8 @@ function love.keyboard.getKeyFromScancode(sc)  return sc end
 function love.keyboard.getScancodeFromKey(key) return key end
 
 -- The IME is modal and asynchronous: it is still opening on the frame that
--- starts it, so reading its state immediately (as this used to) always found it
--- unfinished and silently dropped whatever the player typed. The frame loop
--- polls lv1lua.pollTextInput instead, and love.textinput fires when the on-screen
+-- starts it, so its state cannot be read there. The frame loop polls
+-- love.keyboard.pollTextInput, and love.textinput fires when the on-screen
 -- keyboard closes.
 local imeOpen = false
 

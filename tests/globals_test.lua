@@ -1,4 +1,4 @@
--- Global namespace boundary (FIX_PLAN T7.3).
+-- Global namespace boundary.
 --
 -- The wrapper shares one _G with the game it runs, so anything it leaves in
 -- there is a name the game cannot use. The boot sequence and one full frame
@@ -233,5 +233,5 @@ T.describe("lv1lua entry table", function()
     end)
 end)
 
-io.write("\n=== global boundary (T7.3) ===\n")
+io.write("\n=== global boundary ===\n")
 return T.summary()

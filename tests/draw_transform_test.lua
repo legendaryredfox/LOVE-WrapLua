@@ -1,12 +1,8 @@
--- Images and quads follow the transform stack the same way primitives do
--- (FIX_PLAN T7.7).
+-- Images and quads follow the transform stack the same way primitives do.
 --
 -- A point maps as p * S + O and a size as w * S, where S and O are the
--- flattened stack scale and offset. lpp-vita, PS3 and the 3DS already did this;
--- the PSP ignored the stack outright, and OneLua Vita folded it two different
--- wrong ways (plain image x + O * S, quad x + O), so with a scale active the
--- same sprite landed in three places. Both OneLua targets are checked here
--- against the rectangle in the same frame, which T5.2 already pins.
+-- flattened stack scale and offset. Both OneLua targets are checked here
+-- against the rectangle in the same frame, which prim_transform_test pins.
 
 local T = dofile("tests/runner.lua")
 

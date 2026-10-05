@@ -2,10 +2,9 @@
 --
 -- No console SDK exposes a matrix stack, so the stack is the software one in
 -- core/transform.lua and each backend folds the flattened result into its own
--- draw calls. This file used to exist as four near-identical copies, one per
--- backend; the only real difference between them was the 3DS hardware
--- scissor, which a backend now supplies as the optional hook
--- `lv1lua.gfx.applyScissor()`, called whenever the active scissor can change.
+-- draw calls. A backend with a hardware scissor (the 3DS) supplies the
+-- optional hook `lv1lua.gfx.applyScissor()`, called whenever the active
+-- scissor can change.
 
 local gfx = lv1lua.gfx
 gfx.transform = lv1lua.core.newTransformStack()

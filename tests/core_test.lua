@@ -19,7 +19,7 @@ local core = lv1lua.core
 -- "áéí": 3 glyphs, 6 bytes.
 local MULTIBYTE = "\195\161\195\169\195\173"
 
--- ── polyfill (scanline polygon fill, T4.2) ───────────────────────
+-- ── polyfill (scanline polygon fill) ─────────────────────────────
 -- Runs fillPolygon and returns the spans emitted on a given integer row.
 local function spansOnRow(vertices, row)
     local rows = {}

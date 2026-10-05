@@ -1,4 +1,4 @@
--- Image tint (FIX_PLAN T6.8).
+-- Image tint.
 --
 -- setColor with non-white RGB must modulate drawn images. OneLua exposes
 -- image.blittint(img, x, y, color) for whole-image tinting (no source rect),
@@ -159,5 +159,5 @@ T.describe("lpp-vita image tint", function()
     end)
 end)
 
-io.write("\n=== image tint (T6.8) ===\n")
+io.write("\n=== image tint ===\n")
 return T.summary()

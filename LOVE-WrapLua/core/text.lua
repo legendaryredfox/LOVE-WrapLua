@@ -2,11 +2,8 @@
 --
 -- Only `love.graphics.print` is genuinely native (it has to reach
 -- screen.print / Font.print / DrawText and apply that platform's scale), so it
--- stays in the backend. Everything above it was four copies that disagreed:
--- line spacing was a hardcoded 16 on PSP, 14 on PS3, size*1.2 on lpp-vita and
--- getHeight() on OneLua, and OneLua re-implemented word wrapping by hand
--- instead of using core/textwrap.lua. Spacing is now LOVE's
--- getHeight() * getLineHeight() everywhere.
+-- stays in the backend. Wrapping, alignment and LOVE's line spacing
+-- (getHeight() * getLineHeight()) are the same everywhere.
 
 local core = lv1lua.core
 

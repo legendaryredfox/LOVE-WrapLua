@@ -1,12 +1,4 @@
 local mask = {"up", "down", "left", "right", "cross", "circle", "square", "triangle", "r", "l", "start", "select", "home", "volup", "voldown"}
-local homeHeldtime = 0
-local homeCallbackThreshold = 0.04 --Next to 3 frames
-local homeCallbackCancel = 1
-local homeTime = 545
-
-dofile(lv1lua.dataloc.."LOVE-WrapLua/"..lv1lua.mode.."/callbacks.lua")
-
---Live area will be handled manually
 
 local buttonMap = {
     circle   = lv1lua.keyset[1],
@@ -41,7 +33,6 @@ function lv1lua.update()
 end
 
 function lv1lua.updatecontrols()
-    -- buttons.homepopup(0)
     buttons.read()
 
     -- Update joystick analog axes (-1..1)
@@ -70,7 +61,6 @@ function lv1lua.updatecontrols()
     lv1lua.checkGameRestart()
     if not lv1lua.isPSP and love.touch.__getFrontTouches then
         lv1lua.updateFrontTouch()
-        -- lv1lua.checkHomePress()
     end
 end
 
@@ -78,35 +68,6 @@ function lv1lua.checkGameRestart()
     if buttons.held.start and buttons.held.l and buttons.held.r
        and buttons.held.down then
         os.restart()
-    end
-end
-
---WIP
-function lv1lua.checkHomePress()
-    --When all analogs are 0 and not flicking, it means that home is pressed
-    if(buttons.analoglx == 0 and buttons.analogly == 0 and buttons.analogrx == 0 and buttons.analogry == 0) then
-        homeHeldtime = homeHeldtime + (lv1lua.dt or 0)
-    else
-        if(homeHeldtime>= homeCallbackThreshold and homeHeldtime < homeCallbackCancel) then
-            lv1lua.goLiveArea()
-        end
-        lv1lua.resumeFromLiveArea()
-    end
-end
-
-function lv1lua.goLiveArea()
-    lv1lua.onLiveArea()
-    os.golivearea()
-    os.delay(homeTime)
-end
-
-function lv1lua.resumeFromLiveArea()
-    if(homeHeldtime>= homeCallbackThreshold and homeHeldtime < homeCallbackCancel) then
-        while(buttons.waitforkey(__HOME)) do
-            os.delay(1)
-        end
-        homeHeldtime = 0
-        lv1lua.onResume()
     end
 end
 

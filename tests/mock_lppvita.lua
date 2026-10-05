@@ -2,7 +2,7 @@
 -- Load after mock_common.lua.
 --
 -- IMPORTANT: the argument orders below mirror the *real* native contract in
--- lpp-vita `source/luaGraphics.cpp` so that wrong-order wrapper bugs (#12)
+-- lpp-vita `source/luaGraphics.cpp` so that wrong-order wrapper bugs
 -- surface as test failures rather than silent mis-renders on device:
 --
 --   Graphics.drawLine(x1, x2, y1, y2, color)          -- NOT (x1,y1,x2,y2)

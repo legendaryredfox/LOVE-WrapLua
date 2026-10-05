@@ -114,7 +114,7 @@ T.describe("love.thread.newThread", function()
     end)
 end)
 
--- ── Thread registry + blocking channel API (#4) ──────────────────
+-- ── Thread registry + blocking channel API ──────────────────
 T.describe("thread registry + channel API", function()
     T.it("getThreads returns a table and never errors", function()
         T.istype(love.thread.getThreads(), "table")

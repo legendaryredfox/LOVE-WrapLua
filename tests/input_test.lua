@@ -1,4 +1,4 @@
--- Key edge detection (#T4.4).
+-- Key edge detection.
 --
 -- Console SDKs report "button is down"; LOVE games expect one keypressed per
 -- press and one keyreleased per release. The shared tracker in core/input.lua

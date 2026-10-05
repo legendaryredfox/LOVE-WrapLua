@@ -158,6 +158,22 @@ T.describe("core.config", function()
         T.eq(lv1lua.loveconf.identity, "LOVE-WrapLua")
     end)
 
+    T.it("a conf.lua that defines no love.conf does not crash the boot", function()
+        fresh("OneLua")
+        lv1luaconf = nil
+        local realExists, realDofile = lv1lua.exists, dofile
+        lv1lua.exists = function(p) return p:find("game/conf.lua", 1, true) ~= nil end
+        dofile = function(p)
+            if p:find("game/conf.lua", 1, true) then return end
+            return realDofile(p)
+        end
+        love.conf = nil
+        local ok, err = pcall(lv1lua.load, "LOVE-WrapLua/core/config.lua")
+        dofile, lv1lua.exists = realDofile, realExists
+        T.ok(ok, tostring(err))
+        T.eq(lv1lua.loveconf.identity, "LOVE-WrapLua")
+    end)
+
     T.it("does not leak the conf table as a global", function()
         fresh("OneLua")
         lv1luaconf = nil

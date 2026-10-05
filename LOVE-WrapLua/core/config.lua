@@ -9,7 +9,8 @@ lv1lua.loveconf = conf
 
 if lv1lua.exists(lv1lua.dataloc .. "game/conf.lua") then
     dofile(lv1lua.dataloc .. "game/conf.lua")
-    love.conf(conf)
+    -- LOVE runs a conf.lua that defines no love.conf without complaint.
+    if love.conf then love.conf(conf) end
     lv1lua.loveconf = conf
 end
 

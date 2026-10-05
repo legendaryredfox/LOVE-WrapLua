@@ -16,8 +16,15 @@ local unpack = unpack or table.unpack
 -- ── Canvas ───────────────────────────────────────────────────────
 -- No backend exposes a render target (getSupported().canvas is false), so a
 -- Canvas exists only so call sites do not crash; renderTo draws to the screen.
+-- Drawing the canvas afterwards is therefore a no-op: its content is already
+-- on screen, and handing the Lua table to a native blit raises on device.
 local Canvas = {}
 Canvas.__index = Canvas
+local CANVAS_TYPES = { Canvas = true, Texture = true, Drawable = true, Object = true }
+function Canvas:type()      return "Canvas" end
+function Canvas:typeOf(t)   return CANVAS_TYPES[t] == true end
+function Canvas:_draw()     end
+function Canvas:release()   return false end
 function Canvas:getWidth()  return self._width end
 function Canvas:getHeight() return self._height end
 function Canvas:getDimensions() return self._width, self._height end
@@ -31,11 +38,10 @@ function Canvas:newImageData() return nil end
 function Canvas:renderTo(fn) if fn then fn() end end
 
 function love.graphics.newCanvas(width, height, settings)
-    return setmetatable({
+    return lv1lua.util.registerDrawObject(setmetatable({
         _width  = width  or lv1lua.screenWidth,
         _height = height or lv1lua.screenHeight,
-        imgData = nil,
-    }, Canvas)
+    }, Canvas))
 end
 
 function love.graphics.setCanvas(canvas)

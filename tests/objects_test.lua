@@ -88,6 +88,22 @@ for _, mode in ipairs(MODES) do
             T.ok(ran, "renderTo should still call the function")
         end)
 
+        T.it("drawing a Canvas never reaches the native draw", function()
+            -- Its content already went to the screen through renderTo, so the
+            -- common "draw to a canvas, then draw the canvas scaled" pattern
+            -- must neither raise nor hand a Lua table to the SDK.
+            local c = love.graphics.newCanvas(8, 8)
+            __rec.reset()
+            in_frame(function() love.graphics.draw(c, 0, 0, 0, 2, 2) end)
+            for _, call in ipairs(__rec.calls) do
+                for _, v in ipairs(call.args) do
+                    T.ok(v ~= c, tostring(call.name) .. " received the Canvas")
+                end
+            end
+            T.eq(c:type(), "Canvas")
+            T.ok(c:typeOf("Texture"))
+        end)
+
         -- ── Shader ───────────────────────────────────────────────
         T.it("newShader returns an inert object", function()
             local s = love.graphics.newShader("code")

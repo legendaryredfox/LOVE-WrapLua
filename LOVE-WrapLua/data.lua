@@ -31,25 +31,35 @@ local function b64dec(s)
     end))
 end
 
+-- Parenthesised: gsub's second result (the match count) must not leak out.
 local function hexenc(s)
-    return s:gsub('.', function(c) return string.format('%02x', c:byte()) end)
+    return (s:gsub('.', function(c) return string.format('%02x', c:byte()) end))
 end
 
 local function hexdec(s)
-    return s:gsub('..', function(h) return string.char(tonumber(h, 16)) end)
+    return (s:gsub('..', function(h) return string.char(tonumber(h, 16)) end))
 end
 
+-- Coerce a ByteData/string argument down to a plain Lua string.
+local function tostr(v)
+    if type(v) == 'string' then return v end
+    if type(v) == 'table' and v.getString then return v:getString() end
+    return tostring(v)
+end
+
+local box
+
 function love.data.encode(containerType, format, data, linelength)
-    if format == 'base64' then return b64enc(data) end
-    if format == 'hex'    then return hexenc(data) end
+    if format == 'base64' then return box(containerType, b64enc(tostr(data))) end
+    if format == 'hex'    then return box(containerType, hexenc(tostr(data))) end
     -- LOVE raises here; returning the input unchanged made a misspelled format
     -- look like it had worked.
     error("love.data.encode: unsupported format '" .. tostring(format) .. "'", 2)
 end
 
 function love.data.decode(containerType, format, data)
-    if format == 'base64' then return b64dec(data) end
-    if format == 'hex'    then return hexdec(data) end
+    if format == 'base64' then return box(containerType, b64dec(tostr(data))) end
+    if format == 'hex'    then return box(containerType, hexdec(tostr(data))) end
     error("love.data.decode: unsupported format '" .. tostring(format) .. "'", 2)
 end
 
@@ -65,13 +75,6 @@ end
 local function deflate()
     _deflate = _deflate or lv1lua.loadOnce('LOVE-WrapLua/vendor/LibDeflate.lua')
     return _deflate
-end
-
--- Coerce a ByteData/string argument down to a plain Lua string.
-local function tostr(v)
-    if type(v) == 'string' then return v end
-    if type(v) == 'table' and v.getString then return v:getString() end
-    return tostring(v)
 end
 
 local HASH = {
@@ -101,7 +104,7 @@ end
 
 -- Boxes a result string as a ByteData when the caller asked for a 'data'
 -- container, matching LÖVE's return-type contract; otherwise returns the string.
-local function box(containerType, s)
+function box(containerType, s)
     if containerType == 'data' then return love.data.newByteData(s) end
     return s
 end

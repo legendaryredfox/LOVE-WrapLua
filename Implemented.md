@@ -1,200 +1,189 @@
-# LOVE-WrapLua — Implemented API (LÖVE 11.5)
+# LOVE-WrapLua: implemented API (LÖVE 11.5)
 
-> Platform keys: **OL** = OneLua (Vita), **PSP** = PSP (graphics_psp), **LPP** = lpp-vita, **PS3** = PS3.
-> The 3DS (lpp-3ds) has its own section below instead of a column.
->
-> Support tiers (`love._backend.tier`): **OL** and **PSP** are tier 1 (supported),
-> **LPP** and **PS3** are tier 2 (partial; RPCS3 cannot run the PS3 build, so
-> confirm it on hardware), the **3DS** is tier 3 (experimental: grounded in the
-> lpp-3ds sources, not yet run). See the README "Support tiers" table.
+Columns: **OL** = OneLua on PS Vita, **PSP** = OneLua on PSP, **LPP** = lpp-vita,
+**PS3** = PS3 Lua Player (tiny3D), **3DS** = lpp-3ds.
+
+Support tiers (`love._backend.tier`): OL and PSP are tier 1 (supported), LPP and
+PS3 tier 2 (partial; RPCS3 cannot run the PS3 build, so confirm it on hardware),
+the 3DS tier 3 (experimental: grounded in the lpp-3ds sources, not yet run on a
+console). See the README "Support tiers" table.
+
+Legend: ✓ = LÖVE behaviour, **tracked** = the value is stored and read back but
+does not reach the hardware, **stub** = callable, does nothing, **none** = not
+defined, so calling it errors.
 
 ---
 
 ## Callbacks
 
-| Callback | OL | PSP | LPP | PS3 |
-|---|---|---|---|---|
-| love.load | ✓ | ✓ | ✓ | ✓ |
-| love.update(dt) | ✓ | ✓ | ✓ | ✓ |
-| love.draw | ✓ | ✓ | ✓ | ✓ |
-| love.keypressed(key, scancode, isrepeat) once per press | ✓ | ✓ | ✓ | ✓ |
-| love.keyreleased(key, scancode) once per release | ✓ | ✓ | ✓ | ✓ |
-| love.textinput | stub | stub | stub | stub |
-| love.quit | ✓ | ✓ | ✓ | ✓ |
-| love.mousepressed | OL-Vita only | — | — | — |
-| love.gamepadpressed | routed via keypressed | ✓ | ✓ | ✓ |
-| love.gamepadreleased | routed via keyreleased | ✓ | ✓ | ✓ |
-| love.focus / visible / resize | stub | stub | stub | stub |
-| love.lowmemory / threaderror | stub | stub | stub | stub |
+| Callback | OL | PSP | LPP | PS3 | 3DS |
+|---|---|---|---|---|---|
+| love.load / update(dt) / draw | ✓ | ✓ | ✓ | ✓ | ✓ |
+| love.keypressed(key, scancode, isrepeat), once per press | ✓ | ✓ | ✓ | ✓ | ✓ |
+| love.keyreleased(key, scancode), once per release | ✓ | ✓ | ✓ | ✓ | ✓ |
+| love.gamepadpressed / gamepadreleased | routed from the key callbacks when the game defines no keypressed / keyreleased; the d-pad arrives as `dpup` / `dpdown` / `dpleft` / `dpright` | same | same | same | same |
+| love.textinput | ✓ on-screen keyboard | ✓ on-screen keyboard | ✓ IME, fires when it closes | stub | stub |
+| love.mousepressed / mousereleased / mousemoved | ✓ first finger, `istouch` true | none | none | none | none |
+| love.touchpressed / touchmoved / touchreleased | ✓ front panel | none | none | none | none |
+| love.quit | ✓ returning true cancels the quit | ✓ | ✓ | ✓ (an XMB exit or L3+R3 cannot be cancelled) | ✓ |
+| love.threaderror | ✓ | ✓ | ✓ | ✓ | ✓ |
+| love.focus / visible / resize / lowmemory / wheelmoved | stub | stub | stub | stub | stub |
 
 ---
 
-## love (top-level)
+## love (top level)
 
-- `love.getVersion()` → `11, 5, 0, "Mysterious Mysteries"`
+- `love.getVersion()` returns `11, 5, 0, "Mysterious Mysteries"`.
+- `love._backend` is the capability record for the running backend
+  (`core/capabilities.lua`): tier, limits, feature flags, emulator caveats.
 
 ---
 
 ## love.graphics
 
-| Function | OL | PSP | LPP | PS3 |
-|---|---|---|---|---|
-| newImage(filename, settings) | ✓ Image object, warns if >512 | ✓ Image object, warns if >512 / NPOT | ✓ Image object, warns if >1024 | ✓ Image object, no validation |
-| newQuad(x,y,w,h,sw,sh or img) | ✓ warns if >512 | ✓ warns if >512 / NPOT | ✓ warns if >1024 | ✓ no validation |
-| setTextureInset / getTextureInset | ✓ | ✓ | ✓ | — |
-| draw(drawable, …) | ✓ | ✓ quad sub-rect + scale/flip via a cached copy, source never mutated | ✓ quad + rotation + scale via drawImageExtended | ✓ position only (quad accepted but ignored) |
-| setColor(r,g,b,a) **0–1 range** | ✓ tints whole-image draws via `image.blittint`; quad sub-rects use alpha only (no native sub-rect tint) | ✓ same as OL | ✓ full tint on all draw forms via `drawImageExtended` color arg | ✓ tracked; no native tint call |
-| getColor() | ✓ | ✓ | ✓ | ✓ |
-| setBackgroundColor | ✓ | ✓ | ✓ | ✓ |
-| getBackgroundColor | ✓ | ✓ | ✓ | ✓ |
-| clear(r,g,b,a) | ✓ | ✓ | no-op (frame loop clears) | no-op (frame loop clears) |
-| setBlendMode / getBlendMode | tracked, never applied | ✓ `add` / `subtract` on whole-image draws (`image.blitadd` / `blitsub`); quads and primitives stay alpha | tracked, never applied | ✓ all eight modes via tiny3d `gfx.BlendFunction` |
-| isBlendModeSupported(mode) *(wrapper extra)* | ✓ | ✓ | ✓ | ✓ |
-| setLineWidth / getLineWidth | ✓ | ✓ | ✓ | ✓ |
-| setLineStyle / getLineStyle | stub | stub | stub | stub |
-| setLineJoin / getLineJoin | stub | stub | stub | stub |
-| setPointSize / getPointSize | stub | stub | stub | stub |
-| newFont(file, size) | ✓ TTF, cached per face+size | ✓ PGF system face only, size varies | ✓ TTF, cached per face+size | ✓ no native font, metrics estimated |
-| setFont / getFont | ✓ | ✓ | ✓ | ✓ |
-| setNewFont | ✓ | ✓ | ✓ | ✓ |
-| print(text, x, y) | ✓ | ✓ | ✓ | ✓ |
-| printf(text, x, y, wrap, align) | ✓ | ✓ | ✓ | ✓ |
-| rectangle(mode, x,y,w,h) | ✓ | ✓ | ✓ | stub |
-| circle(mode, x,y,r) | ✓ | ✓ | ✓ | stub |
-| ellipse(mode, x,y,rx,ry) | ✓ | ✓ | ✓ | stub |
-| polygon(mode, vertices) | ✓ scanline fill (convex + concave) | ✓ scanline fill | ✓ scanline fill | stub |
-| arc(mode, type, x,y,r,a1,a2) | ✓ | ✓ | ✓ | stub |
-| line(…) | ✓ | ✓ | ✓ | stub |
-| points(…) | ✓ | ✓ | ✓ | stub |
-| push / pop | ✓ | ✓ | ✓ | ✓ |
-| translate / scale / rotate | ✓ images **and** primitives | ✓ images **and** primitives | ✓ images **and** primitives | ✓ images **and** primitives |
-| shear | stub | stub | stub | stub |
-| origin / reset | ✓ | ✓ | ✓ | ✓ |
-| applyTransform / replaceTransform | ✓ | ✓ | ✓ | ✓ |
-| transformPoint / inverseTransformPoint | ✓ | ✓ | ✓ | ✓ |
-| setScissor / getScissor / intersectScissor | ✓ | tracked only | ✓ software reject | tracked only |
-| stencil / setStencilTest / getStencilTest | stub | stub | stub | stub |
-| setDefaultFilter / getDefaultFilter | ✓ reaches the native filter | tracked only | tracked only | tracked only |
-| getDimensions / getWidth / getHeight | ✓ | ✓ | ✓ | ✓ |
-| isActive / present | ✓ | ✓ | ✓ | ✓ |
-| captureScreenshot | stub | stub | stub | stub |
-| newCanvas(w, h) | stub (`canvas=false`) | stub | stub | stub |
-| setCanvas / getCanvas | stub (draws to screen) | stub | stub | stub |
-| newShader / setShader / getShader | stub | stub | stub | stub |
-| newSpriteBatch(img, max, usage) | ✓ | ✓ quads honoured, no rotation | ✓ | ✓ position only |
-| newText(font, text) / newTextBatch | ✓ | ✓ | ✓ | ✓ |
-| newMesh | stub | stub | stub | stub |
-| newParticleSystem | ✓ (basic) | — | — | — |
-| getStats / getRendererInfo | ✓ shared stat table (all fields present, all zero) | ✓ | ✓ | ✓ |
-| getSystemLimits / getSupported | ✓ | ✓ | ✓ | ✓ (from central capability table) |
-| isGammaCorrect | ✓ | — | — | — |
+| Function | OL | PSP | LPP | PS3 | 3DS |
+|---|---|---|---|---|---|
+| newImage(filename) | ✓ warns above 512 | ✓ warns above 512 or not power-of-two | ✓ warns above 1024 | ✓ warns above 512 | ✓ warns above 1024 |
+| newQuad(x, y, w, h, sw, sh or image) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| draw(drawable, x, y, r, sx, sy, ox, oy) | ✓ through a scaled, mirrored copy per sheet; the source is never resized or flipped | ✓ same as OL | ✓ `drawScaleImage` / `drawImageExtended` | ✓ tiny3D textured quad | ✓ `drawScaleImage` / `drawImageExtended` |
+| draw(image, quad, ...) | ✓ sub-rect of that copy; a rotation turns the whole copy | ✓ same as OL | ✓ | ✓ quad UVs, mirroring swaps them | ✓ |
+| setColor(r, g, b, a), **0 to 1** | ✓ tints whole images (`image.blittint`); quads take alpha only | ✓ same as OL | ✓ tints every draw | ✓ tints every draw (vertex colour) | ✓ tints every draw |
+| getColor / setBackgroundColor / getBackgroundColor | ✓ | ✓ | ✓ | ✓ | ✓ |
+| clear(...) | ✓ | ✓ | no-op (the frame loop clears) | no-op | no-op |
+| setBlendMode / getBlendMode | tracked | ✓ `add` / `subtract` on whole images | tracked | ✓ all eight modes (`gfx.BlendFunction`) | tracked |
+| isBlendModeSupported(mode) *(wrapper extension)* | ✓ | ✓ | ✓ | ✓ | ✓ |
+| setLineWidth / getLineWidth | ✓ | ✓ | ✓ | ✓ thick lines | ✓ |
+| setLineStyle / setLineJoin / setPointSize | stub | stub | stub | stub | stub |
+| newFont / setFont / getFont / setNewFont | ✓ TTF, cached per face and size | ✓ PGF system face, size varies | ✓ TTF | ✓ TTF (`gfx.FontAddTTF`), metrics estimated | ✓ TTF |
+| print(text, x, y) | ✓ follows the transform stack | ✓ | ✓ | ✓ | ✓ printed after the frame, always on top |
+| printf(text, x, y, limit, align) | ✓ wrap, left / center / right | ✓ | ✓ | ✓ | ✓ |
+| rectangle / circle / ellipse / arc / line / points | ✓ | ✓ | ✓ | ✓ | ✓ |
+| polygon(mode, vertices) | ✓ even-odd scanline fill | ✓ | ✓ | ✓ | ✓ |
+| push / pop / origin / reset | ✓ | ✓ | ✓ | ✓ | ✓ |
+| translate / scale / rotate | ✓ images, shapes and text; `rotate` does not rotate later positions | ✓ | ✓ | ✓ | ✓ |
+| shear | stub | stub | stub | stub | stub |
+| applyTransform / replaceTransform | ✓ translation, rotation and scale (shear dropped) | ✓ | ✓ | ✓ | ✓ |
+| transformPoint / inverseTransformPoint | ✓ | ✓ | ✓ | ✓ | ✓ |
+| setScissor / getScissor / intersectScissor | tracked | tracked | ✓ software reject | tracked | ✓ GPU scissor |
+| stencil / setStencilTest / getStencilTest | stub | stub | stub | stub | stub |
+| setDefaultFilter / getDefaultFilter | ✓ applied to new images and scaled copies | tracked | ✓ applied to new images | tracked | tracked |
+| setTextureInset / getTextureInset *(wrapper extension)* | ✓ | ✓ | ✓ whole texels | none on the draw | ✓ whole texels |
+| newCanvas / setCanvas / getCanvas | stub: draws go to the screen, drawing the Canvas does nothing | stub | stub | stub | stub |
+| newShader / setShader / getShader | stub | stub | stub | stub | stub |
+| newSpriteBatch | ✓ | ✓ | ✓ | ✓ | ✓ |
+| newText / newTextBatch | ✓ | ✓ | ✓ | ✓ | ✓ |
+| newParticleSystem | basic | basic | basic | basic | basic |
+| newMesh | stub | stub | stub | stub | stub |
+| getDimensions / getWidth / getHeight | 960x544 | 480x272 | 960x544 | 720x480 | 400x240 |
+| getSystemLimits / getSupported | ✓ from the capability table | ✓ | ✓ | ✓ | ✓ |
+| getStats / getRendererInfo / isGammaCorrect / isActive / present | ✓ (stats are all zero) | ✓ | ✓ | ✓ | ✓ |
+| captureScreenshot | stub | stub | stub | stub | stub |
+
+SpriteBatch, Text and ParticleSystem objects replay their draws inside the
+transform of the call that draws them, so `draw(batch, x, y, r, sx, sy, ox, oy)`
+places, turns and scales the whole object. ParticleSystem is a basic emitter:
+emission rate, lifetime, speed, direction and spread work; size, colour and
+rotation curves are accepted and ignored.
 
 ### Font object methods
 
-One shared Font implementation (`core/font.lua`) on every backend; only
-measuring and face loading are native.
+One shared Font implementation (`core/font.lua`); only measuring and loading
+are native.
 
-| Method | OL | PSP | LPP | PS3 |
-|---|---|---|---|---|
-| getWidth(text) | ✓ native `screen.textwidth` | ✓ native `screen.textwidth` | ✓ native `Font.getTextWidth` | estimate: glyphs × size × 0.6 |
-| getHeight / getBaseline / getAscent | ✓ = requested size | ✓ | ✓ | ✓ |
-| getDescent | 0 | 0 | 0 | 0 |
-| getLineHeight / setLineHeight | ✓ stored, used by printf | ✓ | ✓ | ✓ |
-| getWrap(text, width) | ✓ | ✓ | ✓ | ✓ |
-| type / typeOf / release | ✓ | ✓ | ✓ | ✓ |
-| hasGlyph / getKerning / setFallbacks / getDPIScale | stub (`true` / `0` / no-op / `1`) | stub | stub | stub |
-| getFilter / setFilter | reports the default filter; set is a no-op | same | same | same |
+| Method | OL | PSP | LPP | PS3 | 3DS |
+|---|---|---|---|---|---|
+| getWidth(text) | ✓ `screen.textwidth` | ✓ `screen.textwidth` | ✓ `Font.getTextWidth` | estimate: glyphs × size × 0.6 | ✓ `Font.measureText` |
+| getHeight / getBaseline / getAscent | the requested size | same | same | same | same |
+| getDescent / getKerning / getDPIScale | 0 / 0 / 1 | same | same | same | same |
+| getLineHeight / setLineHeight | ✓ default 1.2, used by printf | same | same | same | same |
+| getWrap(text, width) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| hasGlyph / setFallbacks / getFilter / setFilter | stub | stub | stub | stub | stub |
+| type / typeOf / release | ✓ | ✓ | ✓ | ✓ | ✓ |
 
-printf line spacing is LOVE's `getHeight() * getLineHeight()` on all four
-backends, and wrapping is measured with the font itself, never by byte count.
+printf line spacing is `getHeight() * getLineHeight()` and wrapping is measured
+with the font itself. Unlike LÖVE, getHeight is the requested size and the
+default line height is 1.2, which together give roughly LÖVE's spacing.
 
 ### Image object methods
 
-`newImage` returns the same shared Image object on every backend
-(`core/image.lua`), with the SDK's texture inside. Before T7.6, lpp-vita, the
-3DS and the PSP returned the bare handle (an integer on lpp-vita and lpp-3ds), so
-any method call on it, including the `image:getWidth()` anim8 makes, crashed on
-device.
+`newImage` returns one shared Image object (`core/image.lua`) with the SDK's
+texture inside; draws unwrap it. lpp-vita and lpp-3ds return textures as
+integers, so a bare handle would raise on any method call.
 
 | Method | All backends | Native where |
 |---|---|---|
 | type / typeOf | `"Image"`; also a Texture, Drawable and Object | |
-| getWidth / getHeight / getDimensions | ✓ | OneLua reads the handle live (imgscale resizes it) |
+| getWidth / getHeight / getDimensions | ✓ | |
 | getPixelWidth / getPixelHeight / getPixelDimensions / getDPIScale | ✓ (`1`) | |
-| getFilter / setFilter | ✓ starts at the default filter | lpp-vita: `Graphics.setImageFilters` (point / linear); elsewhere tracked |
-| getWrap / setWrap | ✓ tracked | no SDK samples outside a quad |
+| getFilter / setFilter | ✓ starts at the default filter | OL: `image.setfilter`; LPP: `Graphics.setImageFilters`; elsewhere tracked |
+| getWrap / setWrap | tracked | no SDK samples outside a quad |
 | getMipmapFilter / setMipmapFilter | no mipmaps (`nil` / no-op) | |
 | getTextureType / getFormat / isCompressed / isReadable / getMipmapCount | `"2d"` / `"rgba8"` / false / true / 1 | |
 | replacePixels | no-op | |
-| release | ✓ returns true once | lpp-vita and 3DS free the texture (`Graphics.freeImage`) |
+| release | ✓ true once | LPP and 3DS free the texture (`Graphics.freeImage`) |
 
 ---
 
 ## love.timer
 
-| Function | All platforms |
+| Function | All backends |
 |---|---|
-| getTime() | ✓ |
-| getDelta() | ✓ the fixed update slice the current `love.update` was called with |
-| getFPS() | ✓ measured render rate (rolling mean of the last 30 frames) |
-| getAverageDelta() | ✓ mean measured frame time |
-| sleep(seconds) | ✓ |
-| step() | ✓ returns the last frame time; the main loop does the measuring |
+| getTime | ✓ (PS3 has no timer: the frame clock, advancing by each frame's dt) |
+| getDelta | ✓ the fixed update slice `love.update` was called with |
+| getFPS / getAverageDelta | ✓ the measured render rate over the last 30 frames |
+| sleep | ✓ (busy-waits where the SDK has no delay call: 3DS, older lpp-vita) |
+| step | ✓ the last frame time; the main loop does the measuring |
 
 Updates run on a shared fixed-timestep accumulator (`core/timestep.lua`):
-`love.update` is called in `1/lv1luaconf.updaterate` slices (default 60/s) and
-the leftover time carries into the next frame, so game speed no longer follows
-the render rate. `lv1luaconf.maxframeskip` (default 5) caps the catch-up after a
-stall. `lv1luaconf.updaterate = "variable"` restores desktop LÖVE's
-one-update-per-frame behaviour. The PS3 Lua Player exposes no timer, so that
-backend assumes one slice per frame.
+`love.update` is called in `1/lv1luaconf.updaterate` slices (default 60 per
+second), the leftover time carries into the next frame, and
+`lv1luaconf.maxframeskip` (default 5) caps the catch-up after a stall.
+`updaterate = "variable"` restores desktop LÖVE's one update per frame. The PS3
+assumes one slice per frame.
 
 ---
 
 ## love.keyboard
 
-| Function | All platforms |
+| Function | All backends |
 |---|---|
-| isDown(key) | ✓ |
-| isScancodeDown | ✓ |
-| hasKeyRepeat / setKeyRepeat | ✓ off by default; when on, repeats after 0.4s at 0.05s intervals |
-| hasTextInput | stub |
-| getKeyFromScancode / getScancodeFromKey | ✓ (identity) |
-| showTextInput / setTextInput | ✓ |
+| isDown(key, ...) / isScancodeDown | ✓ true when any of the keys is down |
+| hasKeyRepeat / setKeyRepeat | ✓ off by default; repeats after 0.4 s, then every 0.05 s |
+| getKeyFromScancode / getScancodeFromKey | identity (no scancodes on a pad) |
+| showTextInput / setTextInput | ✓ on OL, PSP and LPP; stub on PS3 and 3DS |
+| hasTextInput | `false` |
 
 ---
 
 ## love.audio
 
-One shared Source implementation (`core/audio.lua`) on every backend; each
-backend supplies only its native hooks.
+One shared Source (`core/audio.lua`); each backend supplies only native hooks.
 
-| Function | OL / PSP | LPP | PS3 |
-|---|---|---|---|
-| newSource(file, type) | ✓ (non-MP3 extensions are mapped to `.mp3`) | ✓ | ✓ stream only; a `static` source loads nothing and stays silent |
-| play / stop / pause / resume | ✓ | ✓ | ✓ |
-| play/stop/pause/resume with no argument | ✓ all sources (`pause()` returns what it paused) | ✓ | ✓ |
-| getVolume / setVolume (global) | ✓ scales every source | ✓ | ✓ |
-| getActiveSourceCount / getSourceCount | ✓ | ✓ | ✓ |
-| isEffectsSupported / getMax*Effects | `false` / `0` | same | same |
-| setPosition / setOrientation / setDistanceModel (listener) | stub (mono output) | stub | stub |
-| Simultaneous voices | 2 (1 static + 1 stream) | 8 | 1 (background voice) |
+| Function | OL / PSP | LPP | PS3 | 3DS |
+|---|---|---|---|---|
+| newSource(file, type) | ✓ MP3; other extensions are mapped to `.mp3` | ✓ | ✓ `stream` only; a `static` source loads nothing | ✓ WAV, OGG, AIFF |
+| play / stop / pause (one source, several, or a list; none means all) | ✓ | ✓ | ✓ | ✓ |
+| getVolume / setVolume (master) | ✓ | ✓ | ✓ | tracked |
+| getActiveSourceCount / getSourceCount | ✓ | ✓ | ✓ | ✓ |
+| isEffectsSupported / listener API | `false` / stub | same | same | same |
+| Simultaneous voices | 2 (one static, one stream) | 8 | 1 (the last stream played holds it) | 24 |
 
 ### Source object methods
 
 | Method | Notes |
 |---|---|
-| play / stop / pause / resume | ✓ native on every backend |
-| isPlaying / isStopped / isPaused | ✓ real paused state (was always `false`) |
-| setVolume / getVolume | ✓ 0–1, scaled by the master volume |
-| setLooping / isLooping | ✓ (OneLua toggles the native loop flag) |
-| tell(unit) | ✓ timed from `love.timer.getTime` across play/pause/resume/seek (no SDK here reports a position); `"samples"` assumes 44100 Hz |
-| seek(position, unit) | moves the reported position; only lpp-vita builds that expose `Sound.setPosition` really jump, so audio keeps playing where it was |
-| setPitch / getPitch | tracked and applied to the timed position; only used natively where the SDK exposes a pitch call (probed) |
-| getDuration | native where exposed, else read from a WAV header, else `0` |
+| play | LÖVE 11: does nothing on a playing source, resumes a paused one |
+| stop | rewinds; on LPP the track is closed and reopened, because the SDK has no stop |
+| pause / resume | ✓ (`resume` is kept although LÖVE 11 dropped it) |
+| isPlaying / isPaused / isStopped | ✓ |
+| setVolume / getVolume | ✓ 0 to 1, scaled by the master volume; 3DS tracked only |
+| setLooping / isLooping | ✓ |
+| tell(unit) / seek(position, unit) | timed from `love.timer.getTime`; no SDK here reports or moves a playback position, so `seek` moves only the reported one |
+| setPitch / getPitch | tracked and applied to the timed position |
+| getDuration | native where exposed, else read from a WAV header, else 0 |
 | clone | ✓ copies volume, pitch and looping |
-| type / typeOf / release | ✓ |
-| getChannelCount / setPosition / setRelative | stub (mono console output) |
+| release | ✓ frees the native track where the SDK can (LPP) and forgets the source |
+| type / typeOf / getType | ✓ |
 
 ---
 
@@ -203,21 +192,24 @@ backend supplies only its native hooks.
 | Function | Notes |
 |---|---|
 | read / write / append | ✓ save directory first, then the game directory |
-| isFile / isDirectory | ✓ a directory is no longer reported as a file (native probe, else "exists but cannot be read as bytes") |
-| getInfo(file, filtertype) | ✓ real `size` in bytes; `type` distinguishes file and directory; `modtime` is always 0 (no SDK here exposes a file date) |
-| Quad(x, y, w, h, image) | ✓ texture dimensions come from the image on all four backends |
+| lines | ✓ strips `\n` and `\r\n`, no empty line after a final newline |
 | load | ✓ |
-| remove | ✓ |
-| createDirectory | ✓ |
-| getDirectoryItems | ✓ merges the game and save directories, drops duplicates, sorted |
-| lines | ✓ |
-| newFile | ✓ |
+| getInfo(file, filtertype) | ✓ real `size`; `type` tells file from directory; `modtime` is 0 (no SDK exposes a file date) |
+| isFile / isDirectory | ✓ |
+| remove / createDirectory | ✓ |
+| getDirectoryItems | ✓ merges the game and save directories, sorted, no duplicates |
+| newFile(name, mode) | ✓ opens straight away when a mode is given; open handles are closed at `love.event.quit` |
 | newFileData | ✓ |
-| mount / unmount | stub |
 | getIdentity / setIdentity | ✓ |
-| getWorkingDirectory / getRealDirectory | ✓ |
-| getUserDirectory / getSaveDirectory | ✓ |
-| isFused | ✓ (always true) |
+| getSaveDirectory / getUserDirectory / getAppdataDirectory | ✓ |
+| getWorkingDirectory / getRealDirectory / getSourceBaseDirectory | ✓ |
+| mount / unmount | stub |
+| isFused | `true` |
+
+Save locations: Vita `ux0:/data/<identity>/savedata/`, 3DS
+`/3ds/data/<identity>/`, PSP `ms0:/PSP/GAME/LOVE-WrapLua/savedata/`, PS3
+`<game folder>/savedata/`. On the Vita and 3DS `setIdentity` moves the save
+directory; the PSP and PS3 keep one folder beside the game.
 
 ---
 
@@ -225,41 +217,38 @@ backend supplies only its native hooks.
 
 | Function | Notes |
 |---|---|
-| random / setRandomSeed | ✓ own generator, not Lua's `math.random`; `setRandomSeed(low, high)` uses both words |
-| getRandomSeed | ✓ returns the two state words |
+| random / setRandomSeed / getRandomSeed | ✓ own L'Ecuyer generator (not Lua's `math.random`), the same stream on every Lua version; both seed words are used |
 | randomNormal | ✓ Box-Muller |
-| noise(x,y,z,w) | ✓ Perlin 1D-4D, normalized 0–1; loading does not reseed Lua's RNG |
+| newRandomGenerator | ✓ `getState` returns both words as `"s1,s2"` |
+| noise(x, y, z, w) | ✓ Perlin 1D to 4D, 0 to 1 |
 | newTransform | ✓ full 2D affine |
-| newBezierCurve | ✓ |
-| newRandomGenerator | ✓ L'Ecuyer combined generator: period ≈2.3e18, exact in a double on Lua 5.1–5.4 and LuaJIT. `getState` returns both words as `"s1,s2"` |
-| isConvex | ✓ |
-| triangulate | ✓ ear-clip |
-| colorFromBytes / colorToBytes | ✓ |
-| gammaToLinear / linearToGamma | ✓ |
+| newBezierCurve | ✓ evaluate / render |
+| isConvex / triangulate | ✓ (ear clipping) |
+| colorFromBytes / colorToBytes / gammaToLinear / linearToGamma | ✓ |
 
 ---
 
 ## love.window
 
-All functions present. Console window is always fullscreen; `setMode` is a no-op.
-
-Key implemented: `getDimensions`, `getWidth`, `getHeight`, `getTitle`, `setTitle`, `getMode`, `hasFocus`, `isVisible`, `isOpen`, `getSafeArea`, `getDPIScale`, `showMessageBox` (stub).
+Every function exists. The window is always fullscreen at the console's
+resolution, so `setMode` and `setFullscreen` change nothing and `getMode`
+reports the fixed mode.
 
 ---
 
 ## love.joystick
 
+One virtual gamepad, filled every frame by the backend.
+
 | Function | Notes |
 |---|---|
-| getJoysticks() | returns 1 controller |
-| getJoystickCount() | returns 1 |
-| Joystick:getAxis(n) | ✓ axes 1–4 (lx,ly,rx,ry) + 5–6 (L2,R2 if available) |
-| Joystick:getAxes() | ✓ |
-| Joystick:isDown(n) | ✓ raw button index |
-| Joystick:isGamepadDown(name) | ✓ LÖVE gamepad name |
-| Joystick:getGamepadAxis(name) | ✓ leftx/lefty/rightx/righty |
-| Joystick:getHat / getName / getID | ✓ |
-| Joystick:isVibrationSupported | false |
+| getJoysticks / getJoystickCount | one controller |
+| Joystick:getAxis / getAxes | ✓ left and right stick (3DS: circle pad only) |
+| Joystick:isDown / isGamepadDown | ✓ |
+| Joystick:getGamepadAxis | ✓ leftx / lefty / rightx / righty |
+| Joystick:getHat | ✓ the d-pad |
+| Joystick:getName / getID | ✓ |
+| Joystick:isVibrationSupported / setVibration | `false` / stub |
 
 ---
 
@@ -267,28 +256,24 @@ Key implemented: `getDimensions`, `getWidth`, `getHeight`, `getTitle`, `setTitle
 
 | Function | Notes |
 |---|---|
-| encode / decode | ✓ base64 + hex |
-| hash | ✓ md5/sha1/sha224/256/384/512 (vendored sha2.lua), raw-byte digest |
-| compress / decompress | ✓ deflate + zlib (vendored LibDeflate); gzip/lz4 fall back to deflate |
-| newByteData / newDataView | ✓ |
-| pack / unpack | ✓ (requires Lua 5.3) |
-| getSize | ✓ |
+| encode / decode | ✓ base64 and hex; the `"data"` container returns a ByteData |
+| hash | ✓ md5, sha1, sha224, sha256, sha384, sha512 (vendored sha2.lua), raw digest |
+| compress / decompress | ✓ deflate and zlib (vendored LibDeflate), byte-compatible with desktop LÖVE; `gzip` and `lz4` fall back to deflate |
+| newByteData / newDataView / getSize | ✓ |
+| pack / unpack | ✓ on Lua 5.3+ only |
 
 ---
 
-## love.touch / love.mouse (Vita, OneLua only)
+## love.touch / love.mouse (OneLua on Vita)
 
-Loaded on the Vita whatever button layout is configured; PSP, lpp-vita and PS3
-do not define them.
+Loaded on the Vita whatever the button layout; no other backend defines them.
 
 | Function | Notes |
 |---|---|
-| love.touch.getTouches | ✓ returns the live touch ids |
-| love.touch.getPosition(id) | ✓ front-panel coordinates of that touch; `0, 0` for an id that is not down |
-| love.touch.getPressure(id) | ✓ `1` while the finger is down, else `0` |
-| love.mouse.getX / getY / getPosition | ✓ the last touch position |
-| love.mouse.isDown(button) | ✓ a touch is button 1 |
-| love.mouse.setPosition / setVisible / setGrabbed / setRelativeMode | stub (no pointer to move or hide) |
+| love.touch.getTouches / getPosition(id) / getPressure(id) | ✓ front panel; an id that is not down reads `0, 0` |
+| love.mouse.getX / getY / getPosition | ✓ the last position of the first finger |
+| love.mouse.isDown(button) | ✓ the first finger is button 1 |
+| love.mouse.setPosition / setVisible / setGrabbed / setRelativeMode | stub |
 
 ---
 
@@ -296,143 +281,106 @@ do not define them.
 
 | Function | Notes |
 |---|---|
-| getOS() | returns "LOVE-WrapLua" |
-| getLanguage | ✓ native on OneLua (`os.language`) and lpp-vita (`System.getLanguage`); `"en"` elsewhere |
-| getUsername | ✓ native on OneLua (`os.nick`) and lpp-vita (`System.getUsername`); `""` elsewhere |
-| getProcessorCount | ✓ from the capability table: Vita 4, PSP 1, PS3 2 |
-| getPowerInfo | ✓ native on lpp-vita (percentage, charging, minutes→seconds); `"nobattery"` on PS3; `"unknown"` where the SDK exposes no battery call (OneLua) |
-| setClipboardText / getClipboardText | ✓ process-local: no console exposes a system clipboard, so the text is gone on exit |
-| openURL | returns `false` (no SDK here hands a URL to a browser) |
-| vibrate | no-op (no rumble motor on Vita/PSP, none exposed on PS3) |
-| hasBackgroundMusic | returns `false` |
+| getOS | `"LOVE-WrapLua"` |
+| getLanguage | ✓ native on OL (`os.language`), LPP and 3DS; `"en"` elsewhere |
+| getUsername | ✓ native on OL (`os.nick`), LPP and 3DS; `""` elsewhere |
+| getProcessorCount | from the capability table: Vita 4, PSP 1, PS3 2, 3DS 2 |
+| getPowerInfo | ✓ native on LPP and 3DS (3DS in 20% steps); `"nobattery"` on PS3; `"unknown"` on OneLua |
+| setClipboardText / getClipboardText | process-local |
+| openURL / vibrate / hasBackgroundMusic | `false` / no-op / `false` |
 
 ---
 
-## love.thread (pseudo-threads via coroutines)
+## love.thread
 
-`newThread`, `getChannel`, `newChannel`, `getThread`, `getThreads`
+`newThread(file or source)`, `getChannel`, `newChannel`, `getThread`,
+`getThreads`; Channel `push`, `pop`, `peek`, `clear`, `hasRead`, `getCount`,
+`supply`, `demand`, `performAtomic`.
 
-Channel methods: `push`, `pop`, `peek`, `clear`, `hasRead`, `getCount`,
-`supply`, `demand`, `performAtomic`
-
-**Synchronous, by design.** There is no OS threading on these backends: a
-thread runs as a coroutine when `start(...)` is called and finishes before
-`start` returns, with its extra arguments forwarded into the chunk.
-Consequently `Channel:supply` cannot block (it is an immediate push) and
-`Channel:demand` is a non-blocking pop returning `nil` on an empty channel.
-Do not write producer/consumer logic that relies on cross-thread blocking.
-
----
-
-## Nintendo 3DS (lpp-3ds)
-
-The backend (`LOVE-WrapLua/3DS/`) is written against the lpp-3ds sources
-(`source/lua*.cpp`, cloned 2026-10-03) and sf2dlib, which `Graphics.*` wraps;
-`tests/mock_3ds.lua` raises wherever the real binding raises. Everything below
-the native layer (shared `core/`, math, data, thread, joystick, keyboard edges)
-behaves as on the other backends.
-
-| Area | Status | Native call / note |
-|---|---|---|
-| Screen | top screen, 400x240 | `Graphics.initBlend(TOP_SCREEN)` per frame; the bottom screen is unused |
-| draw(image / quad, x, y, r, sx, sy, ox, oy) | ✓ rotation, scale, flip, tint | `drawScaleImage` (top-left) unrotated, `drawImageExtended` (centre-placed, texture tenth) otherwise; the colour argument tints every form |
-| Primitives | ✓ | `fillRect` / `fillEmptyRect` / `drawLine` take `(x1, x2, y1, y2, color)`; `drawCircle` is the filled circle (integer radius); outlines, polygons, ellipses and arcs come from `core/primitives.lua` |
-| Transform stack | ✓ | software stack, as on lpp-vita |
-| Scissor | ✓ GPU | `Graphics.setViewport` (sf2d scissor), re-applied each frame; out-of-scissor draws are also rejected before the call |
-| print / printf / Font | ✓ with two deviations | `Font.print` writes the CPU framebuffer after the frame's GPU pass, so text always lands on top of sprites and shapes drawn in the same frame; a line whose start is off screen (x < 0, y < 0, past 400x227) is skipped, because the binding raises there. Measuring uses `Font.measureText` |
-| Draws outside love.draw | dropped, warns once | the GPU only accepts draws between `initBlend` and `termBlend` |
-| love.audio | partial | `Sound.openWav` / `openOgg` / `openAiff` (no MP3), `play(h, loop)`, `pause`, `resume`. No stop (a pause; the next play restarts), no volume, pitch or seek: those are tracked only. WAV duration from the header, OGG/AIFF from `getTotalTime` (whole seconds) |
-| love.filesystem | ✓ | lpp-3ds replaces `io.open/read/write/close` with handle-based `System.openFile` calls, so files go through `3DS/fileio.lua` (`core/fileio.lua` seam). Saves live in `/3ds/data/<identity>/`; a CIA's romfs is read-only |
-| require / filesystem.load | ✓ | chunks are read through the adapter and compiled from the string (the player patches `dofile` because stdio is not set up for SD paths) |
-| love.keyboard / joystick | ✓ | `Controls.read` / `check` with the `KEY_*` bits; A/B/X/Y take the PlayStation positions (A = circle slot = confirm under the default layout); the circle pad is the left stick |
-| love.timer | ✓ | `Timer.getTime` (ms); `sleep` busy-waits, there is no delay call |
-| love.system | ✓ | battery from `System.getBatteryLife` (PTMU level 0-5, reported in 20% steps), language from the CFG index, native username |
-| love.event.quit | ✓ | flushes open files, `Sound.term`, `Graphics.term`, then `System.exit` |
-| Canvas / Shader / Mesh / blend modes | stub / tracked | sf2d exposes no render target or blend state to Lua |
+**Synchronous by design.** There is no OS threading here: a thread runs as a
+coroutine when `start(...)` is called (its arguments forwarded) and finishes
+before `start` returns, unless it yields. An error in its body is caught:
+`getError` returns it and `love.threaderror` is called. `Channel:supply` is an
+immediate push and `Channel:demand` a non-blocking pop that returns `nil` on an
+empty channel, so producer/consumer logic must not rely on blocking.
 
 ---
 
-## Platform-specific callbacks
+## love.event
 
-- `onLiveArea()` — Vita only, called when entering live area
-- `onResume()` — Vita only, called on resume
+`quit(restart)` asks `love.quit` first (true cancels), closes every open
+`newFile` handle so saves are flushed, then leaves through the SDK's own exit.
+`"restart"` relaunches on OneLua and lpp-vita.
+
+---
+
+## Nintendo 3DS notes (lpp-3ds)
+
+Written against the lpp-3ds sources (`source/lua*.cpp`) and sf2dlib, which
+`Graphics.*` wraps; `tests/mock_3ds.lua` raises wherever the real binding raises.
+
+| Area | Note |
+|---|---|
+| Screen | top screen only, 400x240; `Graphics.initBlend(TOP_SCREEN)` each frame |
+| Draw | `drawScaleImage` (top-left) unrotated, `drawImageExtended` (centre-placed, texture tenth) otherwise |
+| Primitives | `fillRect` / `fillEmptyRect` / `drawLine` take `(x1, x2, y1, y2, color)`; `drawCircle` takes an integer radius |
+| Text | `Font.print` writes the CPU framebuffer after the GPU frame, so text is always on top; a line starting off screen (past 400x227) is skipped because the binding raises there |
+| Draws outside love.draw | dropped with one warning: the GPU accepts draws only inside the frame |
+| Audio | `Sound.openWav` / `openOgg` / `openAiff`; no MP3, no stop (a pause), no volume, pitch or seek |
+| Files | lpp-3ds replaces `io.open/read/write/close`, so every file goes through `3DS/fileio.lua` |
+| Input | A/B/X/Y take the PlayStation positions (A is the confirm slot under the default layout); the circle pad is the left stick |
+| Quit | flushes files, `Sound.term`, `Graphics.term`, then `System.exit` |
 
 ---
 
 ## Emulator and renderer caveats
 
-Emulators are dev convenience, not a validation target. Each backend records the
-emulator it is usually tested on plus the areas that emulator gets wrong, in
+Emulators are a development convenience, not a validation target. Each backend
+records its usual emulator and the areas it gets wrong in
 `love._backend.emulator` and `love._backend.rendersensitive`
 (`blendmode`, `framebufferread`, `texturefilter`, `savepersistence`).
 
-| Backend | Emulator | Flagged as renderer-sensitive |
+| Backend | Emulator | Renderer-sensitive |
 |---|---|---|
-| OL | Vita3K | blendmode, framebufferread, savepersistence |
-| LPP | Vita3K | blendmode, framebufferread, savepersistence |
+| OL, LPP | Vita3K | blendmode, framebufferread, savepersistence |
 | PSP | PPSSPP | texturefilter, framebufferread |
-| PS3 | RPCS3 (homebrew loading unreliable) | all four, nothing is confirmed |
+| PS3 | RPCS3 (homebrew loading unreliable) | all four |
+| 3DS | Citra / Azahar | blendmode, framebufferread, savepersistence |
 
 - **Vita3K:** programmable blend and framebuffer reads are inaccurate and vary
   between OpenGL, Vulkan and MoltenVK (Vita3K #4109, #422); writes can be lost
   when the emulator closes (#3918, #3659).
-- **PPSSPP:** linear filtering bleeds a row of texels from the opposite edge of a
+- **PPSSPP:** linear filtering bleeds a row of texels from the far edge of a
   quad (#14977); framebuffer and texture sizing can differ from hardware (#3085).
   Use `love.graphics.setTextureInset(0.5)` or nearest filtering.
 - **RPCS3:** homebrew loading is minimal (#18997), so the PS3 backend cannot be
-  validated there. Use desktop LÖVE for logic and real hardware for output.
-
-The full per-area dev target matrix (real hardware vs Vita3K GL/Vulkan vs PPSSPP
-vs RPCS3) is in the README under "Testing and validation targets".
+  validated there.
 
 ---
 
-## Known Limitations
+## Known limitations
 
-- **Canvas** (offscreen render target) is unsupported on every backend today;
-  `getSupported().canvas` is `false`. `newCanvas`/`setCanvas`/`renderTo` exist so
-  games do not crash, but `renderTo` draws straight to the screen. The native
-  paths, per backend:
-  - **lpp-vita / vita2d:** `createImage` already returns a rendertarget texture
-    and `vita2d_create_empty_texture_rendertarget(w,h,fmt)` exists, but lpp-vita
-    exposes no Lua "bind draw target" (only the fixed rescaler FBO). A real
-    Canvas is a small, concrete native patch upstream — expose a bind around the
-    existing vita2d rendertarget call — not an architectural wall.
-  - **PS3 / tiny3D:** `cloned67/tiny3d` (and `Dnawrkshp/mini2d`) expose
-    scene-to-texture surfaces, so a PS3 Canvas is reachable once the backend
-    moves onto tiny3D (tracked under T6.6).
-  - **OneLua (PSP + Vita):** no render target exposed by the SDK.
-- **Shader** is a stub — no programmable pipeline exposed (`getSupported().shader`
-  and `glsl3` are `false`). PS3 tiny3D pixel shaders are the first plausible real
-  path (T6.6).
-- **Texture limits** — `newImage`/`newQuad` validate the sheet against the
-  backend's `getSystemLimits().texturesize` (512 on OneLua/PSP/PS3, 1024 on
-  lpp-vita) and, on **PSP only**, against the GPU's power-of-two requirement. A
-  violation logs a `[LOVE-WrapLua]` warning (once per distinct problem) instead
-  of silently corrupting the texture — split an oversize spritesheet, and pad PSP
-  sheets so both dimensions are powers of two (≤512). Warnings route through
-  `lv1lua.warn` if you set it.
-- **Quad edge-bleed** — `love.graphics.setTextureInset(px)` (wrapper extension,
-  not stock LÖVE; default `0`) shrinks every quad's source rect by `px` texels
-  per side so linear filtering stops sampling the neighbouring frame at a
-  boundary (PPSSPP #14977). Use `0.5` for tightly-packed linear-filtered sheets;
-  pixel art is better served by nearest filtering. Applied on OneLua/PSP/lpp-vita
-  and the 3DS. lpp-vita and lpp-3ds read the source origin as an integer
-  (`luaL_checkinteger`), so there the inset rounds inward to whole texels: `0.5`
-  trims one texel per side.
-- **Save durability** — `write`/`append` open, write and `close()` in one call,
-  so those saves are always flushed. A long-lived `newFile` handle you leave open
-  is tracked and closed automatically at `love.event.quit` (before the process
-  exits), so a save is not lost when the app or emulator closes (Vita3K #3918 /
-  #3659). Still, call `File:close()` yourself when done for the earliest flush.
-- **Mesh** is a stub
-- **love.graphics.rotate/translate/scale/push/pop** work on every backend
-  (one shared software transform stack, `core/transformapi.lua`). On the PSP a
-  quad drawn with a rotation turns the whole scaled copy (no per-region rotate)
-- **polygon fill** is a real even-odd scanline fill on every backend
-- **Audio**: OneLua supports only 2 simultaneous channels; PS3 supports stream only
-- **love.timer.sleep** on lpp-vita busy-waits if `Timer.delay` is unavailable
-- **love.data.hash / compress / decompress** are real (pure-Lua vendored libs,
-  slow on-device — cache results). `gzip`/`lz4` compression fall back to deflate
-  and are not byte-compatible with those two desktop formats; `deflate`/`zlib` are.
-- Color is **0–1 range** (LÖVE 11.x standard) — code written for 0–255 must be updated
+- **Canvas** is unsupported (`getSupported().canvas` is false): `renderTo`
+  draws to the screen and drawing the Canvas does nothing. Native paths exist:
+  vita2d has rendertarget textures with no Lua binding in lpp-vita (a small
+  upstream patch), tiny3D has scene-to-texture surfaces; OneLua exposes none.
+- **Shader and Mesh** are stubs: no SDK exposes a programmable pipeline or
+  arbitrary vertex submission to Lua.
+- **Rotation** in the transform stack turns what is drawn but not the positions
+  that follow it: the stack keeps an offset, a scale and an angle per level.
+  `shear` is a stub.
+- **OneLua** (Vita and PSP) draws a scaled or mirrored image from a copy built
+  once per sheet and scale; a rotated quad turns that whole copy, and a quad's
+  tint is alpha only.
+- **Texture limits:** `newImage` / `newQuad` warn (once per problem, through
+  `lv1lua.warn` if set) when a sheet is over the backend's `texturesize` or, on
+  the PSP, not a power of two. Split or pad the sheet.
+- **Quad edge-bleed:** `love.graphics.setTextureInset(px)` (a wrapper extension,
+  default 0) shrinks each quad's source rect by `px` texels per side. lpp-vita
+  and lpp-3ds read the source origin as an integer, so there it rounds inward to
+  whole texels.
+- **Audio:** OneLua plays two voices at once, the PS3 one stream; positions and
+  pitch are timed in software.
+- **love.data:** hashing and compression are pure Lua and slow on device; cache
+  the results.
+- **Colour** is 0 to 1, as in LÖVE 11: code written for 0 to 255 must change.

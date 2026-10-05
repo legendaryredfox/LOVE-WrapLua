@@ -104,6 +104,25 @@ for _, mode in ipairs(MODES) do
             T.ok(c:typeOf("Texture"))
         end)
 
+        -- ── ParticleSystem / Mesh ───────────────────────────────
+        T.it("a ParticleSystem emits, ages and draws one sprite per particle", function()
+            local ps = love.graphics.newParticleSystem(love.graphics.newImage("p.png"), 10)
+            ps:setParticleLifetime(1)
+            ps:emit(3)
+            T.eq(ps:getCount(), 3)
+            local calls = capture_draws(function() ps:_draw(0, 0) end)
+            T.eq(#calls, 3)
+            ps:update(2)
+            T.eq(ps:getCount(), 0)
+        end)
+
+        T.it("a Mesh exists and draws nothing", function()
+            local m = love.graphics.newMesh({{0, 0}, {1, 0}, {1, 1}})
+            T.eq(m:getVertexCount(), 3)
+            local calls = capture_draws(function() m:_draw(0, 0) end)
+            T.eq(#calls, 0)
+        end)
+
         -- ── Shader ───────────────────────────────────────────────
         T.it("newShader returns an inert object", function()
             local s = love.graphics.newShader("code")

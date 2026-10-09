@@ -1,5 +1,35 @@
 ## Changelog
 
+## Unreleased
+
+### 2026-10-09, branch `fix/update-desanim8`
+
+The bundled `game/libraries/desAnim8.lua` was a v0.1.0 fork. It is now the
+upstream desAnim8 v0.5.0 (single file, same `love.graphics.draw(image, quad,
+...)` path on every backend, so no wrapper changes).
+
+**Fixes inherited from desAnim8**
+- A flipped animation drawn with a uniform scale (`anim:flipH():draw(...)` with
+  only `sx` given) squashed the sprite; an omitted `sy` now follows `sx`.
+- `update` ignores a negative, NaN or infinite `dt` instead of rewinding the
+  animation or freezing it for good.
+- Grid column and row counts account for `left`, `top` and `border`.
+- Errors are raised at the caller's line, with the argument named.
+
+**New**
+- Play modes `'loop'`, `'once'`, `'bounce'`, `'bounceOnce'` as the third argument
+  of `newAnimation`, and `anim.onLoop` (function or method name) for callbacks.
+  `setFlipH`, `setFlipV`, `getFrameCount`, `getDuration`, `getPlayMode`.
+
+**Changed**
+- The third argument of `newAnimation` is a play mode string, not an `onLoop`
+  value. The old `{ once = true, onComplete = fn }` table is gone: use
+  `newAnimation(frames, dur, 'once')` and set `anim.onLoop = fn`.
+  `desAnim8.new(image, fw, fh, numFrames, dur, iw, ih)` and `anim:draw(x, y)`
+  keep working, and now return a normal animation instead of a proxy object.
+- `tests/desanim8_test.lua` covers play-once through the new API, bounce, flip
+  scale and the `dt` guard, on all four backend mocks.
+
 ## 0.8.0 (2026-10-05)
 
 First release of this continuation of LOVE-WrapLua. It covers every entry

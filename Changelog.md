@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### 2026-10-29, branch `feat/desanim8-1.0.0`
+
+The bundled `game/libraries/desAnim8.lua` is now the `dist/desAnim8.lua`
+single-file build of desAnim8 v1.0.0 (the library is split into modules
+upstream and packed with a private `require`, so `require 'libraries.desAnim8'`
+and the 0.5.0 API are unchanged). No wrapper code changed: the build draws
+through `love.graphics.draw(image, quad, ...)` and the state calls the backends
+already provide.
+
+**New in the bundled library** (see the desAnim8 changelog for the full list)
+- Playback: `setSpeed`, `setLoopRange`, `setPlayMode`, `setDurations`, markers,
+  `onFrame`, queries (`getPhase`, `isFinished`, ...), `getState`/`setState`.
+- Atlas and Aseprite import, `newSet`, `newComposite`, `newBatch`,
+  `addToBatch`/`setInBatch` for `love.graphics.newSpriteBatch`.
+- Render style: `setColor`, `setAlpha`, `setBlendMode`, `flash`, trail, onion
+  skin, pixel snap, `drawBounds`.
+
+**Tests**
+- `tests/desanim8_test.lua` also runs on the 3DS mock, and checks that a styled
+  draw restores colour and blend mode, that trail/onion/bounds/timeline draw,
+  that `addToBatch` feeds a SpriteBatch, and that loading leaks no global.
+
+**Known limits** (backend, not library)
+- Tint, `flash` and `setBlendMode` follow the backend's own colour and blend
+  support (OneLua tints alpha only on quads; see Known limitations).
+- `setShader` is accepted and has no visible effect (Shader is a stub).
+
 ### 2026-10-09, branch `fix/update-desanim8`
 
 The bundled `game/libraries/desAnim8.lua` was a v0.1.0 fork. It is now the

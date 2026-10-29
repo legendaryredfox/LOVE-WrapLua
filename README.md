@@ -126,7 +126,8 @@ imageHeight)`, then `anim:update(dt)` and `anim:draw(x, y)`. See
 
 `newAnimation(frames, durations [, playMode])` takes a play mode (`'loop'`
 default, `'once'`, `'bounce'`, `'bounceOnce'`); set `anim.onLoop` for a callback
-when the cycle ends. The full API is in the
+when the cycle ends. Version 1.0.0 adds speed control, Aseprite and atlas
+import, sets, composites and sprite batches. The full API is in the
 [desAnim8 README](https://github.com/legendaryredfox/desAnim8).
 
 ---

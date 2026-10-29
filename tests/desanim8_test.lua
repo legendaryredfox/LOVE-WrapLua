@@ -16,6 +16,7 @@ local GFX = {
     ["PSP"]      = "LOVE-WrapLua/OneLua/graphics_psp.lua",
     ["lpp-vita"] = "LOVE-WrapLua/lpp-vita/graphics.lua",
     ["PS3"]      = "LOVE-WrapLua/PS3/graphics.lua",
+    ["3DS"]      = "LOVE-WrapLua/3DS/graphics.lua",
 }
 
 local function load_backend(mode)
@@ -144,6 +145,49 @@ local function suite(mode)
             a:draw(10, 20)  -- no image argument: the shim supplies it
             T.eq(__rec.count("image.resize"), 0)
         end)
+
+        T.it("a styled draw leaves the colour and blend mode as it found them", function()
+            local img  = love.graphics.newImage("sheet.png")
+            local grid = desAnim8.newGrid(16, 16, 64, 16)
+            local anim = desAnim8.newAnimation(grid('1-4', 1), 1)
+            anim:setColor(1, 0, 0, 0.5):setBlendMode('add'):flash(1, 1, 1, 0.5)
+            love.graphics.setColor(0.2, 0.4, 0.6, 0.8)
+            love.graphics.setBlendMode('alpha')
+            anim:draw(img, 4, 4, 0.5, 2, 2, 8, 8, 0.1, 0.1)
+            local r, g, b, a = love.graphics.getColor()
+            T.near(r, 0.2); T.near(g, 0.4); T.near(b, 0.6); T.near(a, 0.8)
+            T.eq((love.graphics.getBlendMode()), "alpha")
+        end)
+
+        T.it("trail, onion skin, bounds and the timeline draw without error", function()
+            local img  = love.graphics.newImage("sheet.png")
+            local grid = desAnim8.newGrid(16, 16, 64, 16)
+            local anim = desAnim8.newAnimation(grid('1-4', 1), 0.1)
+            anim:setTrail(3, 1, 0.5):setOnion(1, 1)
+            anim:update(0.15)
+            anim:draw(img, 4, 4)
+            anim:drawBounds(4, 4, 0.5, 2, 2, 8, 8)
+            desAnim8.debug.drawTimeline(anim, 0, 0, 50, 6)
+        end)
+
+        T.it("addToBatch and setInBatch feed a SpriteBatch", function()
+            local img   = love.graphics.newImage("sheet.png")
+            local grid  = desAnim8.newGrid(16, 16, 64, 16)
+            local anim  = desAnim8.newAnimation(grid('1-4', 1), 1)
+            local batch = love.graphics.newSpriteBatch(img, 4)
+            local id    = anim:addToBatch(batch, 1, 1)
+            anim:update(1)
+            anim:setInBatch(batch, id, 2, 2)
+            love.graphics.draw(batch)
+            T.eq(batch:getCount(), 1)
+        end)
+
+        T.it("loads without leaking a global", function()
+            local seen = {}
+            for k in pairs(_G) do seen[k] = true end
+            dofile("game/libraries/desAnim8.lua")
+            for k in pairs(_G) do T.ok(seen[k], "leaked global " .. tostring(k)) end
+        end)
     end)
 end
 
@@ -151,6 +195,7 @@ load_backend("OneLua");   suite("OneLua")
 load_backend("PSP");      suite("PSP")
 load_backend("lpp-vita"); suite("lpp-vita")
 load_backend("PS3");      suite("PS3")
+load_backend("3DS");      suite("3DS")
 
 io.write("\n=== desAnim8 (multi-backend) ===\n")
 return T.summary()

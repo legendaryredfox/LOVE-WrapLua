@@ -120,9 +120,14 @@ end
 ```
 
 A shorter single-strip constructor also exists and remembers its own image:
-`desAnim8.new(image, frameW, frameH, numFrames, frameDuration)`, then
-`anim:update(dt)` and `anim:draw(x, y)`. See [`game/main.lua`](game/main.lua)
-for the runnable sample.
+`desAnim8.new(image, frameW, frameH, numFrames, frameDuration, imageWidth,
+imageHeight)`, then `anim:update(dt)` and `anim:draw(x, y)`. See
+[`game/main.lua`](game/main.lua) for the runnable sample.
+
+`newAnimation(frames, durations [, playMode])` takes a play mode (`'loop'`
+default, `'once'`, `'bounce'`, `'bounceOnce'`); set `anim.onLoop` for a callback
+when the cycle ends. The full API is in the
+[desAnim8 README](https://github.com/legendaryredfox/desAnim8).
 
 ---
 

@@ -66,8 +66,8 @@ local function suite(mode)
         T.it("play-once fires its callback exactly once and stops at the end", function()
             local grid  = desAnim8.newGrid(16, 16, 64, 16)
             local calls = 0
-            local anim  = desAnim8.newAnimation(grid('1-4', 1), 1,
-                            { once = true, onComplete = function() calls = calls + 1 end })
+            local anim  = desAnim8.newAnimation(grid('1-4', 1), 1, 'once')
+            anim.onLoop = function() calls = calls + 1 end
             anim:update(3)   -- reaches the last frame, not yet past the end
             T.eq(calls, 0)
             anim:update(2)   -- crosses the end
@@ -76,6 +76,39 @@ local function suite(mode)
             T.eq(anim.status, "paused")
             anim:update(10)  -- further updates must not fire again
             T.eq(calls, 1)
+            anim:resume()    -- a finished play-once animation stays finished
+            anim:update(10)
+            T.eq(calls, 1)
+        end)
+
+        T.it("bounce plays forward then back without repeating the endpoints", function()
+            local grid = desAnim8.newGrid(16, 16, 64, 16)
+            local anim = desAnim8.newAnimation(grid('1-4', 1), 1, 'bounce')
+            local seen = {}
+            for _ = 1, 8 do
+                seen[#seen + 1] = anim:getCurrentFrame()
+                anim:update(1)
+            end
+            T.eq(table.concat(seen, ","), "1,2,3,4,3,2,1,2")
+        end)
+
+        T.it("a flipped animation keeps an omitted sy equal to sx", function()
+            local grid = desAnim8.newGrid(16, 16, 64, 16)
+            local anim = desAnim8.newAnimation(grid('1-4', 1), 1):flipH()
+            local _, _, _, _, sx, sy = anim:getFrameInfo(0, 0, 0, 3)
+            T.eq(sx, -3)
+            T.eq(sy, 3)
+        end)
+
+        T.it("update ignores a negative or NaN dt", function()
+            local grid = desAnim8.newGrid(16, 16, 64, 16)
+            local anim = desAnim8.newAnimation(grid('1-4', 1), 1)
+            anim:update(1.5)
+            anim:update(-1)
+            anim:update(0 / 0)
+            T.eq(anim:getCurrentFrame(), 2)
+            anim:update(1)
+            T.eq(anim:getCurrentFrame(), 3)
         end)
 
         T.it("gotoFrame / pause / resume behave", function()

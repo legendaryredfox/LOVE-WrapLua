@@ -96,7 +96,13 @@ end
 local function listNative(dir)
     if fileio().list then return fileio().list(dir) end
     if lv1lua.mode == "OneLua" and type(files) == "table" and files.list then
-        return files.list(dir)
+        -- The SDK returns one table per entry ({ name, path, ext, size, ... }),
+        -- not a list of names.
+        local out = {}
+        for _, entry in ipairs(files.list(dir) or {}) do
+            out[#out + 1] = (type(entry) == "table" and entry.name) or entry
+        end
+        return out
     end
     if lv1lua.mode == "lpp-vita" and type(System) == "table" and System.listDirectory then
         local out = {}

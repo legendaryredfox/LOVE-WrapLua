@@ -95,5 +95,28 @@ T.describe("love.window.getSafeArea", function()
     end)
 end)
 
+T.describe("love.window fixed-size console shims", function()
+    T.it("updateMode is accepted and reports success", function()
+        T.eq(love.window.updateMode(1280, 720, { fullscreen = false }), true)
+    end)
+
+    T.it("getDesktopDimensions answers with the console screen", function()
+        lv1lua.screenWidth  = 480
+        lv1lua.screenHeight = 272
+        local w, h = love.window.getDesktopDimensions(1)
+        T.eq(w, 480)
+        T.eq(h, 272)
+    end)
+
+    T.it("getFullscreenModes lists the single console mode", function()
+        lv1lua.screenWidth  = 480
+        lv1lua.screenHeight = 272
+        local modes = love.window.getFullscreenModes(1)
+        T.eq(#modes, 1)
+        T.eq(modes[1].width, 480)
+        T.eq(modes[1].height, 272)
+    end)
+end)
+
 io.write("\n=== love.window ===\n")
 return T.summary()

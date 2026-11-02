@@ -258,6 +258,17 @@ T.describe("love.filesystem.getDirectoryItems", function()
         T.ok(found["slot1.sav"], "saved file missing from the listing")
     end)
 
+    T.it("OneLua entry tables from files.list come back as plain names", function()
+        lv1lua.dataloc = ""
+        lv1lua.saveloc = "SAVE/"
+        seed("game/entries", { "b.ogg", "a.ogg" })
+
+        local items = love.filesystem.getDirectoryItems("entries")
+        T.eq(#items, 2)
+        T.eq(items[1], "a.ogg")
+        T.eq(items[2], "b.ogg")
+    end)
+
     T.it("a name present in both roots appears once", function()
         lv1lua.dataloc = ""
         lv1lua.saveloc = "SAVE/"

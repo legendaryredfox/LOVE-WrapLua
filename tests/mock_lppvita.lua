@@ -164,7 +164,7 @@ System = {
     deleteDirectory= function(f) files.delete(f); return true end,
     listDirectory  = function(d)
         local out = {}
-        for _, name in ipairs(files.list(d)) do out[#out+1] = { name = name } end
+        for _, e in ipairs(files.list(d)) do out[#out+1] = { name = type(e) == "table" and e.name or e } end
         return out
     end,
     exit           = function() lv1lua.running = false end,

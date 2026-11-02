@@ -39,6 +39,19 @@ function love.window.setMode()
     -- window size is fixed on consoles
 end
 
+function love.window.updateMode()
+    -- window size and flags are fixed on consoles
+    return true
+end
+
+function love.window.getDesktopDimensions(displayindex)
+    return lv1lua.screenWidth, lv1lua.screenHeight
+end
+
+function love.window.getFullscreenModes(displayindex)
+    return { { width = lv1lua.screenWidth, height = lv1lua.screenHeight } }
+end
+
 function love.window.getFullscreen()
     return true, "exclusive"
 end

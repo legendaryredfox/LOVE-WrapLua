@@ -126,7 +126,10 @@ files = {
         for k in pairs(_vfs) do
             if k ~= d and k:sub(1, #d + 1) == d .. "/" then
                 local tail = k:sub(#d + 2)
-                if not tail:find("/") then res[#res+1] = tail end
+                -- Like the real SDK: one table per entry, not a bare name.
+                if not tail:find("/") then
+                    res[#res+1] = { name = tail, path = k, ext = tail:match("%.(%w+)$") or "", size = 0 }
+                end
             end
         end
         return res

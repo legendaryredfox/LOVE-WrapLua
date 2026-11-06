@@ -89,21 +89,50 @@ function love.graphics.points(...)
     end
 end
 
+-- Polygon fills are cached per vertex table: games redraw the same shapes every frame (rounded
+-- boxes, panels). An entry holds the merged rectangles in device space plus a fingerprint of the
+-- source vertices and of the transform; a pure integer translation reuses it with a shift,
+-- anything else rebuilds. Weak keys: a shape built fresh each call is collected with its table.
+local polyCache = setmetatable({}, { __mode = "k" })
+local floor = math.floor
+
+local function polygonFill(p, src)
+    local x0, y0 = mapPoint(0, 0)
+    local x1, y1 = mapPoint(1, 1)
+    local sx, sy = x1 - x0, y1 - y0
+    local ix, iy = floor(x0), floor(y0)
+    local fx, fy = x0 - ix, y0 - iy
+    local n, sum = #src, 0
+    for i = 1, n do sum = sum + src[i] * ((i % 13) + 1) end
+    local c = polyCache[src]
+    if not c or c.n ~= n or c.sum ~= sum or c.sx ~= sx or c.sy ~= sy or c.fx ~= fx or c.fy ~= fy then
+        local v = {}
+        for i = 1, n - 1, 2 do v[i], v[i+1] = mapPoint(src[i], src[i+1]) end
+        c = { n = n, sum = sum, sx = sx, sy = sy, fx = fx, fy = fy, ix = ix, iy = iy,
+              runs = lv1lua.core.polygonRuns(v) }
+        polyCache[src] = c
+    end
+    local dx, dy, runs, col = ix - c.ix, iy - c.iy, c.runs, color()
+    local fill = p.fillRect
+    for i = 1, #runs, 4 do fill(runs[i] + dx, runs[i + 1] + dy, runs[i + 2], runs[i + 3], col) end
+end
+
 -- `open` leaves the outline unclosed; only arc("line", "open", ...) asks.
 local function polygon(mode, src, open)
     local p = prims()
     if #src < 4 then return end
+    if mode == "fill" then
+        polygonFill(p, src)
+        return
+    end
     -- Mapped once, here: the emit calls below are already device coordinates.
     local v = {}
     for i = 1, #src - 1, 2 do
         v[i], v[i+1] = mapPoint(src[i], src[i+1])
     end
     if mode == "fill" then
-        -- Scanline fill through the shared even-odd rasteriser, correct for
-        -- convex and concave polygons alike.
-        lv1lua.core.fillPolygon(v, function(sx, sy, sw, c)
-            p.fillRect(sx, sy, sw, 1, c)
-        end, color())
+        -- Even-odd fill (convex and concave alike), cached as merged rectangles per vertex table.
+        polygonFill(p, src, v)
     else
         for i = 1, #v - 2, 2 do
             p.line(v[i], v[i+1], v[i+2], v[i+3], color())

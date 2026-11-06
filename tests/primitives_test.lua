@@ -97,7 +97,7 @@ T.describe("OneLua native order", function()
         T.eq(__rec.count("draw.line"), 0)  -- not a wireframe
         local c = __rec.last("draw.fillrect")
         T.eq(c.args[3], 10)  -- span width across the 10px-wide square
-        T.eq(c.args[4], 1)   -- one scanline tall
+        T.eq(c.args[4], 10)  -- identical scanlines are merged into one 10px-tall rectangle
     end)
 
     T.it("reports honest capabilities", function()
@@ -249,7 +249,7 @@ T.describe("lpp-vita native order (luaGraphics.cpp)", function()
         T.eq(__rec.count("Graphics.drawLine"), 0)
         local c = __rec.last("Graphics.fillRect")
         T.eq(c.args[2] - c.args[1], 10)  -- span width (x2 - x1)
-        T.eq(c.args[4] - c.args[3], 1)   -- one scanline tall (y2 - y1)
+        T.eq(c.args[4] - c.args[3], 10)  -- identical scanlines merged: one 10px-tall rectangle
     end)
 
     T.it("reports the lpp-vita capability profile", function()

@@ -21,6 +21,17 @@ VM instructions and bytes allocated per `love.graphics` call on the test mocks; 
 - `imagedraw`: `fold` skips the method call while the transform is clean, `rotate` multiplies by a constant,
   `isDrawObject`/`isImage` are upvalues, and the turned-bounds computation allocates nothing.
 - New: `tests/bench/vm_cost.lua`, `vm_profile.lua`, `alloc_cost.lua`, `tests/hotpath_test.lua`.
+- **`polygon("fill")` was the biggest wrapper cost**: the scanline rasteriser ran in Lua on every call
+  (~2,700 VM instructions for a 5-point shape on PSP, ~4,800 on PS3, tens of thousands for a rounded box).
+  Fills are now computed once per vertex table as merged rectangles (`core/polyfill.lua polygonRuns`), cached
+  in a weak table with a fingerprint of the vertices and of the transform (integer translations reuse the
+  cache with a shift), and drawn with one native `fillRect` per rectangle instead of one per scanline.
+  Synthetic Balatro-sized frame (`tests/bench/frame_cost.lua`: 213 push/pop, 168 setColor, 124 draws, 54
+  polygon fills, 45 prints): PSP 243k -> 122k instructions, OneLua 223k -> 102k, lpp-vita 237k -> 115k,
+  PS3 344k -> 195k; garbage per frame 29 KB -> 2 KB (PSP).
+- New: `tests/bench/frame_cost.lua` (+ `frame_baseline.lua`, `--check`, `--sections`), `api_coverage.lua`,
+  `tests/polyfill_runs_test.lua`. Two `primitives_test` expectations changed: a filled square is now one
+  10x10 rectangle instead of ten 1px spans (same pixels).
 - Known remaining cost: PS3 `circle("fill")` is ~17,000 instructions per call (polygon fill every time);
   3DS `setColor` and `print` cost more than the other backends.
 

@@ -14,6 +14,7 @@ local test_files = {
     "tests/scissor_test.lua",
     "tests/noscale_test.lua",
     "tests/hotpath_test.lua",
+    "tests/polyfill_runs_test.lua",
     "tests/event_test.lua",
     "tests/math_test.lua",
     "tests/data_test.lua",

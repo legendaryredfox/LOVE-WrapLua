@@ -64,7 +64,7 @@ defined, so calling it errors.
 | shear | stub | stub | stub | stub | stub |
 | applyTransform / replaceTransform | ✓ translation, rotation and scale (shear dropped) | ✓ | ✓ | ✓ | ✓ |
 | transformPoint / inverseTransformPoint | ✓ | ✓ | ✓ | ✓ | ✓ |
-| setScissor / getScissor / intersectScissor | tracked | tracked | ✓ software reject | tracked | ✓ GPU scissor |
+| setScissor / getScissor / intersectScissor | tracked | ✓ GPU scissor | ✓ software reject | tracked | ✓ GPU scissor |
 | stencil / setStencilTest / getStencilTest | stub | stub | stub | stub | stub |
 | setDefaultFilter / getDefaultFilter | ✓ applied to new images and scaled copies | tracked | ✓ applied to new images | tracked | tracked |
 | setTextureInset / getTextureInset *(wrapper extension)* | ✓ | ✓ | ✓ whole texels | none on the draw | ✓ whole texels |

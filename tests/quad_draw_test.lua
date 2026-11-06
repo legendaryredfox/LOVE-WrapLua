@@ -67,6 +67,20 @@ T.describe("OneLua scaled copies", function()
     end)
 end)
 
+T.describe("OneLua quad origin", function()
+    -- A quad draw has nine arguments; the sixth and later ones were shifted
+    -- by one, so the y origin never reached the blit.
+    T.it("a quad draw applies both origin offsets", function()
+        love.graphics.origin()
+        local img = love.graphics.newImage("sheet.png")
+        local q   = love.graphics.newQuad(0, 0, 16, 16, img)
+        __rec.reset()
+        love.graphics.draw(img, q, 100, 100, 0, 1, 1, 8, 4)
+        local b = __rec.last("image.blit")
+        T.eq(b.args[2], 92); T.eq(b.args[3], 96)
+    end)
+end)
+
 T.describe("OneLua quad destination", function()
     -- A quad covering the whole sheet must land exactly where the plain image
     -- draw lands: the two paths used different formulas once a scale was on.

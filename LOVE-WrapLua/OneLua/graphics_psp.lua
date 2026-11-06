@@ -23,6 +23,7 @@ lv1lua.load(GRAPHICS .. "state.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/state.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/texinset.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/transformapi.lua")
+lv1lua.load(GRAPHICS .. "scissor.lua")  -- needs the transform stack above
 lv1lua.loadOnce("LOVE-WrapLua/core/image.lua")
 lv1lua.load(GRAPHICS .. "image.lua")
 lv1lua.load("LOVE-WrapLua/OneLua/imagedraw.lua")

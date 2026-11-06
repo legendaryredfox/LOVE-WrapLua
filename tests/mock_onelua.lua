@@ -32,12 +32,18 @@ image = {
     fliph     = function(...) __rec.log("image.fliph", ...) end,
     flipv     = function(...) __rec.log("image.flipv", ...) end,
     rotate    = function(...) __rec.log("image.rotate", ...) end,
+    center    = function(...) __rec.log("image.center", ...) end,
     setfilter = function(...) end,
     -- Returns a *new* handle: the wrapper is expected to scale into a copy
     -- rather than resize the shared source.
     copyscale = function(h, w, ht)
         __rec.log("image.copyscale", h, w, ht)
         return { _w=w, _h=ht, _path=(type(h)=="table" and h._path) }
+    end,
+    -- A new handle of the same size; the SDK copies the pixels too.
+    copy      = function(h)
+        __rec.log("image.copy", h)
+        return { _w=h._w, _h=h._h, _path=h._path, _copyOf=h }
     end,
     lost      = function(...) end,
 }
@@ -46,6 +52,7 @@ image = {
 screen = {
     print      = function(...) __rec.log("screen.print", ...) end,
     clear      = function(...) __rec.log("screen.clear", ...) end,
+    clip       = function(...) __rec.log("screen.clip", ...) end,
     flip       = function(...) end,
     -- 8px per glyph at scale 1 (intraFont measures glyphs, not bytes).
     textwidth  = function(f, t, s) return __glyphCount(t) * 8 * (s or 1) end,

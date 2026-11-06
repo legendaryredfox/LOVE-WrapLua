@@ -5,7 +5,7 @@ Native APIs each backend calls, grounded in the SDK sources. Read before touchin
 ### OneLua (Vita and PSP)
 | Category | API |
 |---|---|
-| Images | `image.load / blit / blittint / blitadd / blitsub (PSP) / copyscale / rotate / fliph / flipv / setfilter / getrealw / getrealh` |
+| Images | `image.load / blit / blittint / blitadd / blitsub (PSP) / copyscale (not in the PSP EBOOT.PBP) / resize / center / rotate / fliph / flipv / setfilter / getrealw / getrealh`, `screen.clip(x, y, w, h)` (PSP; no arguments clears it) |
 | Screen | `screen.print / clear / flip / textwidth` |
 | Drawing | `draw.fillrect / rect / line / circle` |
 | Font | `font.load / setdefault` |

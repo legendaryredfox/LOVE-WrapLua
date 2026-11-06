@@ -145,7 +145,7 @@ that backend, so calling it errors.
 | love.graphics (primitives) | full | full | full | full | full | rectangle/circle/ellipse/arc/line/points/polygon fill; they follow the transform stack on every backend |
 | love.graphics (fonts, print, printf) | full | full | full | full | partial | real text metrics per backend; text follows the transform stack; 3DS text always lands on top of the frame |
 | love.graphics (transform stack) | partial | partial | partial | partial | partial | push/pop/translate/scale/rotate/applyTransform; rotation turns what is drawn but not positions, and `shear` is a stub |
-| love.graphics (scissor) | tracked | tracked | partial | tracked | full | lpp-vita rejects out-of-scissor draws in software; 3DS clips on the GPU; elsewhere getScissor answers but nothing is clipped |
+| love.graphics (scissor) | tracked | full | partial | tracked | full | lpp-vita rejects out-of-scissor draws in software; 3DS and PSP clip on the GPU (PSP via `screen.clip`); elsewhere getScissor answers but nothing is clipped |
 | love.graphics (SpriteBatch, Text) | full | full | full | full | full | shared implementation (`core/objects.lua`); `draw(batch, x, y, r, sx, sy, ox, oy)` places the whole batch |
 | love.graphics (ParticleSystem) | partial | partial | partial | partial | partial | basic emitter (`core/particles.lua`): no size, colour or rotation curves |
 | love.graphics (Canvas, Shader, Mesh) | stub | stub | stub | stub | stub | `getSupported().canvas` and `.shader` are `false`; drawing a Canvas does nothing |

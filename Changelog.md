@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+### 2026-11-06, branch `fix/onelua-no-copyscale`
+
+The `EBOOT.PBP` in the repo root is the stock ONElua v4R1 build and has no
+`image.copyscale` (issue #3), so any scaled draw failed on the PSP. Measured on
+that EBOOT in PPSSPP: `image.resize` scales a whole-image blit on the GPU,
+`image.scale` changes nothing visible, a sub-rect blit ignores both and draws
+1:1, `screen.clip(x, y, w, h)` clips every later draw and `screen.clip()` resets
+it, and `image.center(img, cx, cy)` (unscaled sheet pixels) moves the rotation
+pivot, which is the blit's top-left corner by default.
+
+**Fixed**
+- Scaled and mirrored draws on builds without `image.copyscale`: the sheet is
+  resized to its final size, blitted whole and clipped to the destination
+  rectangle (`OneLua/imagedraw.lua`). No per-scale copy is built, so scale
+  animations cost no memory. Mirroring uses one cached flipped copy of the
+  sheet per axis pair. The shared sheet's size is restored after each draw.
+  Builds that have `copyscale` keep the old path.
+- `love.graphics.draw(image, quad, x, y, r, sx, sy, ox, oy)` dropped `oy` on
+  the OneLua backends (the quad form has nine arguments, the function took
+  eight), so a quad's y origin never applied.
+- PSP scissor: `setScissor`/`intersectScissor` now drive `screen.clip`
+  (`OneLua/psp/scissor.lua`); before, getScissor answered but nothing clipped.
+
+**Known limits of the clip path**
+- A rotated draw of a quad cut from a larger sheet clips to the turned
+  bounding box, so neighbouring sheet pixels can show in its corners.
+- Each scaled draw changes the GPU clip rectangle; many tiny scaled draws per
+  frame cost more than the same draws unscaled.
+
+**Tests**
+- `tests/noscale_test.lua` (scale, mirror, rotate, scissor, restore) and a
+  quad-origin case in `tests/quad_draw_test.lua`; the OneLua mock gained
+  `image.copy`, `image.center` and `screen.clip`.
+
 ### 2026-10-29, branch `feat/desanim8-1.0.0`
 
 The bundled `game/libraries/desAnim8.lua` is now the `dist/desAnim8.lua`

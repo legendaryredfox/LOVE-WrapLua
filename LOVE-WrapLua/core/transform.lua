@@ -59,20 +59,37 @@ end
 
 function Stack:top() return self.stack[#self.stack] end
 
+-- Popped levels go to a free list and are reset on reuse, so a push/pop pair per drawn object
+-- (Balatro does ~200 a frame) allocates nothing.
 function Stack:push()
-    self.stack[#self.stack + 1] = Level.new()
+    local free = self.free
+    local n = #free
+    local lv
+    if n > 0 then
+        lv = free[n]; free[n] = nil
+        lv._offsetX, lv._offsetY, lv._scaleX, lv._scaleY, lv._rotation = 0, 0, 1, 1, 0
+        lv._usingScissor = false
+        lv._scissorX, lv._scissorY, lv._scissorWidth, lv._scissorHeight = 0, 0, 0, 0
+    else
+        lv = Level.new()
+    end
+    self.stack[#self.stack + 1] = lv
     self._dirty = true
 end
 
 function Stack:pop()
-    if #self.stack > 0 then
-        self.stack[#self.stack] = nil
+    local n = #self.stack
+    if n > 0 then
+        local free = self.free
+        free[#free + 1] = self.stack[n]
+        self.stack[n] = nil
         self._dirty = true
     end
 end
 
 function Stack:clear()
-    self.stack = {}
+    local free, stack = self.free, self.stack
+    for i = #stack, 1, -1 do free[#free + 1] = stack[i]; stack[i] = nil end
     self._dirty = true
 end
 
@@ -97,6 +114,7 @@ function lv1lua.core.newTransformStack()
     return setmetatable({
         transform = Level.new(),
         stack     = {},
+        free      = {},
         _dirty    = true,
     }, Stack)
 end

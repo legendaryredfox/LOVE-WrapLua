@@ -12,11 +12,12 @@ function util.round(value)
 end
 
 -- LÖVE colour components are 0-1; every console SDK here wants 0-255.
+local floor = math.floor
 function util.to255(r, g, b, a)
-    return math.floor(r * 255 + 0.5),
-           math.floor(g * 255 + 0.5),
-           math.floor(b * 255 + 0.5),
-           math.floor((a or 1) * 255 + 0.5)
+    return floor(r * 255 + 0.5),
+           floor(g * 255 + 0.5),
+           floor(b * 255 + 0.5),
+           floor((a or 1) * 255 + 0.5)
 end
 
 -- One UTF-8 glyph: a lead byte plus its continuation bytes. Written as

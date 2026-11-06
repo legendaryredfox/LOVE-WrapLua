@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### 2026-11-06, branch `perf/wrapper-hot-paths`
+
+Hot paths of the shared graphics layer, measured with the new `tests/bench/` scripts (Lua 5.1, count hook:
+VM instructions and bytes allocated per `love.graphics` call on the test mocks; a console runs roughly
+3M VM instructions per second, so 100 instructions is ~30 microseconds).
+
+| call (PSP backend) | instructions before -> after | bytes allocated before -> after |
+|---|---|---|
+| `setColor(r,g,b,a)` | 92 -> 37 | 352 -> 0 |
+| `push/translate/pop` | 165 -> 175 | 704 -> 0 |
+| `draw(img, quad, ...)` | 229 -> 213 | 0 |
+| `draw` quad scaled + rotated (no `copyscale`) | 590 -> 523 | 513 -> ~1 |
+
+- `setColor` updates the RGBA tuple in place, returns early for an unchanged colour and memoises native
+  colour handles (bounded to 1024 entries); `util.to255` caches `math.floor`.
+- The transform stack recycles popped levels instead of allocating a table per `push`.
+- `imagedraw`: `fold` skips the method call while the transform is clean, `rotate` multiplies by a constant,
+  `isDrawObject`/`isImage` are upvalues, and the turned-bounds computation allocates nothing.
+- New: `tests/bench/vm_cost.lua`, `vm_profile.lua`, `alloc_cost.lua`, `tests/hotpath_test.lua`.
+- Known remaining cost: PS3 `circle("fill")` is ~17,000 instructions per call (polygon fill every time);
+  3DS `setColor` and `print` cost more than the other backends.
+
 ### 2026-11-06, branch `fix/onelua-no-copyscale`
 
 The `EBOOT.PBP` in the repo root is the stock ONElua v4R1 build and has no

@@ -35,8 +35,9 @@ end
 
 -- Always set the rotation, including 0, so an earlier rotated draw cannot
 -- leave this image tilted on a later upright one.
+local RAD_TO_DEG = 180 / math.pi
 local function rotate(img, r)
-    image.rotate(img, (r / math.pi) * 180)
+    image.rotate(img, r * RAD_TO_DEG)
 end
 
 -- Builds without image.copyscale (the OneLua v4R1 EBOOT.PBP for the PSP is
@@ -71,16 +72,17 @@ local function round(v) return math.floor(v + 0.5) end
 local function turnedBounds(x, y, w, h, r, px, py)
     if r == 0 then return x, y, w, h end
     local c, s = math.cos(r), math.sin(r)
-    local x1, y1, x2, y2 = math.huge, math.huge, -math.huge, -math.huge
-    for _, p in ipairs({ { x, y }, { x + w, y }, { x, y + h }, { x + w, y + h } }) do
-        local dx, dy = p[1] - px, p[2] - py
-        local rx, ry = px + dx * c - dy * s, py + dx * s + dy * c
-        if rx < x1 then x1 = rx end
-        if rx > x2 then x2 = rx end
-        if ry < y1 then y1 = ry end
-        if ry > y2 then y2 = ry end
-    end
-    return x1, y1, x2 - x1, y2 - y1
+    -- corners relative to the pivot, then turned: no per-draw tables
+    local x0, y0, x1, y1 = x - px, y - py, x + w - px, y + h - py
+    local ax, ay = x0 * c - y0 * s, x0 * s + y0 * c      -- top-left
+    local bx, by = x1 * c - y0 * s, x1 * s + y0 * c      -- top-right
+    local cx, cy = x0 * c - y1 * s, x0 * s + y1 * c      -- bottom-left
+    local dx, dy = x1 * c - y1 * s, x1 * s + y1 * c      -- bottom-right
+    local minx = math.min(ax, bx, cx, dx)
+    local maxx = math.max(ax, bx, cx, dx)
+    local miny = math.min(ay, by, cy, dy)
+    local maxy = math.max(ay, by, cy, dy)
+    return px + minx, py + miny, maxx - minx, maxy - miny
 end
 
 -- Draw the (sqx, sqy, sqw, sqh) rectangle of `src` with its top-left corner at
@@ -130,11 +132,12 @@ end
 -- rotation adds; the origin offset is applied afterwards in the folded scale,
 -- so it stays a pivot in image pixels as in LOVE.
 local function fold(x, y, r, sx, sy)
-    stack:updateTransform()
+    if stack._dirty then stack:updateTransform() end
     local t = stack.transform
     sx = sx or 1; sy = sy or sx
-    return (x or 0) * t._scaleX + t._offsetX, (y or 0) * t._scaleY + t._offsetY,
-           (r or 0) + t._rotation, sx * t._scaleX, sy * t._scaleY
+    local tsx, tsy = t._scaleX, t._scaleY
+    return (x or 0) * tsx + t._offsetX, (y or 0) * tsy + t._offsetY,
+           (r or 0) + t._rotation, sx * tsx, sy * tsy
 end
 
 local function screen(x, y)
@@ -185,14 +188,16 @@ end
 
 -- A quad draw takes one more argument than an image draw
 -- (drawable, quad, x, y, r, sx, sy, ox, oy), so the names below are positional.
+local isDrawObject, isImage = lv1lua.util.isDrawObject, lv1lua.core.isImage
 function love.graphics.draw(drawable, a, b, c, d, e, f, g, h)
     if drawable == nil then return end
     -- SpriteBatch, Text, ParticleSystem and Canvas replay themselves through
     -- this same entry point (core/objects.lua).
-    if lv1lua.util.isDrawObject(drawable) then
+    if isDrawObject(drawable) then
         return drawable:_draw(a, b, c, d, e, f, g)
     end
-    local tex = lv1lua.core.texture(drawable)
+    local tex = drawable
+    if isImage(drawable) then tex = drawable._tex end
     if type(a) == "table" and a.getViewport then
         return quadDraw(tex, a, b, c, d, e, f, g, h)
     end

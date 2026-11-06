@@ -27,17 +27,42 @@ lv1lua.gfx.filter    = lv1lua.gfx.filter or {}
 lv1lua.current.blendMode = lv1lua.current.blendMode or "alpha"
 
 -- ── Colour ───────────────────────────────────────────────────────
+-- setColor runs several times per drawn object, so it must not allocate: the RGBA tuple is
+-- updated in place, an unchanged colour returns early, and native colour handles are memoised
+-- by their 0-255 components ([r*256+g][b*256+a], both exact in a single-precision float).
+-- The memo is bounded: a game fading alpha through many values just rebuilds it.
+local floor = math.floor
+local nativeMemo, nativeMemoSize = {}, 0
+local MEMO_LIMIT = 1024
+
 local function native(r, g, b, a)
     local toNative = lv1lua.gfx.nativeColor
     if not toNative then return nil end
-    return toNative(util.to255(r, g, b, a))
+    local r8, g8, b8 = floor(r * 255 + 0.5), floor(g * 255 + 0.5), floor(b * 255 + 0.5)
+    local a8 = floor((a or 1) * 255 + 0.5)
+    local rg, ba = r8 * 256 + g8, b8 * 256 + a8
+    local row = nativeMemo[rg]
+    if not row then row = {}; nativeMemo[rg] = row end
+    local c = row[ba]
+    if c == nil then
+        c = toNative(r8, g8, b8, a8)
+        if c ~= nil then
+            if nativeMemoSize >= MEMO_LIMIT then nativeMemo, nativeMemoSize = {}, 0; row = {}; nativeMemo[rg] = row end
+            row[ba] = c
+            nativeMemoSize = nativeMemoSize + 1
+        end
+    end
+    return c
 end
 
 function love.graphics.setColor(r, g, b, a)
     if type(r) == "table" then r, g, b, a = r[1], r[2], r[3], r[4] end
     r, g, b, a = r or 0, g or 0, b or 0, a or 1
-    lv1lua.current.colorRGBA = {r, g, b, a}
-    lv1lua.current.color = native(r, g, b, a) or lv1lua.current.color
+    local cur = lv1lua.current
+    local rgba = cur.colorRGBA
+    if rgba[1] == r and rgba[2] == g and rgba[3] == b and rgba[4] == a and cur.color ~= nil then return end
+    rgba[1], rgba[2], rgba[3], rgba[4] = r, g, b, a
+    cur.color = native(r, g, b, a) or cur.color
 end
 
 function love.graphics.getColor()

@@ -74,6 +74,15 @@ for _, mode in ipairs(MODES) do
             T.eq(c:getHeight(), lv1lua.screenHeight)
         end)
 
+        T.it("Canvas pixel size matches its size", function()
+            local c = love.graphics.newCanvas(64, 32)
+            T.eq(c:getPixelWidth(), 64)
+            T.eq(c:getPixelHeight(), 32)
+            local w, h = c:getPixelDimensions()
+            T.eq(w, 64)
+            T.eq(h, 32)
+        end)
+
         T.it("setCanvas / getCanvas round-trip", function()
             local c = love.graphics.newCanvas(64, 64)
             love.graphics.setCanvas(c)

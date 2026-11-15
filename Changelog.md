@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### 2026-11-15, branch `feat/canvas-pixel-size`
+
+- `Canvas:getPixelWidth`, `getPixelHeight` and `getPixelDimensions` return the Canvas size, as `Image` does.
+
 ### 2026-11-06, branch `perf/wrapper-hot-paths`
 
 Hot paths of the shared graphics layer, measured with the new `tests/bench/` scripts (Lua 5.1, count hook:

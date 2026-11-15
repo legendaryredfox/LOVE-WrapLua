@@ -44,6 +44,9 @@ function Canvas:release()   return false end
 function Canvas:getWidth()  return self._width end
 function Canvas:getHeight() return self._height end
 function Canvas:getDimensions() return self._width, self._height end
+function Canvas:getPixelWidth()  return self._width end
+function Canvas:getPixelHeight() return self._height end
+function Canvas:getPixelDimensions() return self._width, self._height end
 function Canvas:getFormat() return "rgba8" end
 function Canvas:getMSAA()   return 0 end
 function Canvas:getFilter() return "linear", "linear", 1 end

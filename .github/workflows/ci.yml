@@ -21,3 +21,7 @@ jobs:
 
       - name: Run test suite
         run: lua tests/run_all.lua
+
+      - name: Frame cost regression check
+        if: matrix.lua == '5.1'
+        run: lua tests/bench/frame_cost.lua --check

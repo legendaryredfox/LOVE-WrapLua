@@ -32,6 +32,8 @@ VM instructions and bytes allocated per `love.graphics` call on the test mocks; 
 - New: `tests/bench/frame_cost.lua` (+ `frame_baseline.lua`, `--check`, `--sections`), `api_coverage.lua`,
   `tests/polyfill_runs_test.lua`. Two `primitives_test` expectations changed: a filled square is now one
   10x10 rectangle instead of ten 1px spans (same pixels).
+- CI runs `tests/bench/frame_cost.lua --check` on Lua 5.1 and fails when a backend gets more than 10% worse than
+  `frame_baseline.lua`.
 - Known remaining cost: PS3 `circle("fill")` is ~17,000 instructions per call (polygon fill every time);
   3DS `setColor` and `print` cost more than the other backends.
 

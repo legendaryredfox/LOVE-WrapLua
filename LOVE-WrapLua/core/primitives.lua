@@ -96,18 +96,23 @@ end
 local polyCache = setmetatable({}, { __mode = "k" })
 local floor = math.floor
 
-local function polygonFill(p, src)
-    local x0, y0 = mapPoint(0, 0)
-    local x1, y1 = mapPoint(1, 1)
+-- `ox`, `oy` place a shape stored relative to its own origin (circles and ellipses), so one cached
+-- table serves every position; `fixed` marks such a table as never mutated, which skips the fingerprint.
+local function polygonFill(p, src, ox, oy, fixed)
+    ox, oy = ox or 0, oy or 0
+    local x0, y0 = mapPoint(ox, oy)
+    local x1, y1 = mapPoint(ox + 1, oy + 1)
     local sx, sy = x1 - x0, y1 - y0
     local ix, iy = floor(x0), floor(y0)
     local fx, fy = x0 - ix, y0 - iy
     local n, sum = #src, 0
-    for i = 1, n do sum = sum + src[i] * ((i % 13) + 1) end
+    if not fixed then
+        for i = 1, n do sum = sum + src[i] * ((i % 13) + 1) end
+    end
     local c = polyCache[src]
     if not c or c.n ~= n or c.sum ~= sum or c.sx ~= sx or c.sy ~= sy or c.fx ~= fx or c.fy ~= fy then
         local v = {}
-        for i = 1, n - 1, 2 do v[i], v[i+1] = mapPoint(src[i], src[i+1]) end
+        for i = 1, n - 1, 2 do v[i], v[i+1] = mapPoint(ox + src[i], oy + src[i+1]) end
         c = { n = n, sum = sum, sx = sx, sy = sy, fx = fx, fy = fy, ix = ix, iy = iy,
               runs = lv1lua.core.polygonRuns(v) }
         polyCache[src] = c
@@ -117,34 +122,51 @@ local function polygonFill(p, src)
     for i = 1, #runs, 4 do fill(runs[i] + dx, runs[i + 1] + dy, runs[i + 2], runs[i + 3], col) end
 end
 
--- `open` leaves the outline unclosed; only arc("line", "open", ...) asks.
-local function polygon(mode, src, open)
+-- `open` leaves the outline unclosed; only arc("line", "open", ...) asks. `ox`, `oy` and `fixed` are
+-- described at polygonFill.
+local function polygon(mode, src, open, ox, oy, fixed)
     local p = prims()
     if #src < 4 then return end
     if mode == "fill" then
-        polygonFill(p, src)
+        polygonFill(p, src, ox, oy, fixed)
         return
     end
+    ox, oy = ox or 0, oy or 0
     -- Mapped once, here: the emit calls below are already device coordinates.
     local v = {}
     for i = 1, #src - 1, 2 do
-        v[i], v[i+1] = mapPoint(src[i], src[i+1])
+        v[i], v[i+1] = mapPoint(ox + src[i], oy + src[i+1])
     end
-    if mode == "fill" then
-        -- Even-odd fill (convex and concave alike), cached as merged rectangles per vertex table.
-        polygonFill(p, src, v)
-    else
-        for i = 1, #v - 2, 2 do
-            p.line(v[i], v[i+1], v[i+2], v[i+3], color())
-        end
-        if not open then
-            p.line(v[#v-1], v[#v], v[1], v[2], color())
-        end
+    for i = 1, #v - 2, 2 do
+        p.line(v[i], v[i+1], v[i+2], v[i+3], color())
+    end
+    if not open then
+        p.line(v[#v-1], v[#v], v[1], v[2], color())
     end
 end
 
 function love.graphics.polygon(mode, vertices, ...)
     polygon(mode, type(vertices) == "table" and vertices or {vertices, ...})
+end
+
+-- Unit-less point tables for circles and ellipses, relative to the shape's centre and shared by every
+-- draw with the same radii and segment count. Reset when full: an animated radius never repeats.
+local shapeCache, shapeCount, SHAPE_LIMIT = {}, 0, 64
+
+local function ellipsePoints(rx, ry, segments, closed)
+    local key = rx .. "," .. ry .. "," .. segments .. (closed and "c" or "o")
+    local pts = shapeCache[key]
+    if pts then return pts end
+    if shapeCount >= SHAPE_LIMIT then shapeCache, shapeCount = {}, 0 end
+    pts = {}
+    for i = 0, closed and segments or segments - 1 do
+        local a = i / segments * TWO_PI
+        pts[#pts+1] = rx * math.cos(a)
+        pts[#pts+1] = ry * math.sin(a)
+    end
+    shapeCache[key] = pts
+    shapeCount = shapeCount + 1
+    return pts
 end
 
 function love.graphics.circle(mode, x, y, radius, segments)
@@ -156,26 +178,12 @@ function love.graphics.circle(mode, x, y, radius, segments)
         p.fillCircle(cx, cy, r, color(), segments)
         return
     end
-    -- Vertices stay in LOVE space; polygon maps them.
-    local pts = {}
-    for i = 0, segments - 1 do
-        local a = i / segments * TWO_PI
-        pts[#pts+1] = x + radius * math.cos(a)
-        pts[#pts+1] = y + radius * math.sin(a)
-    end
-    love.graphics.polygon(mode, pts)
+    polygon(mode, ellipsePoints(radius, radius, segments, false), nil, x, y, true)
 end
 
 function love.graphics.ellipse(mode, x, y, rx, ry, segments)
     ry = ry or rx
-    segments = segments or 32
-    local pts = {}
-    for i = 0, segments do
-        local a = i / segments * TWO_PI
-        pts[#pts+1] = x + rx * math.cos(a)
-        pts[#pts+1] = y + ry * math.sin(a)
-    end
-    love.graphics.polygon(mode, pts)
+    polygon(mode, ellipsePoints(rx, ry, segments or 32, true), nil, x, y, true)
 end
 
 function love.graphics.arc(mode, arctype, x, y, radius, angle1, angle2, segments)

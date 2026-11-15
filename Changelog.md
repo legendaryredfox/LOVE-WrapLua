@@ -37,8 +37,12 @@ VM instructions and bytes allocated per `love.graphics` call on the test mocks; 
 - `Font:getWidth` caches the native measure per font and string (bounded to 256 entries). Games that call
   `getWidth` every frame no longer cross into the SDK for a string they already measured. The synthetic frame
   does not call `getWidth`, so its numbers do not change.
-- Known remaining cost: PS3 `circle("fill")` is ~17,000 instructions per call (polygon fill every time);
-  3DS `setColor` and `print` cost more than the other backends.
+- `circle` and `ellipse` build their points once per radii and segment count, relative to the centre (bounded
+  to 64 tables), and `polygon` places them with an origin offset, so the polygon fill cache hits at every
+  position. PS3 `circle("fill")` 17,300 -> 2,044 instructions; the synthetic frame grows 0.2-0.5% from the
+  extra origin mapping in `polygonFill`. Only backends without a native `fillCircle` (PS3) gain on fills; the
+  outline path of every backend skips the trigonometry.
+- Known remaining cost: 3DS `setColor` and `print` cost more than the other backends.
 
 ### 2026-11-06, branch `fix/onelua-no-copyscale`
 

@@ -90,5 +90,65 @@ T.describe("polygon fill cache", function()
     end)
 end)
 
+T.describe("circle and ellipse fills without a native circle", function()
+    local function fills()
+        local out = {}
+        for _, c in ipairs(__rec.all("draw.fillrect")) do out[#out + 1] = c.args end
+        return out
+    end
+    local function pixels(rects)
+        local set = {}
+        for _, a in ipairs(rects) do
+            for y = a[2], a[2] + a[4] - 1 do for x = a[1], a[1] + a[3] - 1 do set[x .. "," .. y] = true end end
+        end
+        return set
+    end
+    local function reference(cx, cy, r, segs)
+        local v = {}
+        for i = 0, segs - 1 do
+            local a = i / segs * math.pi * 2
+            v[#v + 1] = cx + r * math.cos(a); v[#v + 1] = cy + r * math.sin(a)
+        end
+        return pixelsFromSpans(v)
+    end
+
+    T.it("circle fill rasterises once per radius, wherever it is drawn", function()
+        local saved = lv1lua.gfx.prims.fillCircle
+        lv1lua.gfx.prims.fillCircle = nil
+        love.graphics.origin()
+        local real, calls = lv1lua.core.polygonRuns, 0
+        lv1lua.core.polygonRuns = function(v) calls = calls + 1; return real(v) end
+        love.graphics.circle("fill", 100, 80, 13.5)
+        love.graphics.circle("fill", 140, 90, 13.5)
+        love.graphics.circle("fill", 20, 30, 13.5)
+        lv1lua.core.polygonRuns = real
+        lv1lua.gfx.prims.fillCircle = saved
+        T.eq(calls, 1)
+    end)
+
+    T.it("circle fill covers the pixels of the direct polygon", function()
+        local saved = lv1lua.gfx.prims.fillCircle
+        lv1lua.gfx.prims.fillCircle = nil
+        love.graphics.origin()
+        for _, pos in ipairs({ { 100, 80 }, { 37, 11 }, { 50.5, 20.25 } }) do
+            __rec.reset()
+            love.graphics.circle("fill", pos[1], pos[2], 9, 24)
+            T.ok(same(pixels(fills()), reference(pos[1], pos[2], 9, 24)),
+                 "circle at " .. pos[1] .. "," .. pos[2])
+        end
+        lv1lua.gfx.prims.fillCircle = saved
+    end)
+
+    T.it("ellipse fill rasterises once per radii", function()
+        love.graphics.origin()
+        local real, calls = lv1lua.core.polygonRuns, 0
+        lv1lua.core.polygonRuns = function(v) calls = calls + 1; return real(v) end
+        love.graphics.ellipse("fill", 60, 60, 12, 7)
+        love.graphics.ellipse("fill", 90, 40, 12, 7)
+        lv1lua.core.polygonRuns = real
+        T.eq(calls, 1)
+    end)
+end)
+
 io.write("\n=== polyfill runs ===\n")
 return T.summary()

@@ -34,6 +34,9 @@ VM instructions and bytes allocated per `love.graphics` call on the test mocks; 
   10x10 rectangle instead of ten 1px spans (same pixels).
 - CI runs `tests/bench/frame_cost.lua --check` on Lua 5.1 and fails when a backend gets more than 10% worse than
   `frame_baseline.lua`.
+- `Font:getWidth` caches the native measure per font and string (bounded to 256 entries). Games that call
+  `getWidth` every frame no longer cross into the SDK for a string they already measured. The synthetic frame
+  does not call `getWidth`, so its numbers do not change.
 - Known remaining cost: PS3 `circle("fill")` is ~17,000 instructions per call (polygon fill every time);
   3DS `setColor` and `print` cost more than the other backends.
 

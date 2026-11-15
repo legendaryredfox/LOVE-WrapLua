@@ -195,5 +195,31 @@ T.describe("OneLua font handles", function()
     end)
 end)
 
+for _, mode in ipairs({ "OneLua", "PSP", "lpp-vita", "PS3", "3DS" }) do
+    load_backend(mode)
+    T.describe("Font:getWidth cache ["..mode.."]", function()
+        T.it("measures a string natively once per font", function()
+            local hooks, calls = lv1lua.gfx.fontHooks, 0
+            local real = hooks.measure
+            if not real then return end
+            hooks.measure = function(f, text) calls = calls + 1; return real(f, text) end
+            local f = love.graphics.newFont(nil, 21)
+            local a = f:getWidth("Score")
+            local b = f:getWidth("Score")
+            hooks.measure = real
+            T.eq(a, b)
+            T.eq(calls, 1)
+        end)
+
+        T.it("keeps widths separate per font and per string", function()
+            local a, b = love.graphics.newFont(nil, 13), love.graphics.newFont(nil, 27)
+            local wa, wb = a:getWidth("Mult"), b:getWidth("Mult")
+            T.eq(a:getWidth("Mult"), wa)
+            T.eq(b:getWidth("Mult"), wb)
+            T.ok(a:getWidth("Mult Mult") >= wa)
+        end)
+    end)
+end
+
 io.write("\n=== fonts + printf (multi-backend) ===\n")
 return T.summary()

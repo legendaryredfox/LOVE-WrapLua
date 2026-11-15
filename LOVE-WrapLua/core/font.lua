@@ -38,11 +38,24 @@ lv1lua.gfx.fonts = cache
 local Font = {}
 Font.__index = Font
 
+local WIDTH_CACHE_LIMIT = 256
+
 function Font:getWidth(text)
     if not text or text == "" then return 0 end
     if hooks.measure then
-        local w = hooks.measure(self, text)
+        local widths = self._widths
+        if not widths then widths = {}; self._widths, self._widthCount = widths, 0 end
+        local w = widths[text]
         if w then return w end
+        w = hooks.measure(self, text)
+        if w then
+            if self._widthCount >= WIDTH_CACHE_LIMIT then
+                widths = {}; self._widths, self._widthCount = widths, 0
+            end
+            widths[text] = w
+            self._widthCount = self._widthCount + 1
+            return w
+        end
     end
     return util.glyphCount(text) * self.size * ESTIMATE_RATIO
 end

@@ -35,9 +35,15 @@ end
 
 -- Always set the rotation, including 0, so an earlier rotated draw cannot
 -- leave this image tilted on a later upright one.
+-- The sheet's last native rotation is remembered, so an upright draw after an upright draw (nearly
+-- all of them) makes no SDK call.
 local RAD_TO_DEG = 180 / math.pi
+local turned = setmetatable({}, { __mode = "k" })
 local function rotate(img, r)
-    image.rotate(img, r * RAD_TO_DEG)
+    if turned[img] ~= r then
+        turned[img] = r
+        image.rotate(img, r * RAD_TO_DEG)
+    end
 end
 
 -- Builds without image.copyscale (the OneLua v4R1 EBOOT.PBP for the PSP is
@@ -158,9 +164,18 @@ end
 
 -- draw(drawable, quad, x, y, r, sx, sy, ox, oy). Rotation turns the whole
 -- copy: the SDK has no per-region rotate.
+local insetViewport = lv1lua.core.insetViewport
 local function quadDraw(tex, quad, x, y, r, sx, sy, ox, oy)
     x, y, r, sx, sy = fold(x, y, r, sx, sy)
-    local qx, qy, qw, qh = lv1lua.core.insetQuad(quad:getViewport())
+    if quad._ig ~= gfx.insetGen then insetViewport(quad) end
+    local qx, qy, qw, qh = quad._ix, quad._iy, quad._iw, quad._ih
+    if sx == 1 and sy == 1 then
+        if ox then x = x - ox end
+        if oy then y = y - oy end
+        x, y = screen(x, y)
+        rotate(tex, r)
+        return image.blit(tex, x, y, qx, qy, qw, qh, color.a(lv1lua.current.color))
+    end
     x = x - (ox or 0) * math.abs(sx)
     y = y - (oy or 0) * math.abs(sy)
     -- A mirrored draw grows left/up from the anchor, as it does in LOVE.
@@ -196,17 +211,20 @@ end
 
 -- A quad draw takes one more argument than an image draw
 -- (drawable, quad, x, y, r, sx, sy, ox, oy), so the names below are positional.
-local isDrawObject, isImage = lv1lua.util.isDrawObject, lv1lua.core.isImage
+local isDrawObject, Image = lv1lua.util.isDrawObject, lv1lua.core.Image
 function love.graphics.draw(drawable, a, b, c, d, e, f, g, h)
     if drawable == nil then return end
-    -- SpriteBatch, Text, ParticleSystem and Canvas replay themselves through
-    -- this same entry point (core/objects.lua).
-    if isDrawObject(drawable) then
+    local tex
+    if getmetatable(drawable) == Image then
+        tex = drawable._tex
+    elseif isDrawObject(drawable) then
+        -- SpriteBatch, Text, ParticleSystem and Canvas replay themselves through
+        -- this same entry point (core/objects.lua).
         return drawable:_draw(a, b, c, d, e, f, g)
+    else
+        tex = drawable
     end
-    local tex = drawable
-    if isImage(drawable) then tex = drawable._tex end
-    if type(a) == "table" and a.getViewport then
+    if type(a) == "table" then
         return quadDraw(tex, a, b, c, d, e, f, g, h)
     end
 

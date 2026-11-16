@@ -13,9 +13,13 @@
 lv1lua.core = lv1lua.core or {}
 lv1lua.gfx  = lv1lua.gfx or {}
 lv1lua.gfx.texelInset = lv1lua.gfx.texelInset or 0
+-- Bumped whenever the inset changes; a quad that cached its inset rectangle under an older number
+-- recomputes it (see insetViewport).
+lv1lua.gfx.insetGen = lv1lua.gfx.insetGen or 0
 
 function love.graphics.setTextureInset(px)
     lv1lua.gfx.texelInset = px or 0
+    lv1lua.gfx.insetGen = lv1lua.gfx.insetGen + 1
 end
 
 function love.graphics.getTextureInset()
@@ -45,4 +49,11 @@ function lv1lua.core.insetQuadTexels(x, y, w, h)
     if x1 <= x0 then x1 = x0 + 1 end
     if y1 <= y0 then y1 = y0 + 1 end
     return x0, y0, x1 - x0, y1 - y0
+end
+
+-- Computes the inset viewport of a quad and keeps it on the quad as _ix.._ih, stamped with the inset
+-- generation in _ig. A quad's setViewport clears _ig. The OneLua draw reads the fields directly.
+function lv1lua.core.insetViewport(q)
+    q._ix, q._iy, q._iw, q._ih = lv1lua.core.insetQuad(q:getViewport())
+    q._ig = lv1lua.gfx.insetGen
 end

@@ -35,6 +35,7 @@ function love.graphics.newQuad(x, y, width, height, swOrImg, sh)
     }
     function q:getViewport() return self.x, self.y, self.width, self.height end
     function q:setViewport(x, y, w, h, sw, sh)
+        self._ig = nil
         self.x      = x or self.x
         self.y      = y or self.y
         self.width  = w or self.width

@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### 2026-11-16, branch `perf/draw-specialisation`
+
+OneLua draw path (Vita and PSP share `OneLua/imagedraw.lua`), plan 3.1 / W1:
+
+- An Image is recognised by its metatable before the draw-object registry is asked, so the common draw
+  skips two lookups.
+- A quad keeps its inset rectangle (`_ix.._ih`, stamped `_ig`); `setViewport` clears the stamp and
+  `setTextureInset` bumps `lv1lua.gfx.insetGen`, so neither can leave a stale rectangle. The per-draw
+  `getViewport` call and `insetQuad` are gone.
+- A quad draw at scale 1 takes a short path to `image.blit` (origin shift, no `abs`, no copy lookup).
+- The sheet's last native rotation is remembered per image: an upright draw after an upright draw makes no
+  `image.rotate` call (about 11 microseconds each on the SDK, measured in PPSSPP).
+- `draw(img, x, y)` 185 -> 153 and `draw(img, quad, x, y)` 216 -> 145 instructions on PSP (244 -> 173 on
+  OneLua); the synthetic frame PSP 107,696 -> 100,968 (-6.2%), OneLua 102,129 -> 96,100 (-5.9%).
+  Baselines updated. New `tests/draw_fast_test.lua`.
+
 ### 2026-11-16, branch `perf/filesystem-manifest`
 
 - `love.filesystem` keeps what it learns about a path (exists, directory, size) and each directory listing

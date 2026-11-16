@@ -74,9 +74,3 @@ is `PERFORMANCE_SPEC.md` and the schedule is `PERFORMANCE_PLAN.md`.
    stencil and GPU-side effects.
 5. Keep LuaJIT and Lua 5.4 as gated experiments (at least 15 % on the synthetic frame) and do not plan around
    them.
-
-## 6. Licensing
-
-The OneLua player's licence has not been checked. It must be checked before distributing anything that
-replaces or derives from the player (W17 and any build-time tool that ships player code). Decompiled output is
-kept local and used to understand behaviour only.

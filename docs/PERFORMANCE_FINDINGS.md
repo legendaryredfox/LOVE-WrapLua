@@ -69,6 +69,20 @@ frame (16.7 ms, vsync) gives the cost. Frame times land on vblank multiples, so 
 - Gate 2b (W23/W26 proceed only if the column cost is at least 25% of a rotated draw) is not met by this
   data; the rotated blit still needs its own probe with sheets up to 512 and scales that stay inside it.
 
+### 3.3 decision: no deferred draw batching on OneLua (2026-11-16)
+
+What batching could save on a stock-EBOOT scaled draw is the native call pair around it: `image.resize` in and
+out, and the `screen.clip` set and restore, for consecutive draws of one sheet at one size. The 2b.1 probe
+measured each of those at under 11 microseconds, below what the probe can resolve (about 1.1 ms per 100
+calls), so the best case is about 33 microseconds per scaled draw, roughly 1 ms on the synthetic frame (33
+scaled draws), about 3%. The cost side is large: a deferred list needs a flush hook in every other draw
+(rectangle, line, polygon, print, plain blits) to keep draw order, the recording itself costs about as many VM
+instructions as the per-draw state work it replaces, and a sheet left resized between draws is shared with
+every Image and Quad cut from it. So no batching code was written. Reopen it if a probe that resolves single
+calls shows `resize` or `clip` above about 30 microseconds on a real PSP.
+
+What 3.1 did instead is in the changelog: the per-draw VM work, which is the part that is measurable.
+
 ## 3. Done on `fix/onelua-no-copyscale` (issue #3)
 
 Scaled, mirrored and rotated draws on EBOOTs without `copyscale`: resize the whole sheet, blit it whole,

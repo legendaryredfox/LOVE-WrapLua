@@ -131,13 +131,21 @@ end
 -- The anchor maps as a point (p * S + O), the scale multiplies and the
 -- rotation adds; the origin offset is applied afterwards in the folded scale,
 -- so it stays a pivot in image pixels as in LOVE.
+--
+-- lv1luaconf.rotatesnap (degrees, off by default): a turn smaller than this is
+-- drawn upright. A rotated blit costs a pivot, a clip and a turned-bounds
+-- computation on top of the blit, and a small idle tilt is hardly visible.
+local snapRad = (lv1luaconf.rotatesnap or 0) * math.pi / 180
+
 local function fold(x, y, r, sx, sy)
     if stack._dirty then stack:updateTransform() end
     local t = stack.transform
     sx = sx or 1; sy = sy or sx
     local tsx, tsy = t._scaleX, t._scaleY
+    r = (r or 0) + t._rotation
+    if r < snapRad and r > -snapRad then r = 0 end
     return (x or 0) * tsx + t._offsetX, (y or 0) * tsy + t._offsetY,
-           (r or 0) + t._rotation, sx * tsx, sy * tsy
+           r, sx * tsx, sy * tsy
 end
 
 local function screen(x, y)

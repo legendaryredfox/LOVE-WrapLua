@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 2026-11-16, branch `perf/onelua-rotation-snap`
+
+- New option `lv1luaconf.rotatesnap` (degrees, default off, plan 2b.2 / W25): on OneLua (Vita and PSP) a draw
+  turned by less than the angle is drawn upright, so a scaled quad skips `image.center` (twice), the turned
+  bounds trigonometry and the native rotation. Off by default because it changes pixels slightly.
+
 ### 2026-11-06, branch `perf/wrapper-hot-paths`
 
 Hot paths of the shared graphics layer, measured with the new `tests/bench/` scripts (Lua 5.1, count hook:

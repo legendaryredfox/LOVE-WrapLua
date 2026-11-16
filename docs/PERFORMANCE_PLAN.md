@@ -47,7 +47,7 @@ Target after Phase 2: PSP synthetic frame at most 100k instructions (R5), PS3 un
 | # | Task | Items |
 |---|---|---|
 | 3.1 | Specialised `draw`/quad draw per Image/Quad with closed-over state | W1 |
-| 3.2 | lpp-vita direct mapping to `drawImageExtended` / `vita2d_draw_texture_part_scale_rotate` | W2 |
+| 3.2 | lpp-vita direct mapping to `drawImageExtended` / `vita2d_draw_texture_part_scale_rotate` (the mapping existed; the Lua around it was trimmed, 357 to 192 instructions) | W2 |
 | 3.3 | Same-state draw batching with a replay loop; flush on blend, scissor, font or colour change (decided against for OneLua, see `PERFORMANCE_FINDINGS.md` 3.3) | W5 |
 | 3.4 | `SpriteBatch`/`Text`/`ParticleSystem` compact arrays | W11 |
 | 3.5 | Main loop allocations and catch-up skip | W12 |

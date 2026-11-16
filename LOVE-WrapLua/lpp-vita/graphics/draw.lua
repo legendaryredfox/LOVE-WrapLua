@@ -18,8 +18,12 @@
 -- flattened offset/scale/rotation compose with the per-draw arguments, and a
 -- draw whose bounding box falls outside the active scissor is rejected.
 
-local stack = lv1lua.gfx.transform
+local gfx   = lv1lua.gfx
+local stack = gfx.transform
 local util  = lv1lua.util
+local Image = lv1lua.core.Image
+local isDrawObject, insetTexels = util.isDrawObject, lv1lua.core.insetTexels
+local abs = math.abs
 
 local function screenScale(x, y, sx, sy)
     if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then
@@ -35,7 +39,7 @@ end
 -- Composes a draw's arguments with the flattened transform. Returns the
 -- screen-space pivot, the composed rotation and the composed (signed) scale.
 local function compose(x, y, r, sx, sy)
-    stack:updateTransform()
+    if stack._dirty then stack:updateTransform() end
     local t = stack.transform
     local px  = x * t._scaleX + t._offsetX
     local py  = y * t._scaleY + t._offsetY
@@ -46,27 +50,40 @@ local function compose(x, y, r, sx, sy)
 end
 
 local function drawExtended(drawable, px, py, rad, lsx, lsy, ox, oy, qx, qy, qw, qh)
-    local cx, cy = util.spriteCentre(px, py, rad, lsx, lsy, ox, oy, qw, qh)
-    if lv1lua.gfx.scissorRejects(util.spriteBox(cx, cy, rad, qw * lsx, qh * lsy)) then
-        return
+    local cx, cy
+    if rad == 0 then
+        -- No turn: the centre is a plain offset and the box is the scaled rect itself.
+        cx = px + (qw / 2 - (ox or 0)) * lsx
+        cy = py + (qh / 2 - (oy or 0)) * lsy
+        if stack.transform._usingScissor then
+            local bw, bh = abs(qw * lsx), abs(qh * lsy)
+            if gfx.scissorRejects(cx - bw / 2, cy - bh / 2, bw, bh) then return end
+        end
+    else
+        cx, cy = util.spriteCentre(px, py, rad, lsx, lsy, ox, oy, qw, qh)
+        if gfx.scissorRejects(util.spriteBox(cx, cy, rad, qw * lsx, qh * lsy)) then
+            return
+        end
     end
     Graphics.drawImageExtended(cx, cy, drawable, qx, qy, qw, qh,
                                rad, lsx, lsy, lv1lua.current.color)
 end
 
 function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx, ky)
-    -- SpriteBatch / Text draw themselves.
-    if util.isDrawObject(drawable) then
+    if not drawable then return end
+    if getmetatable(drawable) == Image then
+        drawable = drawable._tex
+    elseif isDrawObject(drawable) then
+        -- SpriteBatch / Text draw themselves.
         drawable:_draw(xOrQuad, y, r, sx, sy, ox, oy)
         return
     end
-    if not drawable then return end
-    drawable = lv1lua.core.texture(drawable)
 
-    if type(xOrQuad) == "table" and xOrQuad.getViewport then
+    if type(xOrQuad) == "table" then
         -- draw(drawable, quad, x, y, r, sx, sy, ox, oy): every argument after
         -- the quad sits one slot to the right.
-        local qx, qy, qw, qh = lv1lua.core.insetQuadTexels(xOrQuad:getViewport())
+        if xOrQuad._tg ~= gfx.insetGen then insetTexels(xOrQuad) end
+        local qx, qy, qw, qh = xOrQuad._tx, xOrQuad._ty, xOrQuad._tw, xOrQuad._th
         local qsx = sy or 1
         local qsy = ox
         if qsy == nil then qsy = qsx end
@@ -92,6 +109,6 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx, ky)
     local bw, bh = w * lsx, h * lsy
     local bx = bw < 0 and dx + bw or dx
     local by = bh < 0 and dy + bh or dy
-    if lv1lua.gfx.scissorRejects(bx, by, math.abs(bw), math.abs(bh)) then return end
+    if gfx.scissorRejects(bx, by, abs(bw), abs(bh)) then return end
     Graphics.drawScaleImage(dx, dy, drawable, lsx, lsy, lv1lua.current.color)
 end

@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### 2026-11-16, branch `perf/lppvita-draw`
+
+lpp-vita draw path (plan 3.2 / W2). Both draw forms already map to one native call
+(`Graphics.drawImageExtended`, rotation and scale on the GPU), so what was left was the Lua around it:
+
+- An Image is recognised by its metatable before the draw-object registry is asked.
+- A quad keeps its whole-texel inset rectangle (`_tx.._th`, stamped `_tg`); `setViewport` clears the stamp
+  and `setTextureInset` bumps `lv1lua.gfx.insetGen`, as on OneLua. The per-draw `getViewport` call and the
+  rounding in `insetQuadTexels` are gone.
+- An unrotated draw computes its centre and scissor box without trigonometry and asks `scissorRejects` only
+  while a scissor is set; `compose` re-flattens the transform only when it changed.
+- `draw(img, x, y)` 208 -> 170 and `draw(img, quad, x, y)` 357 -> 192 instructions (target 200); the
+  synthetic frame 115,025 -> 97,142 (-15.5%). Baseline updated. New `tests/lppvita_draw_fast_test.lua`.
+
 ### 2026-11-16, branch `perf/scaled-draw`
 
 - `clipBlit` (scaled, mirrored and rotated draws on EBOOTs without `copyscale`) works with local math

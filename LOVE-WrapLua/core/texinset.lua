@@ -57,3 +57,10 @@ function lv1lua.core.insetViewport(q)
     q._ix, q._iy, q._iw, q._ih = lv1lua.core.insetQuad(q:getViewport())
     q._ig = lv1lua.gfx.insetGen
 end
+
+-- The whole-texel form of insetViewport, kept as _tx.._th stamped _tg, for the SDK calls that read the
+-- source rectangle as integers. setViewport clears _tg.
+function lv1lua.core.insetTexels(q)
+    q._tx, q._ty, q._tw, q._th = lv1lua.core.insetQuadTexels(q:getViewport())
+    q._tg = lv1lua.gfx.insetGen
+end

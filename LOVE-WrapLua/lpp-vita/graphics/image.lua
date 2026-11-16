@@ -47,7 +47,7 @@ function love.graphics.newQuad(x, y, w, h, swOrImg, sh)
     lv1lua.core.validateTexture(sw, _sh, "spritesheet")
     local q = { x=x, y=y, width=w, height=h, sw=sw, sh=_sh }
     function q:getViewport() return self.x, self.y, self.width, self.height end
-    function q:setViewport(x, y, w, h) self.x, self.y, self.width, self.height = x, y, w, h end
+    function q:setViewport(x, y, w, h) self.x, self.y, self.width, self.height = x, y, w, h; self._tg = nil end
     function q:getTextureDimensions() return self.sw, self.sh end
     return q
 end

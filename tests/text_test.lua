@@ -207,5 +207,56 @@ T.describe("3DS text (Font.print / Font.measureText)", function()
     end)
 end)
 
+T.describe("3DS queued text is reused across frames", function()
+    local function prints()
+        local out = {}
+        for _, c in ipairs(__rec.calls) do
+            if c.fn == "Font.print" then out[#out + 1] = c end
+        end
+        return out
+    end
+    local function frame(draw)
+        lv1lua.gfx.beginFrame()
+        draw()
+        __rec.reset()
+        lv1lua.gfx.endFrame()
+    end
+
+    T.it("a shorter frame after a longer one prints only its own lines", function()
+        frame(function()
+            love.graphics.print("one", 4, 4)
+            love.graphics.print("two", 4, 20)
+            love.graphics.print("three", 4, 36)
+        end)
+        T.eq(#prints(), 3)
+        frame(function() love.graphics.print("only", 8, 8) end)
+        local p = prints()
+        T.eq(#p, 1)
+        T.eq(p[1].args[4], "only")
+    end)
+
+    T.it("multi-line text queues each non-empty line in order", function()
+        frame(function() love.graphics.print("a\n\nb", 0, 0) end)
+        local p = prints()
+        T.eq(#p, 2)
+        T.eq(p[1].args[4], "a")
+        T.eq(p[2].args[4], "b")
+        T.ok(p[2].args[3] > p[1].args[3], "second line sits lower")
+    end)
+
+    T.it("a queued line keeps the colour current when it was printed", function()
+        love.graphics.setColor(1, 0, 0, 1)
+        local red = lv1lua.current.color
+        frame(function()
+            love.graphics.print("r", 0, 0)
+            love.graphics.setColor(0, 1, 0, 1)
+            love.graphics.print("g", 0, 20)
+        end)
+        local p = prints()
+        T.eq(p[1].args[5], red)
+        T.ok(p[2].args[5] ~= red)
+    end)
+end)
+
 io.write("\n=== text metrics (multi-backend) ===\n")
 return T.summary()

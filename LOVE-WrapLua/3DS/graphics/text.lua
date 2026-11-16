@@ -13,7 +13,7 @@
 
 local stack = lv1lua.gfx.transform
 local gfx   = lv1lua.gfx
-local queue = {}
+local queue, queued = {}, 0
 
 local MAX_X, MAX_Y = 400, 227
 
@@ -31,10 +31,10 @@ local function emit(handle, size, x, y, text, color)
 end
 
 function gfx.flushText()
-    local pending = queue
-    queue = {}
-    for i = 1, #pending do
-        local q = pending[i]
+    local count = queued
+    queued = 0
+    for i = 1, count do
+        local q = queue[i]
         emit(q[1], q[2], q[3], q[4], q[5], q[6])
     end
     local f = lv1lua.current.font
@@ -54,15 +54,33 @@ function love.graphics.print(text, x, y)
     y = (y or 0) * t._scaleY + t._offsetY
 
     local handle, size = nativeFont()
+    local color = lv1lua.current.color
+    local inFrame = gfx.inFrame
+
+    if not text:find("\n", 1, true) then
+        if inFrame then
+            queued = queued + 1
+            local q = queue[queued]
+            if not q then q = {}; queue[queued] = q end
+            q[1], q[2], q[3], q[4], q[5], q[6] = handle, size, x, y, text, color
+        else
+            emit(handle, size, x, y, text, color)
+        end
+        return
+    end
+
     local lineHeight = love.graphics.getFont():getHeight()
     local row = 0
     for line in (text .. "\n"):gmatch("([^\n]*)\n") do
         if line ~= "" then
             local ly = y + row * lineHeight
-            if gfx.inFrame then
-                queue[#queue + 1] = { handle, size, x, ly, line, lv1lua.current.color }
+            if inFrame then
+                queued = queued + 1
+                local q = queue[queued]
+                if not q then q = {}; queue[queued] = q end
+                q[1], q[2], q[3], q[4], q[5], q[6] = handle, size, x, ly, line, color
             else
-                emit(handle, size, x, ly, line, lv1lua.current.color)
+                emit(handle, size, x, ly, line, color)
             end
         end
         row = row + 1

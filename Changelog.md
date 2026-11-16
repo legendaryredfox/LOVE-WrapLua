@@ -42,7 +42,9 @@ VM instructions and bytes allocated per `love.graphics` call on the test mocks; 
   position. PS3 `circle("fill")` 17,300 -> 2,044 instructions; the synthetic frame grows 0.2-0.5% from the
   extra origin mapping in `polygonFill`. Only backends without a native `fillCircle` (PS3) gain on fills; the
   outline path of every backend skips the trigonometry.
-- Known remaining cost: 3DS `setColor` and `print` cost more than the other backends.
+- 3DS `print` reuses its queued line tables across frames and skips the line split for text without a newline
+  (bench `print` outside a frame 261 -> 242 instructions; the in-frame path allocates no table per call).
+  `setColor` on the 3DS already shares the memoised path (37 instructions).
 
 ### 2026-11-06, branch `fix/onelua-no-copyscale`
 

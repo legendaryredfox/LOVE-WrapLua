@@ -94,51 +94,61 @@ end
 -- replayed on draw. It still buys the game the LÖVE API and one shared image.
 -- Arguments a backend cannot honour (rotation on PSP, everything but position
 -- on PS3) are dropped by that backend's own draw, not here.
+--
+-- Sprites live in parallel arrays (quad or false, x, y, r, sx, sy, ox, oy), so adding a sprite allocates no
+-- table, a field the game left out costs no slot at all, and a replay is one numeric loop over plain
+-- indexes. The replay function is built once per batch; clear only resets the count.
 function love.graphics.newSpriteBatch(image, maxsprites, usage)
+    local count = 0
+    local qs, xs, ys, rs, sxs, sys, oxs, oys = {}, {}, {}, {}, {}, {}, {}, {}
     local sb = {
         _image      = image,
         _maxsprites = maxsprites or 1000,
-        _sprites    = {},
         _color      = nil,
     }
-    function sb:add(quad_or_x, x, y, r, sx, sy, ox, oy, kx, ky)
-        local entry
+    -- Every slot is written, nil included, so a slot reused after clear holds nothing of the old sprite.
+    local function put(i, quad_or_x, x, y, r, sx, sy, ox, oy)
         if type(quad_or_x) == "table" and quad_or_x.getViewport then
-            entry = {quad=quad_or_x, x=x, y=y, r=r, sx=sx, sy=sy, ox=ox, oy=oy}
+            qs[i], xs[i], ys[i], rs[i], sxs[i], sys[i], oxs[i], oys[i] = quad_or_x, x, y, r, sx, sy, ox, oy
         else
-            entry = {x=quad_or_x, y=x, r=y, sx=r, sy=sx, ox=sy, oy=ox}
+            qs[i], xs[i], ys[i], rs[i], sxs[i], sys[i], oxs[i], oys[i] = false, quad_or_x, x, y, r, sx, sy, ox
         end
-        table.insert(self._sprites, entry)
-        return #self._sprites
+    end
+    function sb:add(quad_or_x, x, y, r, sx, sy, ox, oy, kx, ky)
+        local i = count + 1
+        count = i
+        if type(quad_or_x) == "table" and quad_or_x.getViewport then
+            qs[i], xs[i], ys[i], rs[i], sxs[i], sys[i], oxs[i], oys[i] = quad_or_x, x, y, r, sx, sy, ox, oy
+        else
+            qs[i], xs[i], ys[i], rs[i], sxs[i], sys[i], oxs[i], oys[i] = false, quad_or_x, x, y, r, sx, sy, ox
+        end
+        return i
     end
     function sb:set(id, quad_or_x, x, y, r, sx, sy, ox, oy, kx, ky)
-        local e = self._sprites[id]
-        if not e then return end
-        if type(quad_or_x) == "table" and quad_or_x.getViewport then
-            e.quad,e.x,e.y,e.r,e.sx,e.sy,e.ox,e.oy = quad_or_x,x,y,r,sx,sy,ox,oy
-        else
-            e.quad = nil
-            e.x,e.y,e.r,e.sx,e.sy,e.ox,e.oy = quad_or_x,x,y,r,sx,sy,ox
+        if type(id) ~= "number" or id < 1 or id > count then return end
+        put(id, quad_or_x, x, y, r, sx, sy, ox, oy)
+    end
+    function sb:clear()    count = 0 end
+    function sb:flush()    end
+    function sb:getImage() return image end
+    function sb:getCount() return count end
+    function sb:setColor(r,g,b,a) self._color={r,g,b,a} end
+    function sb:getColor() if self._color then return unpack(self._color, 1, 4) end end
+    function sb:attachAttribute() end
+    local function replay()
+        local draw = love.graphics.draw
+        local qs, xs, ys, rs, sxs, sys, oxs, oys = qs, xs, ys, rs, sxs, sys, oxs, oys
+        for i = 1, count do
+            local quad = qs[i]
+            if quad then
+                draw(image, quad, xs[i] or 0, ys[i] or 0, rs[i], sxs[i], sys[i], oxs[i], oys[i])
+            else
+                draw(image, xs[i] or 0, ys[i] or 0, rs[i], sxs[i], sys[i], oxs[i], oys[i])
+            end
         end
     end
-    function sb:clear()    self._sprites = {} end
-    function sb:flush()    end
-    function sb:getImage() return self._image end
-    function sb:getCount() return #self._sprites end
-    function sb:setColor(r,g,b,a) self._color={r,g,b,a} end
-    function sb:getColor() return self._color and unpack(self._color) end
-    function sb:attachAttribute() end
     function sb:_draw(x, y, r, sx, sy, ox, oy)
-        local sprites, image = self._sprites, self._image
-        withDrawTransform(x, y, r, sx, sy, ox, oy, function()
-            for _, s in ipairs(sprites) do
-                if s.quad then
-                    love.graphics.draw(image, s.quad, s.x or 0, s.y or 0, s.r, s.sx, s.sy, s.ox, s.oy)
-                else
-                    love.graphics.draw(image, s.x or 0, s.y or 0, s.r, s.sx, s.sy, s.ox, s.oy)
-                end
-            end
-        end)
+        withDrawTransform(x, y, r, sx, sy, ox, oy, replay)
     end
     return lv1lua.util.registerDrawObject(sb)
 end
@@ -198,17 +208,27 @@ function Text:getWidth()      return self._width end
 function Text:getHeight()     return self._height end
 function Text:getDimensions() return self._width, self._height end
 
-function Text:_draw(x, y, r, sx, sy, ox, oy)
-    local prev, batches = lv1lua.current.font, self._batches
-    love.graphics.setFont(self._font)
-    withDrawTransform(x, y, r, sx, sy, ox, oy, function()
-        for _, b in ipairs(batches) do
-            if b.wrap then
-                love.graphics.printf(b.text, b.x, b.y, b.wrap, b.align)
-            else
-                love.graphics.print(b.text, b.x, b.y)
-            end
+-- The replay closure is made once per Text: _draw runs every frame.
+local function replayText(self)
+    local batches = self._batches
+    for i = 1, #batches do
+        local b = batches[i]
+        if b.wrap then
+            love.graphics.printf(b.text, b.x, b.y, b.wrap, b.align)
+        else
+            love.graphics.print(b.text, b.x, b.y)
         end
-    end)
+    end
+end
+
+function Text:_draw(x, y, r, sx, sy, ox, oy)
+    local prev = lv1lua.current.font
+    local replay = self._replay
+    if not replay then
+        replay = function() replayText(self) end
+        self._replay = replay
+    end
+    love.graphics.setFont(self._font)
+    withDrawTransform(x, y, r, sx, sy, ox, oy, replay)
     love.graphics.setFont(prev)
 end

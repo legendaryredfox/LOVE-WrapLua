@@ -17,6 +17,7 @@ local test_files = {
     "tests/polyfill_runs_test.lua",
     "tests/polygon_cache_test.lua",
     "tests/draw_fast_test.lua",
+    "tests/batch_compact_test.lua",
     "tests/native_probe_test.lua",
     "tests/lppvita_draw_fast_test.lua",
     "tests/fs_cache_test.lua",

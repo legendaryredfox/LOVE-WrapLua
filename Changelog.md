@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### 2026-11-16, branch `perf/compact-batches`
+
+`SpriteBatch`, `ParticleSystem` and `Text` (plan 3.4 / W11), measured with the new
+`tests/bench/batch_cost.lua` (PSP backend, 200 sprites or particles):
+
+| | before | after |
+|---|---|---|
+| `SpriteBatch:add` x200 | 6,417 instr, 81,152 B | 8,217 instr, 192 B |
+| `SpriteBatch` draw (200) | 30,645 instr | 30,254 instr |
+| `ParticleSystem:update` (200) | 4,020 instr, 4,248 B | 4,625 instr, 88 B |
+| `Text` draw (10 strings) | 212 B | 124 B |
+
+- A `SpriteBatch` keeps its sprites in parallel arrays instead of one table per sprite, builds its replay
+  function once, and `clear` resets a count. A field a game leaves out costs no slot. The instruction count of
+  `add` rises about 28% (more stores per call) while the garbage per sprite falls from about 400 B to none,
+  which matters more on a 32MB device whose collector has to chase it.
+- `ParticleSystem` compacts its live list in place (order kept) and reuses the tables of dead particles, so a
+  steady system allocates nothing per frame; `update` builds no `alive` table. `Text` builds its replay closure
+  once.
+- `SpriteBatch:getColor` returned only the red channel (`and` cut the multiple return); it returns all four.
+- `SpriteBatch:set` ignores an id outside the batch (it already did for an unknown id; it now also ignores a
+  non-number). New `tests/batch_compact_test.lua`; byte budgets are asserted on PUC Lua only, because LuaJIT
+  counts trace memory in `collectgarbage("count")`.
+
 ### 2026-11-16, branch `perf/capability-detection`
 
 - New `OneLua/native.lua` (plan 2.5 / W14): `lv1lua.core.probeNative()` probes once which of `image.copyscale`,

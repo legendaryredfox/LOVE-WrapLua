@@ -206,6 +206,11 @@ One shared Source (`core/audio.lua`); each backend supplies only native hooks.
 | mount / unmount | stub |
 | isFused | `true` |
 
+Lookups are cached: the game directory (read-only) for good, the save directory until this module writes,
+appends, removes, creates a directory, opens or writes a `File` for writing, or the identity changes. A file
+another program puts into the save directory after it was looked up is not seen; `lv1lua.core.dropFilesystemCache()`
+forgets every save answer.
+
 Save locations: Vita `ux0:/data/<identity>/savedata/`, 3DS
 `/3ds/data/<identity>/`, PSP `ms0:/PSP/GAME/LOVE-WrapLua/savedata/`, PS3
 `<game folder>/savedata/`. On the Vita and 3DS `setIdentity` moves the save

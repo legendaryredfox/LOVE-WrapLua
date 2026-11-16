@@ -53,16 +53,38 @@ makeSaveDirectory()
 local function savePath(file) return lv1lua.saveloc .. file end
 local function gamePath(file) return lv1lua.dataloc .. "game/" .. file end
 
+-- Each native stat or listing costs about 11 ms on OneLua in PPSSPP, so answers are kept. The game
+-- directory is read-only and its answers last for good; the save directory changes only through this
+-- module, which drops every save answer whenever it writes, removes or creates something.
+local gameMeta, saveMeta, gameLists, saveLists = {}, {}, {}, {}
+
+local function dropSaveCache()
+    if next(saveMeta) or next(saveLists) then saveMeta, saveLists = {}, {} end
+end
+lv1lua.core.dropFilesystemCache = dropSaveCache
+
+local function meta(path, inSave)
+    local m = inSave and saveMeta or gameMeta
+    local e = m[path]
+    if not e then
+        e = { exists = lv1lua.exists(path) and true or false }
+        m[path] = e
+    end
+    return e
+end
+
 local function resolve(file)
-    if lv1lua.exists(savePath(file)) then return savePath(file), true end
-    if lv1lua.exists(gamePath(file)) then return gamePath(file), false end
+    local sp = savePath(file)
+    if meta(sp, true).exists then return sp, true end
+    local gp = gamePath(file)
+    if meta(gp, false).exists then return gp, false end
     return nil
 end
 
 -- Directory test. Each SDK exposes a different subset, so the native call is
 -- probed; the fallback is "it exists but cannot be opened as a byte stream",
 -- which is what a directory looks like through the console io layers.
-local function isDirPath(path)
+local function probeDir(path)
     if fileio().isDir then return fileio().isDir(path) end
     if lv1lua.mode == "lpp-vita" and type(System) == "table"
        and type(System.doesDirExist) == "function" then
@@ -83,14 +105,27 @@ local function isDirPath(path)
     return byte == nil and err ~= nil
 end
 
+-- `inSave` selects the cache the answer lives in; callers got it from resolve.
+local function isDirPath(path, inSave)
+    local e = meta(path, inSave)
+    if e.dir == nil then e.dir = probeDir(path) and true or false end
+    return e.dir
+end
+
 -- Byte size of a real file, or nil when it cannot be measured.
-local function fileSize(path)
+local function probeSize(path)
     local f = open(path, "rb")
     if not f then return nil end
     local ok, size = pcall(f.seek, f, "end")
     f:close()
     if ok and type(size) == "number" then return size end
     return nil
+end
+
+local function fileSize(path, inSave)
+    local e = meta(path, inSave)
+    if e.size == nil then e.size = probeSize(path) or false end
+    return e.size or nil
 end
 
 local function listNative(dir)
@@ -126,6 +161,7 @@ end
 
 function love.filesystem.write(file, data, size)
     local mode = lv1lua.mode == "PS3" and "w+" or "wb"
+    dropSaveCache()
     local f = open(lv1lua.saveloc..file, mode)
     if not f then return false, "Cannot open for writing" end
     local content = size and string.sub(data, 1, size) or data
@@ -135,6 +171,7 @@ function love.filesystem.write(file, data, size)
 end
 
 function love.filesystem.append(file, data, size)
+    dropSaveCache()
     local f = open(lv1lua.saveloc..file, "ab")
     if not f then return false, "Cannot open for appending" end
     local content = size and string.sub(data, 1, size) or data
@@ -144,27 +181,27 @@ function love.filesystem.append(file, data, size)
 end
 
 function love.filesystem.isFile(file)
-    local path = resolve(file)
-    return path ~= nil and not isDirPath(path)
+    local path, inSave = resolve(file)
+    return path ~= nil and not isDirPath(path, inSave)
 end
 
 function love.filesystem.isDirectory(path)
-    local full = resolve(path)
-    return full ~= nil and isDirPath(full)
+    local full, inSave = resolve(path)
+    return full ~= nil and isDirPath(full, inSave)
 end
 
 -- LOVE's getInfo. `size` is the real byte count for a file; `modtime` stays 0
 -- because no SDK here exposes a file date, and inventing one would break the
 -- "newer than" comparisons games use it for.
 function love.filesystem.getInfo(file, filtertype)
-    local path = resolve(file)
+    local path, inSave = resolve(file)
     if not path then return nil end
 
-    local ftype = isDirPath(path) and "directory" or "file"
+    local ftype = isDirPath(path, inSave) and "directory" or "file"
     if filtertype and filtertype ~= ftype then return nil end
 
     return { type    = ftype,
-             size    = ftype == "file" and (fileSize(path) or 0) or 0,
+             size    = ftype == "file" and (fileSize(path, inSave) or 0) or 0,
              modtime = 0 }
 end
 
@@ -173,6 +210,7 @@ function love.filesystem.load(file)
 end
 
 function love.filesystem.remove(file)
+    dropSaveCache()
     if lv1lua.mode == "OneLua" then
         return files.delete(lv1lua.saveloc..file)
     elseif lv1lua.mode == "lpp-vita" then
@@ -184,6 +222,7 @@ function love.filesystem.remove(file)
 end
 
 function love.filesystem.createDirectory(path)
+    dropSaveCache()
     local full = lv1lua.saveloc..path
     if lv1lua.mode == "OneLua" then
         if not files.exists(full) then files.mkdir(full) end
@@ -202,9 +241,18 @@ end
 -- collapse (the save copy shadows the shipped one, as in read), and the result
 -- is sorted so a game that renders a file list gets a stable order.
 function love.filesystem.getDirectoryItems(path)
+    local game, save = gameLists[path], saveLists[path]
+    if not game then
+        game = listNative(gamePath(path)) or {}
+        gameLists[path] = game
+    end
+    if not save then
+        save = listNative(savePath(path)) or {}
+        saveLists[path] = save
+    end
     local seen, items = {}, {}
-    for _, dir in ipairs({ gamePath(path), savePath(path) }) do
-        for _, name in ipairs(listNative(dir) or {}) do
+    for _, dir in ipairs({ game, save }) do
+        for _, name in ipairs(dir) do
             if name ~= "" and name ~= "." and name ~= ".." and not seen[name] then
                 seen[name] = true
                 items[#items + 1] = name
@@ -241,19 +289,27 @@ function love.filesystem.newFile(filename, mode)
         if m == "r" and not lv1lua.exists(path) then
             path = lv1lua.dataloc.."game/"..self._name
         end
+        if m ~= "r" then dropSaveCache() end
         self._handle = open(path, luaMode)
         if self._handle then _openFiles[self] = true end
+        self._writes = m ~= "r"
         return self._handle ~= nil
     end
     function file:read(size)
         if not self._handle then return nil end
         return size and self._handle:read(size) or self._handle:read("*a")
     end
-    function file:write(data) if self._handle then self._handle:write(data) end end
+    function file:write(data)
+        if self._handle then
+            if self._writes then dropSaveCache() end
+            self._handle:write(data)
+        end
+    end
     function file:seek(pos)   if self._handle then self._handle:seek("set", pos) end end
     function file:tell()      return self._handle and self._handle:seek() or 0 end
     function file:close()
         if self._handle then self._handle:close(); self._handle = nil end
+        if self._writes then dropSaveCache() end
         _openFiles[self] = nil
     end
     function file:getSize()
@@ -294,6 +350,7 @@ end
 function love.filesystem.setIdentity(name)
     lv1lua.loveconf.identity = name
     lv1lua.saveloc = saveDirectory(name)
+    dropSaveCache()
     makeSaveDirectory()
 end
 

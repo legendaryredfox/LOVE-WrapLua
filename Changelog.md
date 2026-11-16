@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### 2026-11-16, branch `perf/filesystem-manifest`
+
+- `love.filesystem` keeps what it learns about a path (exists, directory, size) and each directory listing
+  (plan 2.6 / W13; a native stat or listing costs about 11 ms on OneLua in PPSSPP). `read`, `getInfo`,
+  `isFile`, `isDirectory`, `load` and `getRealDirectory` ask the SDK once per path instead of two to four
+  times per call. The game directory is read-only and cached for good; the save directory is cached until the
+  wrapper writes, appends, removes, creates a directory, opens or writes a `File` for writing, or changes
+  identity. `getDirectoryItems` merges cached listings and returns a fresh table each call.
+- A file another program adds to the save directory after a lookup stays unseen;
+  `lv1lua.core.dropFilesystemCache()` clears the save answers. New `tests/fs_cache_test.lua`.
+
 ### 2026-11-16, branch `perf/polygon-cache-bounds`
 
 - `love.graphics.rectangle` honours `rx`, `ry` and `segments` (they were ignored, so rounded boxes drew

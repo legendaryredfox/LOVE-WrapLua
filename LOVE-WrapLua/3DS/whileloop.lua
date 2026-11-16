@@ -30,6 +30,9 @@ local function axis(v)
     return v
 end
 
+-- Reused every frame: each key of the layout is written again, so nothing carries over.
+local heldKeys, physicalKeys = {}, {}
+
 function lv1lua.updatecontrols()
     lv1lua.pad = Controls.read()
 
@@ -38,7 +41,7 @@ function lv1lua.updatecontrols()
     js.axes[1] = axis(cx)
     js.axes[2] = -axis(cy)
 
-    local held, physical = {}, {}
+    local held, physical = heldKeys, physicalKeys
     for i = 1, #lv1lua.keyenum do
         local down = Controls.check(lv1lua.pad, lv1lua.keyenum[i]) and true or false
         held[lv1lua.keyname[i]] = down

@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### 2026-11-16, branch `perf/main-loop`
+
+Main loop (plan 3.5 / W12):
+
+- The four `whileloop.lua` files (OneLua, lpp-vita, PS3, 3DS) reuse their `held` and `physical` input tables
+  every frame instead of building two per frame; every key of the layout is written again each frame, so
+  nothing carries over. `updatecontrols` on OneLua allocates under 100 bytes per frame in the mock.
+- New option `lv1luaconf.frameskip` (default 0, off): `lv1lua.core.shouldDraw()` lets the main loop in
+  `script.lua` skip `love.draw` after a frame whose update ran two or more slices, at most that many times in
+  a row, so a console that is behind spends the time on updates. It never skips with
+  `updaterate = "variable"`. New `tests/mainloop_test.lua`.
+- `core/step` builds no tables per frame (read, not measured). `event.pump` and `keyboard` were not audited
+  for per-frame garbage. The stall clamp already existed (`maxframeskip`).
+
 ### 2026-11-16, branch `perf/compact-batches`
 
 `SpriteBatch`, `ParticleSystem` and `Text` (plan 3.4 / W11), measured with the new

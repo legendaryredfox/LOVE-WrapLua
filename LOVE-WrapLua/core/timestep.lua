@@ -11,6 +11,8 @@
 --   updaterate    updates per second, default 60; "variable" restores LOVE's
 --                 desktop behaviour of one update per frame with the real dt
 --   maxframeskip  most slices one frame may run, default 5 (stall guard)
+--   frameskip     most draws in a row the main loop may skip while love.update is behind; default 0
+--                 (every frame draws). A frame that ran two or more slices counts as behind.
 
 lv1lua.core = lv1lua.core or {}
 
@@ -63,6 +65,7 @@ function Timestep:advance(elapsed, fn)
         local dt = elapsed
         if dt > self.maxFrame then dt = self.maxFrame end
         self.alpha = 0
+        self.lastSteps = 1
         lv1lua.dt = dt
         if fn then fn(dt) end
         return 1
@@ -86,6 +89,7 @@ function Timestep:advance(elapsed, fn)
     if self.accumulator >= self.step then self.accumulator = 0 end
 
     self.alpha = self.accumulator / self.step
+    self.lastSteps = steps
     return steps
 end
 
@@ -119,6 +123,8 @@ function lv1lua.core.newTimestep(opts)
         frameCount  = 0,
         frameIndex  = 0,
         frameDelta  = 0,
+        lastSteps   = 0,
+        skipped     = 0,
         -- Sum of every frame time seen: a clock for a backend with no timer.
         clock       = 0,
     }, Timestep)
@@ -134,6 +140,21 @@ function lv1lua.core.step(elapsed)
     local steps = ts:advance(elapsed, love.update)
     lv1lua.frameDelta = ts.frameDelta
     return steps
+end
+
+-- Asked by the main loop before each love.draw. With lv1luaconf.frameskip = n, a frame that follows an
+-- update that ran two or more slices is not drawn, at most n times in a row, so the console spends the time
+-- catching up instead of presenting frames of a game that is running slow.
+function lv1lua.core.shouldDraw()
+    local ts = lv1lua.timestep
+    local conf = rawget(_G, "lv1luaconf")
+    local limit = conf and tonumber(conf.frameskip) or 0
+    if limit > 0 and ts.lastSteps >= 2 and ts.skipped < limit then
+        ts.skipped = ts.skipped + 1
+        return false
+    end
+    ts.skipped = 0
+    return true
 end
 
 function lv1lua.core.getFPS()

@@ -26,6 +26,9 @@ function lv1lua.update()
     lv1lua.core.step(ms / 1000)
 end
 
+-- Reused every frame: each key of the layout is written again, so nothing carries over.
+local heldKeys, physicalKeys = {}, {}
+
 function lv1lua.updatecontrols()
     lv1lua.pad = Controls.read()
 
@@ -40,7 +43,7 @@ function lv1lua.updatecontrols()
     -- lv1lua.keymask stays in step because love.keyboard.isDown reads it.
     -- `physical` carries the console's own button names, which love.joystick
     -- needs because the LOVE key names change with the configured layout.
-    local held, physical = {}, {}
+    local held, physical = heldKeys, physicalKeys
     for i = 1, #lv1lua.keyenum do
         local down = Controls.check(lv1lua.pad, lv1lua.keyenum[i]) and true or false
         held[lv1lua.keyname[i]] = down

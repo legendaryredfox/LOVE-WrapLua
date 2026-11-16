@@ -31,7 +31,7 @@ lv1lua.loadOnce("LOVE-WrapLua/core/callbacks.lua")
 
 -- ── main loop ────────────────────────────────────────────────────
 while lv1lua.running do
-    lv1lua.draw()
+    if lv1lua.core.shouldDraw() then lv1lua.draw() end
     lv1lua.update()
     lv1lua.updatecontrols()
 end

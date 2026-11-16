@@ -44,6 +44,7 @@ local test_files = {
     "tests/input_test.lua",
     "tests/timer_test.lua",
     "tests/timestep_test.lua",
+    "tests/mainloop_test.lua",
     "tests/globals_test.lua",
     "tests/audio_test.lua",
     "tests/ps3_draw_test.lua",

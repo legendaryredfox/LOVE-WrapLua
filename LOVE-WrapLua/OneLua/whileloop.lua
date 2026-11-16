@@ -32,6 +32,9 @@ function lv1lua.update()
     lv1lua.core.step(ms / 1000)
 end
 
+-- Reused every frame: each key of the layout is written again, so nothing carries over.
+local heldKeys, physicalKeys = {}, {}
+
 function lv1lua.updatecontrols()
     buttons.read()
 
@@ -46,7 +49,7 @@ function lv1lua.updatecontrols()
     -- edges. buttons.held is the SDK's "down right now" table. `physical` keeps
     -- the console's own button names, which love.joystick needs because the
     -- LOVE key names change with the configured layout.
-    local held, physical = {}, {}
+    local held, physical = heldKeys, physicalKeys
     for i = 1, #mask do
         local btn  = mask[i]
         local down = buttons.held[btn] and true or false

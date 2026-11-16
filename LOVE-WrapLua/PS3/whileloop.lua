@@ -50,6 +50,9 @@ function lv1lua.update()
     lv1lua.playsound()
 end
 
+-- Reused every frame: each key of the layout is written again, so nothing carries over.
+local heldKeys, physicalKeys = {}, {}
+
 function lv1lua.updatecontrols()
     -- Update joystick analog axes (-1..1); PS3 sticks report 0-255
     local js = lv1lua.joystickState
@@ -61,7 +64,7 @@ function lv1lua.updatecontrols()
     -- Sample the pad, then let the shared tracker produce the edges.
     -- lv1lua.key stays in step because love.keyboard.isDown reads it, and
     -- `physical` (the console's own button names) drives love.joystick.
-    local held, physical = {}, {}
+    local held, physical = heldKeys, physicalKeys
     for i = 1, #buttonDefs do
         local def  = buttonDefs[i]
         local down = pad[def.fn](0) > 0

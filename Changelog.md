@@ -45,6 +45,12 @@ VM instructions and bytes allocated per `love.graphics` call on the test mocks; 
 - 3DS `print` reuses its queued line tables across frames and skips the line split for text without a newline
   (bench `print` outside a frame 261 -> 242 instructions; the in-frame path allocates no table per call).
   `setColor` on the 3DS already shares the memoised path (37 instructions).
+- PSP `pop` no longer flattens the transform and calls `screen.clip()` every time. `applyScissor` runs on `pop`
+  only when the popped level held a scissor, and the PSP hook skips the native call when the clip rectangle is
+  unchanged (`imagedraw` forces the restore after its own clip). `push/translate/scale/pop` x213 on the
+  synthetic frame: 41,759 -> 26,210 instructions; the PSP frame 122,997 -> 107,696 (-12.4%).
+  `tests/bench/frame_baseline.lua` PSP updated to the new number. Other backends pay one extra check in `pop`
+  (+0.4 to 0.7%).
 
 ### 2026-11-06, branch `fix/onelua-no-copyscale`
 

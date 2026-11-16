@@ -125,7 +125,7 @@ local function clipBlit(src, sqx, sqy, sqw, sqh, x, y, asx, asy, r)
         gfx.blitImage(src, x0, y0)
     end
     image.resize(src, sw, sh)
-    if gfx.applyScissor then gfx.applyScissor() else sdk.screen.clip() end
+    if gfx.applyScissor then gfx.applyScissor(true) else sdk.screen.clip() end
 end
 
 -- The anchor maps as a point (p * S + O), the scale multiplies and the

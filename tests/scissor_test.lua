@@ -41,6 +41,23 @@ for _, mode in ipairs({ "PSP", "PS3", "OneLua", "lpp-vita", "3DS" }) do
             T.eq(w, 0); T.eq(h, 0)
         end)
 
+        T.it("pop only reapplies the scissor when the popped level held one", function()
+            love.graphics.setScissor()
+            local real, calls = lv1lua.gfx.applyScissor, 0
+            lv1lua.gfx.applyScissor = function() calls = calls + 1 end
+            love.graphics.push()
+            love.graphics.translate(5, 5)
+            love.graphics.pop()
+            T.eq(calls, 0)
+            love.graphics.push()
+            love.graphics.setScissor(1, 2, 3, 4)
+            calls = 0
+            love.graphics.pop()
+            T.eq(calls, 1)
+            T.eq(love.graphics.getScissor(), nil)
+            lv1lua.gfx.applyScissor = real
+        end)
+
         T.it("setScissor() with no arguments clears it", function()
             love.graphics.setScissor(1, 2, 3, 4)
             love.graphics.setScissor()
@@ -48,6 +65,30 @@ for _, mode in ipairs({ "PSP", "PS3", "OneLua", "lpp-vita", "3DS" }) do
         end)
     end)
 end
+
+__MODE = "PSP"
+dofile("tests/setup.lua")
+dofile(GFX["PSP"])
+T.describe("scissor [PSP] native clip", function()
+    T.it("pop of a plain push makes no screen.clip call", function()
+        love.graphics.setScissor()
+        __rec.reset()
+        love.graphics.push()
+        love.graphics.pop()
+        T.eq(__rec.count("screen.clip"), 0)
+    end)
+
+    T.it("an unchanged scissor is not sent to the GPU twice", function()
+        love.graphics.setScissor(10, 10, 50, 50)
+        __rec.reset()
+        love.graphics.setScissor(10, 10, 50, 50)
+        T.eq(__rec.count("screen.clip"), 0)
+        love.graphics.setScissor(10, 10, 60, 50)
+        T.eq(__rec.count("screen.clip"), 1)
+        love.graphics.setScissor()
+        T.eq(__rec.last("screen.clip").n, 0)
+    end)
+end)
 
 io.write("\n=== scissor ===\n")
 return T.summary()

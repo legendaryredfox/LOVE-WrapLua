@@ -23,8 +23,11 @@ end
 love.graphics.push()  -- LOVE always has one active level
 
 function love.graphics.pop()
+    local levels = stack.stack
+    local top = levels[#levels]
+    local scissored = top and top._usingScissor
     stack:pop()
-    applyScissor()
+    if scissored then applyScissor() end
 end
 
 function love.graphics.translate(offsetX, offsetY)

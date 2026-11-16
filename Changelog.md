@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### 2026-11-16, branch `perf/polygon-cache-bounds`
+
+- `love.graphics.rectangle` honours `rx`, `ry` and `segments` (they were ignored, so rounded boxes drew
+  sharp). The corner points are cached per size and radii and filled through the polygon cache, so a rounded
+  box costs the same as any cached polygon fill. Radii clamp to half the size, `ry` defaults to `rx`.
+- The polygon fill cache keeps no entry above 512 rectangles (the shape is still drawn), so one large shape
+  cannot take the memory of a 32MB device.
+- `lv1lua.core.polygonCacheStats()` returns `{hit, miss, skipped}`; `tests/bench/frame_cost.lua` prints them
+  per frame (synthetic frame: 54 hits, 0 misses). New `tests/polygon_cache_test.lua`. Synthetic frame +0.2%
+  from the hit counter.
+
 ### 2026-11-16, branch `perf/onelua-rotation-snap`
 
 - New option `lv1luaconf.rotatesnap` (degrees, default off, plan 2b.2 / W25): on OneLua (Vita and PSP) a draw

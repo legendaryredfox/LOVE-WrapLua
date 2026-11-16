@@ -15,6 +15,7 @@ local test_files = {
     "tests/noscale_test.lua",
     "tests/hotpath_test.lua",
     "tests/polyfill_runs_test.lua",
+    "tests/polygon_cache_test.lua",
     "tests/event_test.lua",
     "tests/math_test.lua",
     "tests/data_test.lua",

@@ -61,17 +61,6 @@ local function mapScale(w, h)
     return w * k, h * k
 end
 
-function love.graphics.rectangle(mode, x, y, w, h, rx, ry)
-    local p = prims()
-    x, y = mapPoint(x, y)
-    w, h = mapScale(w, h)
-    if mode == "fill" then
-        p.fillRect(x, y, w, h, color())
-    elseif mode == "line" then
-        p.rectOutline(x, y, w, h, color())
-    end
-end
-
 function love.graphics.line(...)
     local c, p = coords(...), prims()
     for i = 1, #c - 2, 2 do
@@ -96,6 +85,12 @@ end
 local polyCache = setmetatable({}, { __mode = "k" })
 local floor = math.floor
 
+-- Entries above this many rectangles are drawn but not kept: one big shape must not take the memory
+-- of a 32MB device. hit/miss/skipped feed tests/bench and `lv1lua.core.polygonCacheStats()`.
+local MAX_CACHED_RECTS = 512
+local polyStats = { hit = 0, miss = 0, skipped = 0 }
+function lv1lua.core.polygonCacheStats() return polyStats end
+
 -- `ox`, `oy` place a shape stored relative to its own origin (circles and ellipses), so one cached
 -- table serves every position; `fixed` marks such a table as never mutated, which skips the fingerprint.
 local function polygonFill(p, src, ox, oy, fixed)
@@ -110,12 +105,20 @@ local function polygonFill(p, src, ox, oy, fixed)
         for i = 1, n do sum = sum + src[i] * ((i % 13) + 1) end
     end
     local c = polyCache[src]
-    if not c or c.n ~= n or c.sum ~= sum or c.sx ~= sx or c.sy ~= sy or c.fx ~= fx or c.fy ~= fy then
+    if c and c.n == n and c.sum == sum and c.sx == sx and c.sy == sy and c.fx == fx and c.fy == fy then
+        polyStats.hit = polyStats.hit + 1
+    else
         local v = {}
         for i = 1, n - 1, 2 do v[i], v[i+1] = mapPoint(ox + src[i], oy + src[i+1]) end
         c = { n = n, sum = sum, sx = sx, sy = sy, fx = fx, fy = fy, ix = ix, iy = iy,
               runs = lv1lua.core.polygonRuns(v) }
-        polyCache[src] = c
+        if #c.runs > MAX_CACHED_RECTS * 4 then
+            polyStats.skipped = polyStats.skipped + 1
+            polyCache[src] = nil
+        else
+            polyStats.miss = polyStats.miss + 1
+            polyCache[src] = c
+        end
     end
     local dx, dy, runs, col = ix - c.ix, iy - c.iy, c.runs, color()
     local fill = p.fillRect
@@ -153,20 +156,66 @@ end
 -- draw with the same radii and segment count. Reset when full: an animated radius never repeats.
 local shapeCache, shapeCount, SHAPE_LIMIT = {}, 0, 64
 
-local function ellipsePoints(rx, ry, segments, closed)
-    local key = rx .. "," .. ry .. "," .. segments .. (closed and "c" or "o")
+local function shapeSlot(key)
     local pts = shapeCache[key]
     if pts then return pts end
     if shapeCount >= SHAPE_LIMIT then shapeCache, shapeCount = {}, 0 end
     pts = {}
+    shapeCache[key] = pts
+    shapeCount = shapeCount + 1
+    return nil, pts
+end
+
+local function ellipsePoints(rx, ry, segments, closed)
+    local key = rx .. "," .. ry .. "," .. segments .. (closed and "c" or "o")
+    local pts, fresh = shapeSlot(key)
+    if pts then return pts end
+    pts = fresh
     for i = 0, closed and segments or segments - 1 do
         local a = i / segments * TWO_PI
         pts[#pts+1] = rx * math.cos(a)
         pts[#pts+1] = ry * math.sin(a)
     end
-    shapeCache[key] = pts
-    shapeCount = shapeCount + 1
     return pts
+end
+
+-- Corner arcs of a rounded rectangle, relative to its top-left corner, clockwise on screen.
+local function roundedPoints(w, h, rx, ry, segments)
+    local key = "r" .. w .. "," .. h .. "," .. rx .. "," .. ry .. "," .. segments
+    local pts, fresh = shapeSlot(key)
+    if pts then return pts end
+    pts = fresh
+    local corners = {
+        { rx, ry, math.pi }, { w - rx, ry, 1.5 * math.pi },
+        { w - rx, h - ry, 0 }, { rx, h - ry, 0.5 * math.pi },
+    }
+    for _, c in ipairs(corners) do
+        for i = 0, segments do
+            local a = c[3] + i / segments * (math.pi / 2)
+            pts[#pts+1] = c[1] + rx * math.cos(a)
+            pts[#pts+1] = c[2] + ry * math.sin(a)
+        end
+    end
+    return pts
+end
+
+function love.graphics.rectangle(mode, x, y, w, h, rx, ry, segments)
+    if rx and rx > 0 then
+        ry = ry or rx
+        rx, ry = math.min(rx, w / 2), math.min(ry, h / 2)
+        if rx > 0 and ry > 0 then
+            segments = segments or math.max(3, math.ceil(math.sqrt(math.max(rx, ry)) * 2))
+            return polygon(mode, roundedPoints(w, h, rx, ry, segments), nil, x, y, true)
+        end
+    end
+    local p = prims()
+    x, y = mapPoint(x, y)
+    w, h = mapScale(w, h)
+    if mode == "fill" then
+        p.fillRect(x, y, w, h, color())
+    elseif mode == "line" then
+        p.rectOutline(x, y, w, h, color())
+    end
 end
 
 function love.graphics.circle(mode, x, y, radius, segments)

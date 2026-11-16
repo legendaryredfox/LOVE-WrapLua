@@ -47,6 +47,8 @@ for _, mode in ipairs({ "PSP", "OneLua", "lpp-vita", "PS3" }) do
         frame()
         collectgarbage(); collectgarbage("stop")
         local n, mem0 = 0, collectgarbage("count")
+        local ps = lv1lua.core.polygonCacheStats()
+        local h0, m0, s0 = ps.hit, ps.miss, ps.skipped
         debug.sethook(function() n = n + 1 end, "", 1)
         frame()
         debug.sethook()
@@ -54,6 +56,7 @@ for _, mode in ipairs({ "PSP", "OneLua", "lpp-vita", "PS3" }) do
         collectgarbage("restart")
         results[mode] = { instr = n, bytes = bytes }
         local line = string.format("%-9s %8d instr/frame (~%.1f ms at 3M instr/s)  %8.0f B/frame", mode, n, n / 3000, bytes)
+        line = line .. string.format("  poly h/m/s %d/%d/%d", ps.hit - h0, ps.miss - m0, ps.skipped - s0)
         local b = base[mode]
         if b then
             local d = (n - b.instr) / b.instr * 100

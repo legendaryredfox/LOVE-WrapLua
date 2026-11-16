@@ -45,6 +45,30 @@ in the PRX (`luaL_Reg` tables); the PRX is type 0xFFA0, so most analysis tools r
 
 Decompiled with Ghidra (12.1.3 + ghidra-allegrex, loader "PSP Executable (ELF)"; relocations of the PRX are not applied but the code decompiles): the rotated blit routine slices the image into 64-pixel columns and issues one `sceGuDrawArray` (4 vertices, triangle strip) with a 80-byte allocation per column, so a rotated draw costs `ceil(width / 64)` GPU draws. Unrotated blits take a separate path. The binary has 5966 functions without names.
 
+### 2b.1 probe: native blit cost in PPSSPP (partial, 2026-11-16)
+
+A script on the stock EBOOT draws N blits per frame, then `screen.flip()`; the frame time minus the empty
+frame (16.7 ms, vsync) gives the cost. Frame times land on vblank multiples, so anything under about
+1.1 ms per 100 calls cannot be resolved.
+
+| operation (512x512 and 64x64 sheets) | ms per 100 calls |
+|---|---|
+| sub-rect `blit` 32x48 (512 sheet and 64 sheet, same) | 4.5 |
+| whole `blit` of a 64x64 image | 3.3 |
+| whole `blit` of the 512x512 sheet | 4.2 |
+| `screen.clip(x, y, w, h)` | below 1.1 |
+| `image.resize(img, w, h)` | below 1.1 |
+| `image.rotate(img, deg)` | below 1.1 |
+
+- A native blit costs about 33 to 45 microseconds and does not depend on the sheet size, so the column-cost
+  model for W26 is not supported by the plain blit. The rotated blit and the full scaled path were not
+  measured: the scaled-path probe resized the 512 sheet to 1024 (above the 512 texture limit) and stalled.
+- `clip`, `resize` and `rotate` each cost under about 11 microseconds, so the six extra calls of a scaled
+  draw are at most about 60 microseconds beside the blit, and the wrapper's own Lua (about 213 VM
+  instructions, roughly 64 microseconds at 0.3 microseconds each) costs as much as the blit itself.
+- Gate 2b (W23/W26 proceed only if the column cost is at least 25% of a rotated draw) is not met by this
+  data; the rotated blit still needs its own probe with sheets up to 512 and scales that stay inside it.
+
 ## 3. Done on `fix/onelua-no-copyscale` (issue #3)
 
 Scaled, mirrored and rotated draws on EBOOTs without `copyscale`: resize the whole sheet, blit it whole,

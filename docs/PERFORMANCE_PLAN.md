@@ -4,6 +4,13 @@ Implements `PERFORMANCE_SPEC.md`. IDs refer to the catalogue there. Every task e
 `lua5.1`, `lua5.4` and `luajit`; `tests/bench/frame_cost.lua --check` has no regression; the numbers go
 in `Changelog.md`.
 
+## Status, 2026-11-16
+
+Done, or done in part judging by the commit history (2.1 to 2.3 were not re-audited against their task text): 0.1, 2.1, 2.2 (font width cache, 3DS text), 2.3 (circle and ellipse point cache), 2.4, 2.5, 2.6, 2b.1
+(partial: plain blit measured, rotated blit not), 2b.2 (W25 as an opt-in; W24 already held at scale 1),
+3.1 (OneLua), 3.2, 3.4, 3.5. Decided against: 3.3. Not started: 0.2, 0.3, 1.1 to 1.3, 2b.3, 3b.*, 4.*, 5.*.
+Numbers are in `PERFORMANCE_REPORT.md` section 6 and `Changelog.md`.
+
 ## Phase 0 — baseline and guard (1 day)
 | # | Task | Items | Done when |
 |---|---|---|---|

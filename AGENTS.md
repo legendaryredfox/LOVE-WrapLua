@@ -61,7 +61,7 @@ LOVE-WrapLua/
   filesystem.lua, data.lua (+vendor/), window.lua (always fullscreen), joystick.lua,
   system.lua (guarded SDK probes), love-functions/thread.lua (coroutine threads + channels)
   vendor/             sha2.lua, LibDeflate.lua (see vendor/README.md)
-  OneLua/             graphics.lua + graphics/ (Vita), graphics_psp.lua + psp/ (PSP),
+  OneLua/             native.lua (probes the SDK: lv1lua.native), graphics.lua + graphics/ (Vita), graphics_psp.lua + psp/ (PSP),
                       imagedraw.lua (draw for both), audio (2 channels), keyboard (+OSK),
                       timer, whileloop (draw/update/controls + touch), event, touch/mouse (Vita)
   lpp-vita/, PS3/     graphics.lua + graphics/{state,image,draw,font,text,primitives,info},
@@ -102,9 +102,10 @@ LOVE-WrapLua/
 | `lv1lua.current.colorRGBA` | `{r,g,b,a}` | Colour in LÖVE's 0-1 range |
 | `lv1lua.current.color` | native | The SDK colour built from it |
 | `lv1lua.gfx` | table | Backend graphics state and hooks (see below) |
+| `lv1lua.native` | table | OneLua only: booleans for the `image.*` / `screen.clip` calls the build ships (`copyscale`, `resize`, `blittint`, `blitadd`, ..., `scaling`); refresh with `lv1lua.core.probeNative()`. Lives outside `lv1lua.gfx`, which each `state.lua` replaces |
 | `lv1lua.joystickState` | table | `{axes={…}, buttons={}, hats={"c"}}`, filled every frame |
 | `lv1lua.keyset` | `{string×6}` | Face/shoulder button names: circle, cross, triangle, square, L, R |
-| `lv1luaconf` | table | Wrapper config: `keyconf`, `imgscale`, `resscale`, `updaterate`, `maxframeskip` |
+| `lv1luaconf` | table | Wrapper config: `keyconf`, `imgscale`, `resscale`, `updaterate`, `maxframeskip`, `frameskip`, `rotatesnap` |
 | `lv1lua.dt` | number | The fixed slice the current `love.update` was called with |
 | `lv1lua.frameDelta` | number | The real frame time (render rate, key repeat) |
 | `love` | table | The whole LÖVE API namespace |
@@ -203,6 +204,15 @@ lua tests/math_test.lua        # one suite
 GitHub Actions (`.github/workflows/ci.yml`) runs the suite on lua 5.1 / 5.3 /
 5.4 / luajit. Run it locally on at least lua5.1, lua5.4 and luajit before every
 commit.
+
+### Performance tools
+
+`tests/bench/` counts VM instructions and bytes on the mocks (Lua 5.1 count hook; a console runs about 3M
+instructions per second): `vm_cost.lua` (per call), `vm_profile.lua <mode> <op>` (per source line),
+`alloc_cost.lua`, `batch_cost.lua` (SpriteBatch, ParticleSystem, Text) and `frame_cost.lua --check` (a synthetic
+frame, fails CI above +10% against `frame_baseline.lua`; update the baseline deliberately, with the reason in
+the commit). `docs/PERFORMANCE_REPORT.md` has the results and `PERFORMANCE_PLAN.md` the open work. Byte-budget
+assertions run on PUC Lua only: LuaJIT counts trace memory in `collectgarbage("count")`.
 
 ### Test architecture
 

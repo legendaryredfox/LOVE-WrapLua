@@ -74,3 +74,53 @@ is `PERFORMANCE_SPEC.md` and the schedule is `PERFORMANCE_PLAN.md`.
    stencil and GPU-side effects.
 5. Keep LuaJIT and Lua 5.4 as gated experiments (at least 15 % on the synthetic frame) and do not plan around
    them.
+
+## 6. Progress, 2026-11-16
+
+Work done after the first report, all on the test mocks (VM instruction counts and bytes, Lua 5.1 count hook;
+suites green on Lua 5.1, 5.4 and LuaJIT). Nothing was run in PPSSPP or on a device; the reference game has
+still not been run through the wrapper (plan phase 1).
+
+Synthetic frame, VM instructions (first report in brackets):
+
+| backend | first report | now |
+|---|---|---|
+| PSP | 122k | 99.8k |
+| OneLua | 102k | 96.0k |
+| lpp-vita | 115k | 97.1k |
+| PS3 | 195k | 196.2k |
+
+What changed, by plan item (details in `Changelog.md`):
+
+| plan | change | measured effect |
+|---|---|---|
+| 2b.2 / W25 | `lv1luaconf.rotatesnap`: small turns drawn upright (OneLua, opt-in) | skips pivot, clip and trig on those draws; not visible in the synthetic frame, which has no small angles |
+| 2.4 / W7 | rounded `rectangle` (`rx`, `ry` were ignored), polygon cache bounded at 512 rectangles, hit/miss counters | synthetic frame 54 hits, 0 misses |
+| 2.6 / W13 | `love.filesystem` caches path metadata and listings (game dir for good, save dir until the wrapper writes) | one native stat per path instead of two to four per call, at about 11 ms each in PPSSPP |
+| 3.1 / W1 | OneLua draw: metatable check, cached quad inset, scale-1 short path, remembered rotation | PSP quad draw 216 to 145 instr, image draw 185 to 153 |
+| 3.1 | scaled path (`clipBlit`) trimmed | PSP scaled quad 389 to 352 |
+| 3.2 / W2 | lpp-vita draw: same Lua trimming (the native mapping already existed) | quad draw 357 to 192 instr, frame 115k to 97k |
+| 2.5 / W14 | `OneLua/native.lua` probes the SDK once, `love._backend.native` | no per-draw `type()` tests; builds missing `blittint` or scaling no longer raise |
+| 3.4 / W11 | `SpriteBatch` parallel arrays, pooled particles, replay closures built once | 200 `add`: 81 KB to 192 B; 200-particle update: 4.2 KB to 88 B; instruction counts rise 15 to 28% |
+| 3.5 / W12 | per-frame input tables reused; optional `lv1luaconf.frameskip` | under 100 B per `updatecontrols` frame in the mock |
+
+Decided against: deferred draw batching on OneLua (plan 3.3 / W5). The calls it would save were measured under
+11 microseconds each, below the probe's resolution, and the flush hooks it needs touch every other draw call;
+see `PERFORMANCE_FINDINGS.md` 3.3.
+
+Bench tools added: `tests/bench/batch_cost.lua`; `frame_cost.lua` now prints polygon cache hits and misses.
+New suites: `polygon_cache_test`, `fs_cache_test`, `draw_fast_test`, `lppvita_draw_fast_test`,
+`native_probe_test`, `batch_compact_test`, `mainloop_test`.
+
+Still open:
+
+- PS3 is the heaviest backend (196k per frame, 316 instr per image draw) and has had none of the draw-path
+  work.
+- 3DS `draw` still calls `getViewport` per draw; the 3DS frame is not in the benchmark (draws only inside a
+  GPU frame).
+- `event.pump` and `keyboard` were not audited for per-frame garbage.
+- Particle curves (W45) were left out; they would build on the compact arrays.
+- Whether a Lua-to-Lua build step (a transpiler that precomputes static transforms and quad draws) or a custom
+  interpreter is worth building is undecided. The numbers so far say the wrapper's own Lua costs about as much
+  as the native blit (about 64 microseconds of VM time per draw against about 33 to 45 microseconds for the
+  blit), which argues for measuring the reference game first (phase 1, Gate 1) before choosing.

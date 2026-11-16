@@ -15,6 +15,7 @@ local gfx   = lv1lua.gfx
 local stack = gfx.transform
 -- The SDK table; `screen` below is shadowed by the coordinate helper.
 local sdk   = { screen = screen }
+local floor, ceil, max, min, abs = math.floor, math.ceil, math.max, math.min, math.abs
 
 -- Weak keys let unused copies be collected, which matters on a 32MB PSP.
 local cache = setmetatable({}, { __mode = "k" })
@@ -22,8 +23,8 @@ local cache = setmetatable({}, { __mode = "k" })
 local function scaledCopy(src, sx, sy)
     local e = cache[src]
     if not e or e.sx ~= sx or e.sy ~= sy or not e.img then
-        local img = image.copyscale(src, image.getrealw(src) * math.abs(sx),
-                                         image.getrealh(src) * math.abs(sy))
+        local img = image.copyscale(src, image.getrealw(src) * abs(sx),
+                                         image.getrealh(src) * abs(sy))
         if sx < 0 then image.fliph(img) end
         if sy < 0 then image.flipv(img) end
         if gfx.prepareCopy then gfx.prepareCopy(img) end
@@ -71,8 +72,6 @@ local function flippedCopy(src, fx, fy)
     return img
 end
 
-local function round(v) return math.floor(v + 0.5) end
-
 -- Axis-aligned bounds of the w*h rectangle at (x, y) turned by r radians
 -- about (px, py).
 local function turnedBounds(x, y, w, h, r, px, py)
@@ -84,10 +83,10 @@ local function turnedBounds(x, y, w, h, r, px, py)
     local bx, by = x1 * c - y0 * s, x1 * s + y0 * c      -- top-right
     local cx, cy = x0 * c - y1 * s, x0 * s + y1 * c      -- bottom-left
     local dx, dy = x1 * c - y1 * s, x1 * s + y1 * c      -- bottom-right
-    local minx = math.min(ax, bx, cx, dx)
-    local maxx = math.max(ax, bx, cx, dx)
-    local miny = math.min(ay, by, cy, dy)
-    local maxy = math.max(ay, by, cy, dy)
+    local minx = min(ax, bx, cx, dx)
+    local maxx = max(ax, bx, cx, dx)
+    local miny = min(ay, by, cy, dy)
+    local maxy = max(ay, by, cy, dy)
     return px + minx, py + miny, maxx - minx, maxy - miny
 end
 
@@ -97,22 +96,28 @@ end
 -- the pivot (measured on the real EBOOT in PPSSPP).
 local function clipBlit(src, sqx, sqy, sqw, sqh, x, y, asx, asy, r)
     local sw, sh = image.getrealw(src), image.getrealh(src)
-    local w2, h2 = math.max(1, round(sw * asx)), math.max(1, round(sh * asy))
+    local w2, h2 = floor(sw * asx + 0.5), floor(sh * asy + 0.5)
+    if w2 < 1 then w2 = 1 end
+    if h2 < 1 then h2 = 1 end
     local ex, ey = w2 / sw, h2 / sh
     local dw, dh = sqw * ex, sqh * ey
     local x0, y0 = x - sqx * ex, y - sqy * ey
-    local px, py = x + dw / 2, y + dh / 2           -- turn about the rectangle's centre
 
-    local bx, by, bw, bh = turnedBounds(x, y, dw, dh, r, px, py)
-    local cx1, cy1 = math.floor(bx), math.floor(by)
-    local cx2, cy2 = math.ceil(bx + bw), math.ceil(by + bh)
+    local px, py, cx1, cy1, cx2, cy2
+    if r == 0 then
+        cx1, cy1, cx2, cy2 = floor(x), floor(y), ceil(x + dw), ceil(y + dh)
+    else
+        px, py = x + dw / 2, y + dh / 2             -- turn about the rectangle's centre
+        local bx, by, bw, bh = turnedBounds(x, y, dw, dh, r, px, py)
+        cx1, cy1, cx2, cy2 = floor(bx), floor(by), ceil(bx + bw), ceil(by + bh)
+    end
     -- Stay inside a scissor the game set (gfx.applyScissor re-establishes it).
-    stack:updateTransform()
+    if stack._dirty then stack:updateTransform() end
     local t = stack.transform
     if t._usingScissor then
-        cx1, cy1 = math.max(cx1, math.floor(t._scissorX)), math.max(cy1, math.floor(t._scissorY))
-        cx2 = math.min(cx2, math.ceil(t._scissorX + t._scissorWidth))
-        cy2 = math.min(cy2, math.ceil(t._scissorY + t._scissorHeight))
+        cx1, cy1 = max(cx1, floor(t._scissorX)), max(cy1, floor(t._scissorY))
+        cx2 = min(cx2, ceil(t._scissorX + t._scissorWidth))
+        cy2 = min(cy2, ceil(t._scissorY + t._scissorHeight))
     end
     if cx2 <= cx1 or cy2 <= cy1 then return end
 
@@ -176,15 +181,15 @@ local function quadDraw(tex, quad, x, y, r, sx, sy, ox, oy)
         rotate(tex, r)
         return image.blit(tex, x, y, qx, qy, qw, qh, color.a(lv1lua.current.color))
     end
-    x = x - (ox or 0) * math.abs(sx)
-    y = y - (oy or 0) * math.abs(sy)
+    x = x - (ox or 0) * abs(sx)
+    y = y - (oy or 0) * abs(sy)
     -- A mirrored draw grows left/up from the anchor, as it does in LOVE.
     if sx < 0 then x = x + qw * sx end
     if sy < 0 then y = y + qh * sy end
 
     local img, sqx, sqy, sqw, sqh = tex, qx, qy, qw, qh
     if (sx ~= 1 or sy ~= 1) and not image.copyscale then
-        local asx, asy = math.abs(sx), math.abs(sy)
+        local asx, asy = abs(sx), abs(sy)
         local src = tex
         if sx < 0 or sy < 0 then
             src = flippedCopy(tex, sx < 0, sy < 0)
@@ -197,7 +202,7 @@ local function quadDraw(tex, quad, x, y, r, sx, sy, ox, oy)
     end
     if sx ~= 1 or sy ~= 1 then
         img = scaledCopy(tex, sx, sy)
-        local asx, asy = math.abs(sx), math.abs(sy)
+        local asx, asy = abs(sx), abs(sy)
         sqx, sqy, sqw, sqh = qx * asx, qy * asy, qw * asx, qh * asy
         -- The copy is already mirrored; find the sub-rect inside it.
         if sx < 0 then sqx = image.getrealw(img) - sqx - sqw end
@@ -230,8 +235,8 @@ function love.graphics.draw(drawable, a, b, c, d, e, f, g, h)
 
     local x, y, r, sx, sy, ox, oy = a, b, c, d, e, f, g
     x, y, r, sx, sy = fold(x, y, r, sx, sy)
-    x = x - (ox or 0) * math.abs(sx)
-    y = y - (oy or 0) * math.abs(sy)
+    x = x - (ox or 0) * abs(sx)
+    y = y - (oy or 0) * abs(sy)
     if sx < 0 then x = x + image.getrealw(tex) * sx end
     if sy < 0 then y = y + image.getrealh(tex) * sy end
 
@@ -241,7 +246,7 @@ function love.graphics.draw(drawable, a, b, c, d, e, f, g, h)
         local src = tex
         if sx < 0 or sy < 0 then src = flippedCopy(tex, sx < 0, sy < 0) end
         x, y = screen(x, y)
-        return clipBlit(src, 0, 0, tw, th, x, y, math.abs(sx), math.abs(sy), r)
+        return clipBlit(src, 0, 0, tw, th, x, y, abs(sx), abs(sy), r)
     end
     if sx ~= 1 or sy ~= 1 then img = scaledCopy(tex, sx, sy) end
 

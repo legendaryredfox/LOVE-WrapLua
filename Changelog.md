@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### 2026-11-16, branch `perf/scaled-draw`
+
+- `clipBlit` (scaled, mirrored and rotated draws on EBOOTs without `copyscale`) works with local math
+  functions, skips the turned-bounds computation for an upright draw, and no longer re-flattens the transform
+  it already has. Scaled quad on PSP 389 -> 352 instructions, scaled and rotated 484 -> 462; synthetic frame
+  PSP 100,968 -> 99,462. The native call sequence (clip, resize, rotate, blit, resize, clip) is unchanged:
+  it is the next target (batching).
+
 ### 2026-11-16, branch `perf/draw-specialisation`
 
 OneLua draw path (Vita and PSP share `OneLua/imagedraw.lua`), plan 3.1 / W1:

@@ -15,6 +15,7 @@ end
 
 -- getSystemLimits / getSupported come from the central capability table.
 lv1lua.core.installCapabilities("OneLua")
+love._backend.native = lv1lua.native
 
 function love.graphics.captureScreenshot(callback_or_filename)
     -- Not available on this platform.

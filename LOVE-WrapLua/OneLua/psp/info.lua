@@ -10,3 +10,4 @@ function love.graphics.getRendererInfo() return "OneLua PSP","1.0","","" end
 
 -- getSystemLimits / getSupported come from the central capability table.
 lv1lua.core.installCapabilities("PSP")
+love._backend.native = lv1lua.native

@@ -33,10 +33,12 @@ lv1lua.gfx = {
 -- Hooks for the shared OneLua draw (OneLua/imagedraw.lua). The Vita port of
 -- ONElua has no additive or subtractive blit, so a whole-image draw is a tinted
 -- blit when the colour is not white and a plain one otherwise.
+local native = lv1lua.native
+
 function lv1lua.gfx.blitImage(img, x, y)
     local c = lv1lua.current
     local rgba = c.colorRGBA
-    if rgba[1] ~= 1 or rgba[2] ~= 1 or rgba[3] ~= 1 then
+    if native.blittint and (rgba[1] ~= 1 or rgba[2] ~= 1 or rgba[3] ~= 1) then
         return image.blittint(img, x, y, c.color)
     end
     return image.blit(img, x, y, color.a(c.color))

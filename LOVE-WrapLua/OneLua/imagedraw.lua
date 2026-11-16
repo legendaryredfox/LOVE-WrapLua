@@ -15,6 +15,7 @@ local gfx   = lv1lua.gfx
 local stack = gfx.transform
 -- The SDK table; `screen` below is shadowed by the coordinate helper.
 local sdk   = { screen = screen }
+local native = lv1lua.native
 local floor, ceil, max, min, abs = math.floor, math.ceil, math.max, math.min, math.abs
 
 -- Weak keys let unused copies be collected, which matters on a 32MB PSP.
@@ -159,6 +160,11 @@ local function fold(x, y, r, sx, sy)
            r, sx * tsx, sy * tsy
 end
 
+-- A build with neither copyscale nor resize + clip cannot scale: draw at natural size, say so once.
+local function warnUnscalable()
+    lv1lua.util.warn("this OneLua build has no image.copyscale and no image.resize + screen.clip: scaled draws are drawn at natural size")
+end
+
 local function screen(x, y)
     if lv1luaconf.imgscale == true or lv1luaconf.resscale == true then
         x, y = x * gfx.scale, y * gfx.scale
@@ -181,6 +187,7 @@ local function quadDraw(tex, quad, x, y, r, sx, sy, ox, oy)
         rotate(tex, r)
         return image.blit(tex, x, y, qx, qy, qw, qh, color.a(lv1lua.current.color))
     end
+    if not native.scaling then warnUnscalable(); sx, sy = 1, 1 end
     x = x - (ox or 0) * abs(sx)
     y = y - (oy or 0) * abs(sy)
     -- A mirrored draw grows left/up from the anchor, as it does in LOVE.
@@ -188,7 +195,7 @@ local function quadDraw(tex, quad, x, y, r, sx, sy, ox, oy)
     if sy < 0 then y = y + qh * sy end
 
     local img, sqx, sqy, sqw, sqh = tex, qx, qy, qw, qh
-    if (sx ~= 1 or sy ~= 1) and not image.copyscale then
+    if (sx ~= 1 or sy ~= 1) and not native.copyscale then
         local asx, asy = abs(sx), abs(sy)
         local src = tex
         if sx < 0 or sy < 0 then
@@ -235,13 +242,14 @@ function love.graphics.draw(drawable, a, b, c, d, e, f, g, h)
 
     local x, y, r, sx, sy, ox, oy = a, b, c, d, e, f, g
     x, y, r, sx, sy = fold(x, y, r, sx, sy)
+    if not native.scaling and (sx ~= 1 or sy ~= 1) then warnUnscalable(); sx, sy = 1, 1 end
     x = x - (ox or 0) * abs(sx)
     y = y - (oy or 0) * abs(sy)
     if sx < 0 then x = x + image.getrealw(tex) * sx end
     if sy < 0 then y = y + image.getrealh(tex) * sy end
 
     local img = tex
-    if (sx ~= 1 or sy ~= 1) and not image.copyscale then
+    if (sx ~= 1 or sy ~= 1) and not native.copyscale then
         local tw, th = image.getrealw(tex), image.getrealh(tex)
         local src = tex
         if sx < 0 or sy < 0 then src = flippedCopy(tex, sx < 0, sy < 0) end

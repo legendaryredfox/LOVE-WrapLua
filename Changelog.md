@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### 2026-11-16, branch `perf/capability-detection`
+
+- New `OneLua/native.lua` (plan 2.5 / W14): `lv1lua.core.probeNative()` probes once which of `image.copyscale`,
+  `resize`, `rotate`, `center`, `fliph`, `flipv`, `copy`, `blittint`, `blitadd`, `blitsub` and `screen.clip`
+  the running OneLua build ships, and fills `lv1lua.native` (also `love._backend.native`) with booleans plus
+  `scaling` (copyscale, or resize and clip).
+- The per-draw `type(image.blitadd)` test in `blitImage` and the `image.copyscale` lookups in `imagedraw`
+  read the probe instead. A build with no `blittint` draws a tinted image with the plain blit instead of
+  raising; a build that cannot scale draws scaled images at natural size and warns once.
+  Tests that change the SDK after loading call `lv1lua.core.probeNative()`. New `tests/native_probe_test.lua`.
+
 ### 2026-11-16, branch `perf/lppvita-draw`
 
 lpp-vita draw path (plan 3.2 / W2). Both draw forms already map to one native call

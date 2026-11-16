@@ -11,6 +11,7 @@ __MODE = "PSP"
 dofile("tests/setup.lua")
 dofile("LOVE-WrapLua/OneLua/graphics_psp.lua")
 image.copyscale = nil
+lv1lua.core.probeNative()
 __rec.reset()
 
 local function sheet() return love.graphics.newImage("sheet.png") end  -- 64x64 in the mock

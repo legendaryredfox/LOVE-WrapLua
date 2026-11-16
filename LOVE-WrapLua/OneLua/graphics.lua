@@ -21,6 +21,7 @@ lv1lua.loadOnce("LOVE-WrapLua/core/capabilities.lua")
 
 local GRAPHICS = "LOVE-WrapLua/OneLua/graphics/"
 
+lv1lua.load("LOVE-WrapLua/OneLua/native.lua")
 lv1lua.load(GRAPHICS .. "state.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/state.lua")
 lv1lua.loadOnce("LOVE-WrapLua/core/texinset.lua")

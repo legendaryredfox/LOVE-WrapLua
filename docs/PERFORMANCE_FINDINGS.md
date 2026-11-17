@@ -224,6 +224,27 @@ time, so a run only reaches the blind select screen (state 7, 53 cards) in the t
   The scene is still slow: what remains is 53 cards plus the UI, now spread over the image draw and the
   remaining polygon work.
 
+### Balatro SELECTING_HAND through the wrapper, 2026-11-17
+
+Same harness, after the polygon cache change, 42 consecutive 3 s windows (about 130 s of emulated clock) in the
+scene the native engine reports 15.6 fps for (seed `BENCH`, first hand, 53 cards, no tutorial):
+
+| | wrapper (OneLua on PSP) | native engine |
+|---|---|---|
+| `love.draw` | 372 ms, 1.07 draws per second | |
+| `love.update` | 105.5 ms, 5.3 calls per second | |
+| frame rate | about 1.1 fps | 15.6 fps |
+
+- Inside native calls the draw spends about 220 ms per 3 s window (4500 `draw.fillrect`, 285 `screen.print`
+  calls): about 7% of the time. The rest is the Lua VM.
+- The polygon cache hits on every lookup (150 per window). `love.update` alone costs 105 ms per 1/60 s step, so
+  even a free `love.draw` would cap the game at about 9.5 steps per second: the game's own logic, run by
+  OneLua's interpreter, is the larger problem now. Whether that is the interpreter, soft-float on the PSP's
+  single-precision FPU, or wrapper calls inside `love.update` is not measured.
+- Gate 1 (is pure Lua on OneLua viable for this game): at about 1.1 fps against 15.6 fps the answer for
+  Balatro is no, with a 14x gap that no single hotspot closes. The wrapper's target stays games that do far
+  less per frame.
+
 ## 8. Reproducing
 
 ```

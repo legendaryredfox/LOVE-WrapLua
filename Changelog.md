@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `docs/selecting-hand-measure`
+
+- `docs/PERFORMANCE_FINDINGS.md`: first same-scene number for Balatro (`SELECTING_HAND`): about 1.1 fps through
+  the wrapper, against 15.6 fps for the native engine.
+
 ### 2026-11-17, branch `perf/polygon-cache-snap`
 
 - `polygon("fill")` (and every shape built on it: rounded rectangles, circles, ellipses) places the cached

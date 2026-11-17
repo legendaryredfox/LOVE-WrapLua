@@ -249,5 +249,62 @@ T.describe("PS3 filled primitives", function()
     end)
 end)
 
+T.describe("PS3 polygon fill batching", function()
+    local pts = { 0, 0, 10, 0, 12, 6, 6, 12, 0, 6 }
+
+    local function squares(positions)
+        local out = {}
+        for _, c in ipairs(positions) do out[#out + 1] = c.args[1] .. "," .. c.args[2] end
+        return table.concat(out, ";")
+    end
+
+    T.it("a polygon fill is one SetPolygon batch of whole quads", function()
+        fresh()
+        love.graphics.polygon("fill", pts)
+        T.eq(__rec.count("gfx.SetPolygon"), 1)
+        T.eq(__rec.count("gfx.End"), 1)
+        local v = __rec.count("gfx.VertexPosition")
+        T.ok(v >= 8 and v % 4 == 0, "vertex count " .. v)
+        T.eq(__rec.count("gfx.VertexColor"), v)
+    end)
+
+    T.it("batched runs cover the same pixels as per-run fillRect", function()
+        fresh()
+        love.graphics.polygon("fill", pts)
+        local batched = squares(__rec.all("gfx.VertexPosition"))
+        local runs = lv1lua.core.polygonRuns(pts)
+        local expect, k, yo = {}, lv1lua.gfx.scale, lv1lua.gfx.yOffset
+        for i = 1, #runs, 4 do
+            local x, y, w, h = runs[i] * k, runs[i + 1] * k + yo, runs[i + 2] * k, runs[i + 3] * k
+            expect[#expect + 1] = x .. "," .. y
+            expect[#expect + 1] = (x + w) .. "," .. y
+            expect[#expect + 1] = (x + w) .. "," .. (y + h)
+            expect[#expect + 1] = x .. "," .. (y + h)
+        end
+        T.eq(batched, table.concat(expect, ";"))
+    end)
+
+    T.it("a polygon with many runs splits into several bounded batches", function()
+        fresh()
+        local zig = {}
+        for i = 0, 99 do zig[#zig + 1] = (i % 2) * 6; zig[#zig + 1] = i * 2 end
+        zig[#zig + 1] = 20; zig[#zig + 1] = 200
+        love.graphics.polygon("fill", zig)
+        local batches = __rec.count("gfx.SetPolygon")
+        T.eq(__rec.count("gfx.End"), batches)
+        T.ok(batches >= 1)
+        T.ok(__rec.count("gfx.VertexPosition") / batches <= 4 * 64)
+    end)
+
+    T.it("fill colour rides every vertex", function()
+        fresh()
+        love.graphics.setColor(0.5, 0.25, 1, 1)
+        love.graphics.polygon("fill", pts)
+        for _, c in ipairs(__rec.all("gfx.VertexColor")) do
+            T.near(c.args[1], 0.5); T.near(c.args[2], 0.25); T.near(c.args[3], 1)
+        end
+    end)
+end)
+
 io.write("\n=== PS3 first-class graphics ===\n")
 return T.summary()

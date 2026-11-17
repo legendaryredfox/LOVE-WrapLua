@@ -57,6 +57,8 @@ local function sizeToScreen(w, h)
     return w * s, h * s
 end
 
+local QUADS_PER_BATCH = 64
+
 local stack = lv1lua.gfx.transform
 
 lv1lua.gfx.prims = {
@@ -66,6 +68,32 @@ lv1lua.gfx.prims = {
         local sx, sy = toScreen(x, y)
         local sw, sh = sizeToScreen(w, h)
         solidQuad(g, sx, sy, sw, sh, color)
+    end,
+
+    fillRuns = function(runs, dx, dy, color)
+        local g = gfxTable()
+        if not (g and g.SetPolygon) then return end
+        local s  = (lv1luaconf.imgscale or lv1luaconf.resscale) and 1 or lv1lua.gfx.scale
+        local yo = lv1lua.gfx.yOffset
+        local c  = lv1lua.current.colorRGBA
+        local r, gr, b, a = c[1], c[2], c[3], c[4]
+        if type(color) == "table" and color.r then
+            r, gr, b, a = color.r / 255, color.g / 255, color.b / 255, color.a / 255
+        end
+        local setPolygon, quads = g.SetPolygon, g.QUADS
+        local pos, col, finish = g.VertexPosition, g.VertexColor, g.End
+        local n, total = 0, #runs
+        for i = 1, total, 4 do
+            if n == 0 then setPolygon(quads, 0) end
+            local x0, y0 = (runs[i] + dx) * s, (runs[i + 1] + dy) * s + yo
+            local x1, y1 = x0 + runs[i + 2] * s, y0 + runs[i + 3] * s
+            pos(x0, y0, 0); col(r, gr, b, a)
+            pos(x1, y0, 0); col(r, gr, b, a)
+            pos(x1, y1, 0); col(r, gr, b, a)
+            pos(x0, y1, 0); col(r, gr, b, a)
+            n = n + 1
+            if n == QUADS_PER_BATCH or i + 4 > total then finish(); n = 0 end
+        end
     end,
 
     rectOutline = function(x, y, w, h, color)

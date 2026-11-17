@@ -17,15 +17,12 @@ local function quadVerts(px, py, sw, sh, r, ox, oy)
     end
     local cx, cy = px + ox, py + oy
     local cs, sn = math.cos(r), math.sin(r)
-    local function rot(x, y)
-        return cx + x*cs - y*sn,
-               cy + x*sn + y*cs
-    end
-    local x1, y1 = rot(-ox,    -oy)
-    local x2, y2 = rot(sw-ox, -oy)
-    local x3, y3 = rot(sw-ox, sh-oy)
-    local x4, y4 = rot(-ox,   sh-oy)
-    return x1, y1, x2, y2, x3, y3, x4, y4
+    local ax, ay = -ox, -oy
+    local bx, by = sw - ox, sh - oy
+    return cx + ax*cs - ay*sn, cy + ax*sn + ay*cs,
+           cx + bx*cs - ay*sn, cy + bx*sn + ay*cs,
+           cx + bx*cs - by*sn, cy + bx*sn + by*cs,
+           cx + ax*cs - by*sn, cy + ax*sn + by*cs
 end
 
 function love.graphics.newImage(filename, settings)
@@ -60,8 +57,13 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx)
         _sx      = (sy  == nil) and t._scaleX or sy  * t._scaleX
         _sy      = (ox  == nil) and t._scaleY or ox  * t._scaleY
         _ox, _oy = oy or 0, kx or 0
-        local qx, qy, qw, qh = xOrQuad:getViewport()
-        local tw, th         = xOrQuad:getTextureDimensions()
+        local qx, qy, qw, qh, tw, th
+        if xOrQuad.sw then
+            qx, qy, qw, qh, tw, th = xOrQuad.x, xOrQuad.y, xOrQuad.width, xOrQuad.height, xOrQuad.sw, xOrQuad.sh
+        else
+            qx, qy, qw, qh = xOrQuad:getViewport()
+            tw, th         = xOrQuad:getTextureDimensions()
+        end
         u0, v0 = qx/tw,       qy/th
         u1, v1 = (qx+qw)/tw,  (qy+qh)/th
         w, h   = qw, qh
@@ -80,8 +82,8 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx)
     _sx, _sy = _sx or 1, _sy or 1
     if _sx < 0 then u0, u1 = u1, u0; _ox = w - _ox end
     if _sy < 0 then v0, v1 = v1, v0; _oy = h - _oy end
-    local absSx   = math.abs(_sx)
-    local absSy   = math.abs(_sy)
+    local absSx   = _sx < 0 and -_sx or _sx
+    local absSy   = _sy < 0 and -_sy or _sy
     local gscale  = lv1lua.gfx.scale
     local yo      = lv1lua.gfx.yOffset
     local sw      = w * absSx * gscale

@@ -6,6 +6,8 @@
 -- `lv1lua.gfx.prims` before loading this file:
 --
 --   fillRect(x, y, w, h, color)          required
+--   fillRuns(runs, dx, dy, color)        optional: {x, y, w, h, ...} rectangles shifted by dx, dy in
+--                                        one call (a polygon fill), instead of one fillRect each
 --   rectOutline(x, y, w, h, color)       required
 --   line(x1, y1, x2, y2, color)          required
 --   fillCircle(x, y, r, color, segments) optional; falls back to a filled polygon
@@ -121,6 +123,7 @@ local function polygonFill(p, src, ox, oy, fixed)
         end
     end
     local dx, dy, runs, col = ix - c.ix, iy - c.iy, c.runs, color()
+    if p.fillRuns then return p.fillRuns(runs, dx, dy, col) end
     local fill = p.fillRect
     for i = 1, #runs, 4 do fill(runs[i] + dx, runs[i + 1] + dy, runs[i + 2], runs[i + 3], col) end
 end

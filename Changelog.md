@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `perf/ps3-draw`
+
+PS3 draw path:
+
+- New optional hook `gfx.prims.fillRuns(runs, dx, dy, color)`: `core/primitives` hands a cached polygon fill
+  over in one call when the backend has it. PS3 emits the scanline rectangles as tiny3D QUADS batches of at
+  most 64 quads (one `SetPolygon`/`End` per batch, not per rectangle). Synthetic frame polygon fill x54:
+  112493 to 77285 instructions. The mock cannot show whether the real player accepts a long QUADS batch;
+  the cap is a guess below the usual tiny3D command buffer, to be checked on RPCS3 or hardware.
+- PS3 `draw`: no per-call closure for rotated quads, quad viewport read from its fields, no `math.abs`.
+  Synthetic frame 196182 to 159968 instructions (PS3 baseline updated).
+
 ### 2026-11-16, branch `perf/main-loop`
 
 Main loop (plan 3.5 / W12):

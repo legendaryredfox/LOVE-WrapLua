@@ -136,6 +136,47 @@ against the old loop on desktop) gave 12.0 fps (43.0 + 40.0 ms) against 11.9 (43
 dropped. The mixing arithmetic is not the cost; software Ogg decoding (Tremor) is the likely one (not yet profiled alone). The levers that remain are the
 ones that remove decode work from the main core: MP3 on the Media Engine, or music pre-decoded at a lower rate.
 
+### UI layer cache in a canvas (2026-11-17, in progress, not merged anywhere)
+
+Code: section 7 of `~/development/games/balatro_psp/psp/opt.lua` (that repository is not under version control, so
+the file on disk is the only copy). Switch on with `OPT_ON=shadowoff,uicache` in `tools/build_native.sh`; add
+`uidiag2` for per-box timing and the reason a box is not cached (`UICACHE box ...` lines in `psp_log.txt`).
+Section 6 (`uidiag`) is the measurement that justified it, section 8 (`shadowoff`) forces Balatro's shadows option off.
+
+Measured first (SELECTING_HAND, 400 updates): top-level UIBoxes cost 19.9 ms per frame of draw, of which 5.1 ms are
+`UIT.O` objects (DynaText, sprites) and about 14.8 ms are the static elements. Boxes are 99% unchanged between
+frames, so the estimate of `-8` to `-14 ms` is plausible.
+
+How it works: a top-level UIBox whose per-element signature (position, size, colour, text, hover and press state,
+parallax) is unchanged for two frames is drawn once into a 512x256 atlas canvas, skipping its objects, and from then
+on as one quad. Objects, `add_to_drawhash` calls and elements with translucent colour that have no opaque ancestor
+are replayed live around the quad. Decisions that came from the engine and the game:
+
+- The cache is built in the box's local space and drawn under the live matrix. Balatro's room has a tiny rotation
+  that changes every frame (`translate_container`), so a cache keyed on the matrix never hit.
+- Shadows must be off. The engine writes alpha 255 for anything drawn into a canvas (stencil replace, see
+  `engine.c`), so a translucent pixel over nothing turns opaque. Translucent elements over an opaque ancestor are
+  exact; uncovered ones are drawn live under the quad (siblings do not overlap, so the order holds).
+- Signature positions are quantised to 1/4 px; without that, springs that converge forever never become stable.
+- The cached region is clipped to the screen plus 24 px, using the inverse of the current matrix. The VRAM pool
+  holds one 512x256 canvas, and the engine's own `G.CANVAS` request is a null canvas.
+
+Results (PPSSPP, deterministic): `shadowoff` alone 17.1 fps (update 31.4, draw 27.1). `shadowoff,uicache` 16.4 to
+17.0 fps (draw 26.5 to 28.3): about 8 boxes per frame are cached and hit, and the output matches the uncached
+screenshot except slightly softer text edges. No net gain yet, because the box that matters is not cached.
+
+Open, in order:
+1. The 797-node box costs 8.5 ms per frame and stays uncached: its clipped region is 123x322, taller than the 256
+   rows of the atlas. Split a region into vertical strips of at most 256 rows (one rect, scissor and quad each), or
+   add a second atlas. This is the lever; the rest of the cached boxes total about 5 ms uncached.
+2. Boxes of 25 nodes keep changing in field 6 of the signature (`VT.r + VT.scale * 1000`, converging scale): quantise it.
+3. Check the cost of the signature walk (about 170k values per 200 updates) against what a hit saves; skip the walk
+   on alternate frames if it matters.
+4. Visual diff of cached against uncached screenshots in other states (shop, blind select, overlays), and a test
+   game in `tests/games/` that exercises canvas plus quad blits so the engine side stays covered.
+5. If it pays, move the code from `opt.lua` into a reusable place and decide whether the PSP default is shadows off
+   (also worth about `-2.7 ms` by itself).
+
 ## 5. Risks and open items
 
 - `balatro_psp` is not under version control. Its `git init` and `.gitignore` are open items in its own

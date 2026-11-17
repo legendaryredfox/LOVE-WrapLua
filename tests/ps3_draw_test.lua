@@ -306,5 +306,26 @@ T.describe("PS3 polygon fill batching", function()
     end)
 end)
 
+T.describe("PS3 quad UV cache", function()
+    local function uvOf(img, quad)
+        fresh()
+        love.graphics.draw(img, quad, 0, 0)
+        local t = __rec.all("gfx.VertexTexture")
+        return t[1].args[1], t[1].args[2], t[3].args[1], t[3].args[2]
+    end
+
+    T.it("setViewport invalidates the cached UVs", function()
+        fresh()
+        local img = love.graphics.newImage("sprite.png")
+        local w, h = img:getDimensions()
+        local quad = love.graphics.newQuad(0, 0, w / 2, h / 2, img)
+        local u0, v0, u1, v1 = uvOf(img, quad)
+        T.near(u0, 0); T.near(v0, 0); T.near(u1, 0.5); T.near(v1, 0.5)
+        quad:setViewport(w / 2, h / 2, w / 2, h / 2)
+        u0, v0, u1, v1 = uvOf(img, quad)
+        T.near(u0, 0.5); T.near(v0, 0.5); T.near(u1, 1); T.near(v1, 1)
+    end)
+end)
+
 io.write("\n=== PS3 first-class graphics ===\n")
 return T.summary()

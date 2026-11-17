@@ -57,16 +57,24 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx)
         _sx      = (sy  == nil) and t._scaleX or sy  * t._scaleX
         _sy      = (ox  == nil) and t._scaleY or ox  * t._scaleY
         _ox, _oy = oy or 0, kx or 0
-        local qx, qy, qw, qh, tw, th
         if xOrQuad.sw then
-            qx, qy, qw, qh, tw, th = xOrQuad.x, xOrQuad.y, xOrQuad.width, xOrQuad.height, xOrQuad.sw, xOrQuad.sh
+            u0 = xOrQuad._u0
+            if not u0 then
+                local tw, th = xOrQuad.sw, xOrQuad.sh
+                u0, v0 = xOrQuad.x / tw, xOrQuad.y / th
+                xOrQuad._u0, xOrQuad._v0 = u0, v0
+                xOrQuad._u1 = (xOrQuad.x + xOrQuad.width) / tw
+                xOrQuad._v1 = (xOrQuad.y + xOrQuad.height) / th
+            end
+            v0, u1, v1 = xOrQuad._v0, xOrQuad._u1, xOrQuad._v1
+            w, h = xOrQuad.width, xOrQuad.height
         else
-            qx, qy, qw, qh = xOrQuad:getViewport()
-            tw, th         = xOrQuad:getTextureDimensions()
+            local qx, qy, qw, qh = xOrQuad:getViewport()
+            local tw, th         = xOrQuad:getTextureDimensions()
+            u0, v0 = qx/tw,       qy/th
+            u1, v1 = (qx+qw)/tw,  (qy+qh)/th
+            w, h   = qw, qh
         end
-        u0, v0 = qx/tw,       qy/th
-        u1, v1 = (qx+qw)/tw,  (qy+qh)/th
-        w, h   = qw, qh
     else
         -- draw(drawable, x, y, r, sx, sy, ox, oy)
         _x,  _y  = xOrQuad or 0, y or 0
@@ -122,7 +130,7 @@ function love.graphics.newQuad(x, y, w, h, swOrImg, sh)
     end
     local q = { x=x, y=y, width=w, height=h, sw=sw or w, sh=sh or h }
     function q:getViewport()            return self.x, self.y, self.width, self.height end
-    function q:setViewport(x, y, w, h)  self.x, self.y, self.width, self.height = x, y, w, h end
+    function q:setViewport(x, y, w, h)  self.x, self.y, self.width, self.height = x, y, w, h; self._u0 = nil end
     function q:getTextureDimensions()   return self.sw, self.sh end
     return q
 end

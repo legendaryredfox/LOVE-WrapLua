@@ -13,6 +13,8 @@ PS3 draw path:
   the cap is a guess below the usual tiny3D command buffer, to be checked on RPCS3 or hardware.
 - PS3 `draw`: no per-call closure for rotated quads, quad viewport read from its fields, no `math.abs`.
   Synthetic frame 196182 to 159968 instructions (PS3 baseline updated).
+- PS3 quads cache their UVs (cleared by `setViewport`): 315 to 301 instructions per quad draw, synthetic frame
+  159968 to 158232.
 
 ### 2026-11-16, branch `perf/main-loop`
 

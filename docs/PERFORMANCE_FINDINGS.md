@@ -268,6 +268,29 @@ the 3M the cost model assumes.
 - Nothing in this profile gives the wrapper a lever. A cheaper `love.update` has to come from the game side
   (updating fewer moveables per step, skipping settled ones) or from a faster VM, which is Gate 1.
 
+### Where `love.draw` spends its time in SELECTING_HAND, 2026-11-17 (second run)
+
+A sampling profile of `love.draw` (hook every 5000 VM instructions, 8 draws in `SELECTING_HAND`, 544 samples;
+the hook makes a draw about 500 ms). Reproduce with `AUTOPLAY=1 PROFILE=1 tools/build.sh` in the Balatro harness.
+
+| Share | Where |
+|---|---|
+| 24% | the harness's own timing wrapper around the native `draw.*` calls: an artefact of `PROFILE=1`, neither game nor wrapper |
+| 11% | `Stack:updateTransform` (`core/transform.lua`), the largest wrapper function |
+| 6% | the `fillRect` closure in `OneLua/psp/primitives.lua` |
+| 4% | `translate` (`core/transformapi.lua`) |
+| 2 to 3% each | `polyfill`, `imagedraw`, `text`, `state.setColor` |
+| the rest | the game's UI code (`ui.lua`, `cardarea.lua`, `node.lua`, `text.lua`) |
+
+- Native calls per 3 s window: 3016 `draw.fillrect` (85 ms), 190 `screen.print` (62 ms), image calls under 10 ms.
+  The native cost is rectangles from polygon fills.
+- Transform stack depth at each flatten that did work: 4 or 5 levels (mean 4.55; 1376 flattens in 8 draws, 172 per
+  draw). `tests/bench/deep_stack.lua` runs a nested push/translate/scale/rectangle tree at a chosen depth.
+- Tried and dropped, both measured on that tool and on `frame_cost.lua`: (1) keeping each level's composed
+  transform so only the top level is flattened: 20% cheaper at depth 9 but 3 to 8% dearer up to depth 5, and
+  Balatro stays at 4 or 5; (2) a separate flatten loop for stacks with no shear: 6% cheaper at depth 4 but about
+  1% of a Balatro draw, for a second code path and a shear counter. Neither is worth the code.
+
 ## 8. Reproducing
 
 ```

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `perf/transform-deep-stack`
+
+- `docs/PERFORMANCE_FINDINGS.md`: second `love.draw` profile of Balatro's `SELECTING_HAND` (544 samples) and the
+  transform stack depth it runs at (4 or 5). Two flatten optimisations were measured and dropped.
+- `tests/bench/deep_stack.lua`: VM cost of a nested push/translate/scale/rectangle tree at a given depth.
+
 ### 2026-11-17, branch `perf/polygon-fill-hits`
 
 - OneLua (Vita and PSP), lpp-vita and the 3DS gained the `fillRuns` hook the PS3 already had: a cached polygon's

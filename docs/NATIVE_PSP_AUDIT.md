@@ -79,6 +79,25 @@ with two decisions that change the design:
    native fast path for `draw`, `setColor`, `push`, `pop`, `translate`, `rectangle` and `print`, like the 213 and
    168 call mix in `tests/bench/frame_cost.lua`.
 
+### Decision: the matrix stack stays in C (2026-11-17)
+
+Measured with `tests/games/stackbench` on the packaged EBOOT in PPSSPP (virtual clock, mean of 40 frames after
+warm-up), one synthetic frame of the `frame_cost.lua` mix (213 push/translate/scale/pop, 124 quad draws,
+168 setColor, 54 polygon fills, 45 prints):
+
+| Stack | ms per frame |
+|---|---|
+| in C (`love.graphics.push` and friends call the engine, which applies the matrix) | 5.80 |
+| in Lua (software levels as in `core/transform.lua`, draws placed with the flattened result) | 10.00 |
+
+The Lua stack costs 4.2 ms more, about 13% of a 33 ms budget, and it cannot compose a rotation into the positions
+that follow it (the flattened form has no off-diagonal terms), so `rotate(a) translate(10, 0)` lands in the wrong
+place. The C matrix is a full 2x3 affine, exact for rotation and, with the additions below, for shear.
+
+C gained `shear`, `get_matrix`, `set_matrix` and `mul_matrix`; Lua wraps them as `love.graphics.shear`,
+`transformPoint`, `inverseTransformPoint`, `applyTransform` and `replaceTransform`. The shared `core/transform.lua`
+is therefore not used by this backend. `tests/games/matrix` checks the C answers on the console build.
+
 ## 5. Risks and open items
 
 - `balatro_psp` is not under version control. Its `git init` and `.gitignore` are open items in its own
@@ -110,7 +129,7 @@ crossings, batching, a game-side update diet (`Game:update` at 1 Hz, invisible n
    `LOVE-WrapLua/PSPNative/`, with the build and packaging as Lua (`tools/lovepsp.lua`) and the contract suite
    registered in `tests/run_all.lua`. **Done 2026-11-17** (see the Changelog); a clean build takes 15 s and a
    packaged sample game renders in PPSSPP.
-2. Add a `"PSP-native"` mode to `core/runtime.lua` and a `native` row to `core/capabilities.lua`, so the shared
+2. (matrix ownership decided: C, see section 4) Add a `"PSP-native"` mode to `core/runtime.lua` and a `native` row to `core/capabilities.lua`, so the shared
    test suites can run it against the existing mock style (`tests/mock_native.lua`).
 3. Replace the duplicated `love.math`, `love.data`, `love.thread`, `love.filesystem` and `love.joystick` parts of
    `love_psp.lua` with the shared modules (these need no native call).

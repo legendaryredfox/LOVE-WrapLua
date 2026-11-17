@@ -310,6 +310,28 @@ static int l_rotate(lua_State *L) {
     float a = M[0], b = M[1], cc = M[2], d = M[3];
     M[0] = a * c + cc * s; M[1] = b * c + d * s; M[2] = -a * s + cc * c; M[3] = -b * s + d * c; return 0;
 }
+/* shear(kx, ky): M = M * [1 kx; ky 1], LOVE's love.graphics.shear. */
+static int l_shear(lua_State *L) {
+    float kx = luaL_optnumber(L, 1, 0), ky = luaL_optnumber(L, 2, 0);
+    float a = M[0], b = M[1], c = M[2], d = M[3];
+    M[0] = a + c * ky; M[1] = b + d * ky; M[2] = a * kx + c; M[3] = b * kx + d; return 0;
+}
+/* get_matrix() -> a, b, c, d, e, f: a point (x, y) maps to (a*x + c*y + e, b*x + d*y + f). */
+static int l_get_matrix(lua_State *L) {
+    for (int k = 0; k < 6; k++) lua_pushnumber(L, M[k]);
+    return 6;
+}
+/* set_matrix(a, b, c, d, e, f): replaces the top matrix (love.graphics.replaceTransform). */
+static int l_set_matrix(lua_State *L) { getm(L, 1, M); return 0; }
+/* mul_matrix(a, b, c, d, e, f): M = M * T (love.graphics.applyTransform). */
+static int l_mul_matrix(lua_State *L) {
+    float t[6]; getm(L, 1, t);
+    float a = M[0], b = M[1], c = M[2], d = M[3];
+    float e = M[0] * t[4] + M[2] * t[5] + M[4], f = M[1] * t[4] + M[3] * t[5] + M[5];
+    M[0] = a * t[0] + c * t[1]; M[1] = b * t[0] + d * t[1];
+    M[2] = a * t[2] + c * t[3]; M[3] = b * t[2] + d * t[3];
+    M[4] = e; M[5] = f; return 0;
+}
 /* native.prep_draw(S, tx, ty, r, ox, oy, sc): push; scale(S); translate(tx,ty); rotate(r) if r~=0; translate(ox,oy); scale(sc).
    Balatro's prep_draw in one call. */
 static int l_prep_draw(lua_State *L) {
@@ -784,6 +806,7 @@ static const luaL_Reg funcs[] = {
     {"image_load", l_image_load}, {"tex_filter", l_tex_filter}, {"draw", l_draw}, {"fill_poly", l_fill_poly},
     {"fill_rect", l_fill_rect}, {"line", l_line}, {"b64encode", l_b64encode}, {"b64decode", l_b64decode}, {"set_color", l_set_color}, {"get_color", l_get_color}, {"push", l_push}, {"pop", l_pop},
     {"prep_draw", l_prep_draw}, {"origin", l_origin}, {"reset_stack", l_reset_stack}, {"translate", l_translate}, {"scale", l_scale}, {"rotate", l_rotate},
+    {"shear", l_shear}, {"get_matrix", l_get_matrix}, {"set_matrix", l_set_matrix}, {"mul_matrix", l_mul_matrix},
     {"begin_frame", l_begin}, {"clear", l_clear}, {"end_frame", l_end}, {"scissor", l_scissor}, {"blend", l_blend},
     {"font_load", l_font_load}, {"font_width", l_font_width}, {"font_has", l_font_has}, {"font_draw", l_font_draw},
     {"pad", l_pad}, {"time", l_time}, {"sleep", l_sleep}, {"mem", l_mem}, {"tex_mem", l_texmem}, {"canvas_new", l_canvas_new}, {"canvas_set", l_canvas_set}, {"suppress", l_suppress}, {"canvas_pixel", l_canvas_pixel}, {"palette", l_palette}, {"cpu", l_cpu}, {"exit", l_exit},

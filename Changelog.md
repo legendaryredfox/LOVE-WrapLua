@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/native-psp-transform`
+
+- Native PSP backend: the matrix stack stays in C. Measured on the packaged EBOOT in PPSSPP, one synthetic frame
+  takes 5.80 ms with the stack in C and 10.00 ms with a Lua stack (`tests/games/stackbench`); the Lua stack also
+  cannot rotate later positions. `docs/NATIVE_PSP_AUDIT.md` section 4 has the table.
+- C engine: `native.shear`, `get_matrix`, `set_matrix` and `mul_matrix`. `LOVE-WrapLua/PSPNative/love_psp.lua`
+  gets `love.graphics.shear` (was a stub), `transformPoint`, `inverseTransformPoint`, `applyTransform` and
+  `replaceTransform`. The test mock keeps a real matrix, six new cases check the geometry, and
+  `tests/games/matrix` checks it on the EBOOT in PPSSPP (4 of 4 ok).
+
 ### 2026-11-17, branch `feat/native-psp-import`
 
 - The native PSP engine and its Lua backend came into this repository: `native/` (C engine, Makefile, Lua 5.1.5

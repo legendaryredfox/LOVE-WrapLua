@@ -5,8 +5,37 @@ local function sh(cmd) local p = io.popen(cmd); local s = p:read("*a"); p:close(
 function M.count(name) local n = 0; for _, c in ipairs(M.calls) do if c[1] == name then n = n + 1 end end return n end
 function M.last(name) for i = #M.calls, 1, -1 do if M.calls[i][1] == name then return M.calls[i] end end end
 function M.reset() M.calls = {} end
-for _, n in ipairs({ "tex_filter", "draw", "fill_poly", "fill_rect", "line", "push", "pop", "prep_draw", "origin",
-    "reset_stack", "translate", "scale", "rotate", "begin_frame", "clear", "end_frame", "scissor", "blend", "font_draw", "cpu", "exit", "tex_mem", "palette", "canvas_set", "suppress" }) do
+-- A real matrix stack (the C engine's 2x3 affine: x' = a*x + c*y + e, y' = b*x + d*y + f), so the Lua wrappers
+-- that read it back are tested against geometry and not against recorded calls.
+local m, stk = { 1, 0, 0, 1, 0, 0 }, {}
+function M.push() stk[#stk + 1] = { unpack(m) } end
+function M.pop() if #stk > 0 then m = table.remove(stk) end end
+function M.origin() m = { 1, 0, 0, 1, 0, 0 } end
+function M.reset_stack() stk = {}; M.origin() end
+function M.translate(x, y) m[5] = m[5] + m[1] * x + m[3] * y; m[6] = m[6] + m[2] * x + m[4] * y end
+function M.scale(sx, sy) sy = sy or sx; m[1] = m[1] * sx; m[2] = m[2] * sx; m[3] = m[3] * sy; m[4] = m[4] * sy end
+function M.rotate(r)
+    local c, s = math.cos(r), math.sin(r)
+    local a, b, cc, d = m[1], m[2], m[3], m[4]
+    m[1], m[2], m[3], m[4] = a * c + cc * s, b * c + d * s, -a * s + cc * c, -b * s + d * c
+end
+function M.shear(kx, ky)
+    kx, ky = kx or 0, ky or 0
+    local a, b, c, d = m[1], m[2], m[3], m[4]
+    m[1], m[2], m[3], m[4] = a + c * ky, b + d * ky, a * kx + c, b * kx + d
+end
+for _, n in ipairs({ "push", "pop", "origin", "reset_stack", "translate", "scale", "rotate", "shear" }) do
+    local real = M[n]
+    M[n] = function(...) rec(n, ...); return real(...) end
+end
+function M.get_matrix() return unpack(m) end
+function M.set_matrix(a, b, c, d, e, f) m = { a, b, c, d, e, f } end
+function M.mul_matrix(a, b, c, d, e, f)
+    local A, B, C, D = m[1], m[2], m[3], m[4]
+    local E, F = m[1] * e + m[3] * f + m[5], m[2] * e + m[4] * f + m[6]
+    m = { A * a + C * b, B * a + D * b, A * c + C * d, B * c + D * d, E, F }
+end
+for _, n in ipairs({ "tex_filter", "draw", "fill_poly", "fill_rect", "line", "prep_draw", "begin_frame", "clear", "end_frame", "scissor", "blend", "font_draw", "cpu", "exit", "tex_mem", "palette", "canvas_set", "suppress" }) do
     M[n] = function(...) return rec(n, ...) end
 end
 local cr, cg, cb, ca = 1, 1, 1, 1

@@ -281,7 +281,27 @@ function g.getScissor() if scissor_rect then return unpack(scissor_rect) end end
 
 -- transforms live in C (matrix stack)
 g.push, g.pop, g.origin, g.translate, g.scale, g.rotate = N.push, N.pop, N.origin, N.translate, N.scale, N.rotate
-function g.shear() end
+g.shear = N.shear
+function g.transformPoint(x, y)
+    local a, b, c, d, e, f = N.get_matrix()
+    return a * x + c * y + e, b * x + d * y + f
+end
+function g.inverseTransformPoint(x, y)
+    local a, b, c, d, e, f = N.get_matrix()
+    local det = a * d - b * c
+    if det == 0 then return x, y end
+    x, y = x - e, y - f
+    return (d * x - c * y) / det, (a * y - b * x) / det
+end
+-- A love.math Transform keeps a column-major 3x3 in `_m`: columns (1,2), (4,5) and the translation (7,8).
+function g.applyTransform(t)
+    local m = t and t._m
+    if m then N.mul_matrix(m[1], m[2], m[4], m[5], m[7], m[8]) end
+end
+function g.replaceTransform(t)
+    local m = t and t._m
+    if m then N.set_matrix(m[1], m[2], m[4], m[5], m[7], m[8]) end
+end
 function g.reset()
     N.reset_stack(); g.setColor(1, 1, 1, 1)
     g.setBlendMode("alpha"); g.setScissor(); linew = 1

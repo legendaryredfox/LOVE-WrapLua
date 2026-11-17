@@ -159,14 +159,24 @@ function love.data.newDataView(data, offset, size)
     return love.data.newByteData(s:sub(offset + 1, offset + size))
 end
 
-function love.data.pack(fmt, ...)
-    if string.pack then return string.pack(fmt, ...) end
-    return ''
+-- Lua 5.3 and later have string.pack; Lua 5.1 and LuaJIT, which every console runs, use data/pack.lua.
+local packer = string.pack and { pack = string.pack, unpack = string.unpack }
+local function packlib()
+    packer = packer or lv1lua.loadOnce('LOVE-WrapLua/data/pack.lua')
+    return packer
 end
 
+-- love.data.pack(container, format, v1, v2, ...): a string, or a ByteData for container "data".
+function love.data.pack(container, fmt, ...)
+    local s = packlib().pack(fmt, ...)
+    if container == 'data' then return love.data.newByteData(s) end
+    return s
+end
+
+-- love.data.unpack(format, data [, pos]) -> v1, v2, ..., next position (pos is 1-based).
 function love.data.unpack(fmt, data, pos)
-    if string.unpack then return string.unpack(fmt, data, pos) end
-    return nil
+    local s = type(data) == 'string' and data or data:getString()
+    return packlib().unpack(fmt, s, pos)
 end
 
 function love.data.getSize(data)

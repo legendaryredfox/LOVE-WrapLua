@@ -127,12 +127,71 @@ T.describe("love.data.newDataView", function()
 end)
 
 -- ── pack / unpack ────────────────────────────────────────────────
+-- LOVE's signature is pack(container, format, ...) and unpack(format, data [, pos]). The Lua 5.1 implementation
+-- (data/pack.lua) is exercised directly on every runtime, and compared with string.pack where that exists.
+local P = dofile("LOVE-WrapLua/data/pack.lua")
+
 T.describe("love.data.pack/unpack", function()
-    T.it("pack/unpack roundtrip for simple format", function()
-        if not string.pack then return end   -- Lua 5.1/5.2 guard
-        local packed = love.data.pack(">I4", 12345)
-        local val    = love.data.unpack(">I4", packed, 1)
-        T.eq(val, 12345)
+    T.it("pack and unpack round-trip through the LOVE signature", function()
+        local packed = love.data.pack("string", ">I4", 12345)
+        T.eq(#packed, 4)
+        T.eq((love.data.unpack(">I4", packed, 1)), 12345)
+    end)
+
+    T.it("container 'data' gives a ByteData, and unpack accepts it", function()
+        local d = love.data.pack("data", "<i2 z", -3, "hi")
+        T.eq(d:getSize(), 5)
+        local a, b, nxt = love.data.unpack("<i2 z", d)
+        T.eq(a, -3); T.eq(b, "hi"); T.eq(nxt, 6)
+    end)
+
+    T.it("unpack starts at a 1-based position", function()
+        local s = love.data.pack("string", "<B B B", 1, 2, 3)
+        local v, nxt = love.data.unpack("<B", s, 2)
+        T.eq(v, 2); T.eq(nxt, 3)
+    end)
+end)
+
+T.describe("data/pack.lua (Lua 5.1 implementation)", function()
+    local cases = {
+        { "<i4", -123456 }, { ">I2", 513 }, { "<I3", 70000 }, { "b", -5 }, { "B", 250 }, { "<h", -2 },
+        { "<i8", -1 }, { ">i8", -9007199254740991 }, { "<j", 123456789012 }, { ">l", -7 }, { "<I8", 2 ^ 40 },
+        { "<f", 1.5 }, { ">f", -0.15625 }, { "<f", 0.1 }, { "<f", 3.4e38 }, { "<f", 1e-40 },
+        { "<d", 3.14159 }, { ">d", -1e300 }, { "<d", 5e-324 }, { "<d", 0 }, { "<d", 1 / 3 },
+        { "<s1", "hello" }, { "<z", "abc" }, { "c5", "ab" },
+    }
+
+    T.it("round-trips every format", function()
+        for _, c in ipairs(cases) do
+            local packed = P.pack(c[1], c[2])
+            local back = P.unpack(c[1], packed)
+            if type(c[2]) == "number" and c[1]:find("[fdn]") then
+                T.ok(math.abs(back - c[2]) <= math.abs(c[2]) * (c[1]:find("f") and 1e-4 or 1e-12), c[1] .. " " .. c[2] .. " came back " .. back)
+            elseif c[1]:find("^c") then
+                T.eq(back, c[2] .. string.rep("\0", 5 - #c[2]), c[1])   -- a fixed field is zero padded
+            else
+                T.eq(back, c[2], c[1])
+            end
+        end
+    end)
+
+    T.it("matches string.pack byte for byte where the runtime has it", function()
+        if not string.pack then return end
+        for _, c in ipairs(cases) do
+            T.eq(P.pack(c[1], c[2]), string.pack(c[1], c[2]), c[1] .. " " .. tostring(c[2]))
+        end
+    end)
+
+    T.it("several items in one format, with an endianness switch", function()
+        local s = P.pack("<i2 >I4 z", 7, 9, "q")
+        T.eq(#s, 2 + 4 + 2)
+        local a, b, c, nxt = P.unpack("<i2 >I4 z", s)
+        T.eq(a, 7); T.eq(b, 9); T.eq(c, "q"); T.eq(nxt, #s + 1)
+    end)
+
+    T.it("an unknown option and a short string both raise", function()
+        T.nok(pcall(P.pack, "q", 1))
+        T.nok(pcall(P.unpack, "<I4", "ab"))
     end)
 end)
 

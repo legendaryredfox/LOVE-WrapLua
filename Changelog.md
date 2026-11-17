@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `docs/native-perf-profile`
+
+- `docs/NATIVE_PSP_AUDIT.md`: sampling profile of the native path in `SELECTING_HAND` (the backend layer is about 5% of
+  the frame, the rest is Balatro's Lua on the VM) and the `-O3` A/B (no gain). The Balatro harness now builds its
+  EBOOT and backend from this repository through `tools/lovepsp.lua`.
+
 ### 2026-11-17, branch `feat/native-psp-shared-modules`
 
 - Native PSP backend: `PSPNative/shared.lua` loads the wrapper's shared `love.math` and `love.data` over the backend

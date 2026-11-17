@@ -98,6 +98,29 @@ C gained `shear`, `get_matrix`, `set_matrix` and `mul_matrix`; Lua wraps them as
 `transformPoint`, `inverseTransformPoint`, `applyTransform` and `replaceTransform`. The shared `core/transform.lua`
 is therefore not used by this backend. `tests/games/matrix` checks the C answers on the console build.
 
+### Profile of the native path, `SELECTING_HAND` (2026-11-17)
+
+Sampling profile (hook every 5000 VM instructions, 1840 samples, the Balatro harness with `PROFILE=1`), built from
+this repository's engine and backend. The harness now builds through `lua tools/lovepsp.lua build`, and the
+unprofiled baseline from that build is the same 16.4 fps (update 31.4 ms, draw 29.8 ms).
+
+| Share of samples | Where |
+|---|---|
+| 30% inclusive, 16% self | `Moveable:move` (the harness's reduced version in `psp/opt.lua`) |
+| 20% inclusive, 8% self | `UIElement:draw_self` (`ui.lua`) |
+| 16% inclusive | `CardArea:draw` and `Card:draw` |
+| 4% inclusive | `love_psp.lua` `love.graphics.draw` (the backend itself) |
+| about 2% each | `Sprite:draw_self`, `DynaText`, `Node:update`, `love_psp.lua` text path |
+
+- The backend layer is about 5% of the frame. What is left is Balatro's own Lua on the Lua VM, spread over many
+  functions; no single C or backend change moves it by more than a few percent.
+- Compiler flags are not a lever: `-O3 -fno-strict-aliasing` gives 31.7 + 29.8 ms (16.3 fps) against 31.4 + 29.8
+  with `-O2`.
+- Levers that remain, by size of the expected gain (estimates from `PLAN_PERFORMANCE.md`, not yet measured here):
+  caching static UI in a canvas (`-8` to `-14 ms`, canvases are real in this engine), moving `Moveable:move` and
+  the other per-node updates to C behind the same field API (`~-8 ms` for `move` alone), skipping invisible nodes,
+  and `Game:update` work done at 1 Hz. Reaching 30 fps needs several of them; the first two are the large ones.
+
 ## 5. Risks and open items
 
 - `balatro_psp` is not under version control. Its `git init` and `.gitignore` are open items in its own

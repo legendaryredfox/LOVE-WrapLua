@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `docs/native-psp-audit`
+
+- `docs/NATIVE_PSP_AUDIT.md`: audit of the native PSP engine in `balatro_psp` as a candidate backend. Balatro
+  `SELECTING_HAND` runs at 16.4 fps there (update 31.4 ms, draw 29.7 ms) against 1.1 fps through OneLua; gap list
+  against the wrapper, the transform-stack and Lua-crossing decisions, and a suggested order.
+
 ### 2026-11-17, branch `perf/transform-deep-stack`
 
 - `docs/PERFORMANCE_FINDINGS.md`: second `love.draw` profile of Balatro's `SELECTING_HAND` (544 samples) and the

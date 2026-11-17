@@ -1,18 +1,18 @@
 -- Which love.* functions a game uses that a backend does not define. Lua 5.1:
 --   lua5.1 tests/bench/api_coverage.lua <mode> <usage_file>      usage_file lines: "<count> love.module.function"
 local mode, file = arg[1] or "PSP", arg[2]
-local GFX = {
-    ["PSP"] = "LOVE-WrapLua/OneLua/graphics_psp.lua", ["OneLua"] = "LOVE-WrapLua/OneLua/graphics.lua",
-    ["lpp-vita"] = "LOVE-WrapLua/lpp-vita/graphics.lua", ["PS3"] = "LOVE-WrapLua/PS3/graphics.lua", ["3DS"] = "LOVE-WrapLua/3DS/graphics.lua",
-}
+if not file then io.stderr:write("usage: lua5.1 tests/bench/api_coverage.lua <mode> <usage_file> [limit]\n"); os.exit(1) end
 __MODE = mode
 dofile("tests/setup.lua")
--- load the backend and every shared module the way core/modules.lua does
-dofile(GFX[mode])
-local backend = "LOVE-WrapLua/" .. (mode == "PSP" and "OneLua" or mode) .. "/"
-for _, f in ipairs({ "whileloop.lua", "timer.lua", "audio.lua", "event.lua", "keyboard.lua" }) do pcall(dofile, backend .. f) end
-for _, f in ipairs({ "filesystem.lua", "math.lua", "system.lua", "window.lua", "joystick.lua", "data.lua", "thread.lua" }) do pcall(dofile, "LOVE-WrapLua/" .. f) end
-pcall(dofile, "LOVE-WrapLua/core/thread.lua")
+-- boot the way script.lua does, so the list is what a game sees at love.load
+dofile("LOVE-WrapLua/core/loader.lua")
+for _, f in ipairs({ "util", "transform", "textwrap", "runtime", "input" }) do
+    lv1lua.loadOnce("LOVE-WrapLua/core/" .. f .. ".lua")
+end
+lv1lua.load("LOVE-WrapLua/love-functions/thread.lua")
+for _, f in ipairs({ "config", "timestep", "modules", "require", "callbacks" }) do
+    lv1lua.loadOnce("LOVE-WrapLua/core/" .. f .. ".lua")
+end
 local missing, have, total = {}, 0, 0
 for line in io.lines(file) do
     local n, mod, fn = line:match("^%s*(%d+)%s+love%.(%a+)%.(%a+)")

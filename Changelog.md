@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `fix/api-coverage-boot`
+
+- `tests/bench/api_coverage.lua` boots the runtime in the order `script.lua` does. It loaded some modules from
+  paths that do not exist (`core/thread.lua`, a `PSP/` backend folder), so `love.thread` and the PSP
+  `whileloop`, timer, audio and event modules showed as missing. It prints its usage line when no file is given.
+
 ### 2026-11-17, branch `feat/lowmemory`
 
 - `lv1luaconf.lowmemory` (Lua heap in KB) turns on a memory guard checked once per frame in `core.step`:

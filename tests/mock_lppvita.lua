@@ -129,6 +129,16 @@ Controls = {
     check    = function(pad, btn) return Controls._down[btn] == true end,
     getLeftX = function() return 0 end, getLeftY = function() return 0 end,
     getRightX= function() return 0 end, getRightY= function() return 0 end,
+    -- source/luaControls.cpp lua_rumble: exactly three integer arguments (port, small, large), port 0 means
+    -- 1 and a port above 5 raises. The player stores `large` into the small actuator by mistake
+    -- (`actuators[p].small = int_large`), so only the third argument reaches a motor.
+    rumble   = function(port, small, large)
+        __checkInteger("Controls.rumble", 1, port)
+        __checkInteger("Controls.rumble", 2, small)
+        __checkInteger("Controls.rumble", 3, large)
+        if port > 5 then error("wrong port number.", 2) end
+        __rec.log("Controls.rumble", port, small, large)
+    end,
 }
 
 -- ── Keyboard (IME) ───────────────────────────────────────────────

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/vibration`
+
+- lpp-vita: `Joystick:setVibration(left, right, duration)` drives `Controls.rumble` with the larger intensity
+  (0..255), `getVibration` reads it back, a duration stops it after that much frame time, and
+  `isVibrationSupported` is true. The player's `lua_rumble` stores its third argument into the small actuator,
+  so both arguments carry the strength. Other backends keep answering `false`; `getVibration` answers 0, 0.
+
 ### 2026-11-17, branch `feat/3ds-text-input`
 
 - 3DS: `love.keyboard.showTextInput` / `setTextInput` open lpp-3ds's bottom-screen `Keyboard`. It is shown on

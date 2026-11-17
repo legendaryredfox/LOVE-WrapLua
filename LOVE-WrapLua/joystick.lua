@@ -80,8 +80,45 @@ function Joystick:getGamepadMapping(input)
     return nil
 end
 
-function Joystick:setVibration() end
-function Joystick:isVibrationSupported() return false end
+-- A backend whose SDK can drive a motor sets lv1lua.rumble(strength) (0..255) before this module loads. The
+-- motors there are one strength, so the larger of the two intensities is sent.
+local vibration = { left = 0, right = 0, sent = 0, remaining = nil }
+
+local function clamp01(v)
+    v = tonumber(v) or 0
+    if v < 0 then return 0 elseif v > 1 then return 1 end
+    return v
+end
+
+local function applyVibration()
+    local strength = math.floor(math.max(vibration.left, vibration.right) * 255 + 0.5)
+    if strength == vibration.sent then return end
+    vibration.sent = strength
+    lv1lua.rumble(strength)
+end
+
+function Joystick:isVibrationSupported() return lv1lua.rumble ~= nil end
+
+-- setVibration(left, right [, duration]); no arguments stops it. A duration is in seconds of frame time.
+function Joystick:setVibration(left, right, duration)
+    if not lv1lua.rumble then return false end
+    vibration.left, vibration.right = clamp01(left), clamp01(right)
+    vibration.remaining = (duration and duration > 0) and duration or nil
+    applyVibration()
+    return true
+end
+
+function Joystick:getVibration() return vibration.left, vibration.right end
+
+lv1lua.core = lv1lua.core or {}
+function lv1lua.core.tickVibration(elapsed)
+    local remaining = vibration.remaining
+    if not remaining then return end
+    remaining = remaining - elapsed
+    if remaining > 0 then vibration.remaining = remaining; return end
+    vibration.left, vibration.right, vibration.remaining = 0, 0, nil
+    applyVibration()
+end
 
 local _joystick = setmetatable({}, Joystick)
 

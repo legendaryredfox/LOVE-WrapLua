@@ -17,6 +17,12 @@ end
 
 local keys = lv1lua.core.newKeyTracker()
 
+-- Controls.rumble(port, small, large): the player stores `large` into the small actuator, so only the
+-- third argument reaches a motor; both carry the strength. It does something only with a DualShock 4.
+if type(Controls.rumble) == "function" then
+    function lv1lua.rumble(strength) Controls.rumble(1, strength, strength) end
+end
+
 function lv1lua.update()
     -- Timer.getTime is milliseconds since the last reset; the shared
     -- accumulator (core/timestep.lua) turns that into fixed update slices,

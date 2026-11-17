@@ -151,6 +151,8 @@ end
 -- What each backend's whileloop calls, once per frame.
 function lv1lua.core.step(elapsed)
     local ts = lv1lua.timestep
+    local tick = lv1lua.core.tickVibration
+    if tick then tick(elapsed) end
     local conf = rawget(_G, "lv1luaconf")
     local limit = conf and tonumber(conf.lowmemory)
     if limit and limit > 0 then checkMemory(limit) end

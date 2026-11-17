@@ -258,7 +258,7 @@ One virtual gamepad, filled every frame by the backend.
 | Joystick:getGamepadAxis | ✓ leftx / lefty / rightx / righty |
 | Joystick:getHat | ✓ the d-pad |
 | Joystick:getName / getID | ✓ |
-| Joystick:isVibrationSupported / setVibration | `false` / stub |
+| Joystick:isVibrationSupported / setVibration / getVibration | `true`, `Controls.rumble` (one strength: the larger intensity; only a DualShock 4 has a motor) on lpp-vita; `false` and ignored elsewhere |
 
 ---
 

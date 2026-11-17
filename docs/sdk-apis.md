@@ -37,6 +37,11 @@ Native APIs each backend calls, grounded in the SDK sources. Read before touchin
 | Input | `Controls.read / check(pad, KEY_*) / readCirclePad`, `Keyboard.show / getState / getInput / setText / clear` (`show` draws on the bottom screen and runs once per frame; states `FINISHED` 1, `PRESSED` 2, `CLEANED` 3, `NOT_PRESSED` 4) |
 | Files | `System.openFile(path, FREAD / FWRITE / FCREATE) / readFile / writeFile / getFileSize / closeFile`, `doesFileExist` (files only), `listDirectory` |
 
+> **No blend function on lpp-3ds or lpp-vita.** A search of `source/*.cpp` in both players (2026-11-17) finds
+> no call that sets a blend equation or factors: "blend" in the binding names (`drawImage`'s `_blend` variants,
+> `initBlend`) means tint and GPU frames. `love.graphics.setBlendMode` therefore stays tracked on both, and
+> `add` / `subtract` / `multiply` cannot be drawn there without a native patch.
+
 > **lpp-3ds gotchas.** `TOP_SCREEN` is `0`. `Color.new` returns an integer.
 > `drawImageExtended` takes the texture **tenth** and the sprite **centre**.
 > `luaL_checkinteger` (Lua 5.3) raises on a fractional source origin, radius,

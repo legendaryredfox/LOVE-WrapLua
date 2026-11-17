@@ -20,6 +20,7 @@ local test_files = {
     "tests/batch_compact_test.lua",
     "tests/native_probe_test.lua",
     "tests/lppvita_draw_fast_test.lua",
+    "tests/threeds_draw_fast_test.lua",
     "tests/fs_cache_test.lua",
     "tests/event_test.lua",
     "tests/math_test.lua",

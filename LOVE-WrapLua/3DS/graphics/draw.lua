@@ -39,7 +39,8 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx, ky)
 
     if type(xOrQuad) == "table" and xOrQuad.getViewport then
         -- draw(drawable, quad, x, y, r, sx, sy, ox, oy)
-        local qx, qy, qw, qh = lv1lua.core.insetQuadTexels(xOrQuad:getViewport())
+        if xOrQuad._tg ~= gfx.insetGen then lv1lua.core.insetTexels(xOrQuad) end
+        local qx, qy, qw, qh = xOrQuad._tx, xOrQuad._ty, xOrQuad._tw, xOrQuad._th
         local qsx = sy or 1
         local qsy = ox
         if qsy == nil then qsy = qsx end

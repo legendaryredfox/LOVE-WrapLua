@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `perf/3ds-draw`
+
+- lpp-3ds quad draw keeps the whole-texel inset rectangle on the quad (as lpp-vita does) instead of calling
+  `getViewport` and recomputing it on every draw; `setViewport` and `setTextureInset` invalidate it. Measured
+  inside a frame on the mock: 398 to 354 instructions per quad draw. The 3DS frame is still not in
+  `frame_cost.lua` (draws need an open GPU frame).
+
 ### 2026-11-17, branch `fix/canvas-pixel-size`
 
 - `Canvas` answers `getPixelWidth`, `getPixelHeight` and `getPixelDimensions`, as every LÖVE 11.5 Texture

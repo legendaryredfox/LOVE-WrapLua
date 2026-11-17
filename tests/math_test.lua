@@ -413,5 +413,75 @@ T.describe("love.math.gammaToLinear/linearToGamma", function()
     end)
 end)
 
+-- ── single precision numbers (the native PSP build keeps 24 exact bits) ──
+-- The generator switches to Wichmann-Hill when numbers are single precision. Here the console path is forced on a
+-- desktop runtime and checked for the properties that matter: nothing exceeds 2^24, the stream is deterministic,
+-- uniform enough, and does not fall into a short cycle.
+T.describe("love.math random on single precision numbers", function()
+    local saved = love.math
+    love.math = {}
+    lv1lua.singlePrecision = true
+    dofile("LOVE-WrapLua/math/random.lua")
+    local single = love.math
+    lv1lua.singlePrecision = nil
+    love.math = saved
+
+    local function fresh(seed1, seed2)
+        local g = single.newRandomGenerator(seed1, seed2)
+        return g
+    end
+
+    T.it("stays inside [0, 1) and is deterministic for a seed", function()
+        local a, b = fresh(11), fresh(11)
+        for _ = 1, 500 do
+            local x = a:random()
+            T.inrange(x, 0, 1)
+            T.eq(x, b:random())
+        end
+    end)
+
+    T.it("every state word stays below 2^24, so single precision products are exact", function()
+        local g = fresh(123456789)
+        for _ = 1, 200 do g:random() end
+        local s1, s2 = g:getState():match("^(%d+),(%d+),(%d+)$")
+        T.ok(s1 ~= nil, "a console state has three words")
+        T.ok(tonumber(s1) * 172 < 2 ^ 24 and tonumber(s2) * 172 < 2 ^ 24)
+    end)
+
+    T.it("is roughly uniform", function()
+        local g, buckets = fresh(7), {}
+        for i = 1, 10 do buckets[i] = 0 end
+        for _ = 1, 20000 do
+            local k = math.floor(g:random() * 10) + 1
+            buckets[k] = buckets[k] + 1
+        end
+        for i = 1, 10 do T.inrange(buckets[i], 1700, 2300) end
+    end)
+
+    T.it("does not repeat within 100000 draws", function()
+        local g = fresh(99)
+        local first = g:random()
+        for i = 1, 100000 do
+            if g:random() == first then
+                -- one repeat of a 24 bit value is chance; two consecutive ones would be a cycle
+                T.ok(g:random() ~= g:random(), "short cycle at draw " .. i)
+            end
+        end
+    end)
+
+    T.it("random(m, n) gives integers in range and getState/setState round-trip", function()
+        local g = fresh(5)
+        for _ = 1, 200 do T.inrange(g:random(3, 9), 3, 9) end
+        local state = g:getState()
+        local x = g:random()
+        g:setState(state)
+        T.eq(g:random(), x)
+    end)
+
+    T.it("the second seed changes the stream", function()
+        T.ok(fresh(1, 2):random() ~= fresh(1, 3):random())
+    end)
+end)
+
 io.write("\n=== love.math ===\n")
 return T.summary()

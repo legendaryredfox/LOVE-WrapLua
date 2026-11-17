@@ -17,8 +17,16 @@
 --     actually use both instead of dropping the second.
 --   * Period is about 2.3e18.
 
+-- Where Lua numbers are single precision (the native PSP build: 24 exact bits), the products above are not exact
+-- and the stream degenerates, so a Wichmann-Hill generator takes over: three Lehmer streams whose products all
+-- stay below 2^24, combined as the fractional part of the sum of their ratios. Period about 7e12.
+local EXACT53 = ((2 ^ 52 + 1) - 2 ^ 52) == 1
+if lv1lua.singlePrecision ~= nil then EXACT53 = not lv1lua.singlePrecision end   -- tests force the console path
+
 local M1, M2 = 2147483563, 2147483399
 local A1, A2 = 40014, 40692
+local M3, A3 = 30323, 170
+if not EXACT53 then M1, M2, A1, A2 = 30269, 30307, 171, 172 end
 
 local function _normaliseSeed(seed, modulus)
     seed = math.floor(math.abs(tonumber(seed) or 0))
@@ -26,7 +34,7 @@ local function _normaliseSeed(seed, modulus)
     return (seed % (modulus - 1)) + 1
 end
 
--- Builds the state pair. A missing second seed is derived from the first, so a
+-- Builds the state. A missing second seed is derived from the first, so a
 -- single-seed call is still fully deterministic.
 local function _seedState(seed1, seed2)
     seed1 = tonumber(seed1) or os.time()
@@ -35,13 +43,15 @@ local function _seedState(seed1, seed2)
         -- lockstep (which would make z small for the first few draws).
         seed2 = math.floor(seed1) + 131071
     end
-    return _normaliseSeed(seed1, M1), _normaliseSeed(seed2, M2)
+    local s3
+    if not EXACT53 then s3 = _normaliseSeed(math.floor(seed1) + math.floor(seed2) + 8191, M3) end
+    return _normaliseSeed(seed1, M1), _normaliseSeed(seed2, M2), s3
 end
 
 -- One generator instance. Everything below is built on top of this.
 local function _newState(seed1, seed2)
     local s = {}
-    s.s1, s.s2 = _seedState(seed1, seed2)
+    s.s1, s.s2, s.s3 = _seedState(seed1, seed2)
     return s
 end
 
@@ -49,6 +59,11 @@ end
 local function _nextFloat(s)
     s.s1 = (s.s1 * A1) % M1
     s.s2 = (s.s2 * A2) % M2
+    if not EXACT53 then
+        s.s3 = (s.s3 * A3) % M3
+        local u = s.s1 / M1 + s.s2 / M2 + s.s3 / M3
+        return u - math.floor(u)
+    end
     local z = (s.s1 - s.s2) % (M1 - 1)
     return z / (M1 - 1)
 end
@@ -78,7 +93,7 @@ end
 local _global = _newState(os.time())
 
 function love.math.setRandomSeed(seed, seed2)
-    _global.s1, _global.s2 = _seedState(seed, seed2)
+    _global.s1, _global.s2, _global.s3 = _seedState(seed, seed2)
     -- Keep Lua's RNG in step for any game code that calls math.random directly.
     math.randomseed(math.floor(tonumber(seed) or 0))
 end
@@ -101,7 +116,7 @@ function love.math.newRandomGenerator(seed1, seed2)
     local rng = {}
 
     function rng:setSeed(s1, s2)
-        s.s1, s.s2 = _seedState(s1, s2)
+        s.s1, s.s2, s.s3 = _seedState(s1, s2)
     end
 
     function rng:getSeed()
@@ -118,11 +133,12 @@ function love.math.newRandomGenerator(seed1, seed2)
 
     -- Both state words have to survive a round-trip, so the state is a pair.
     function rng:getState()
+        if s.s3 then return s.s1 .. "," .. s.s2 .. "," .. s.s3 end
         return s.s1 .. "," .. s.s2
     end
 
     function rng:setState(str)
-        local a, b = tostring(str):match("^(%-?%d+),(%-?%d+)$")
+        local a, b, c = tostring(str):match("^(%-?%d+),(%-?%d+),?(%-?%d*)$")
         if a then
             -- Restore verbatim (a saved state is already in range); only guard
             -- against the zero fixed point.
@@ -130,10 +146,14 @@ function love.math.newRandomGenerator(seed1, seed2)
             s.s2 = tonumber(b) % M2
             if s.s1 == 0 then s.s1 = 1 end
             if s.s2 == 0 then s.s2 = 1 end
+            if not EXACT53 then
+                s.s3 = (tonumber(c) or (s.s1 + s.s2)) % M3
+                if s.s3 == 0 then s.s3 = 1 end
+            end
         else
             -- Older saves stored a single number.
             local n = tonumber(str)
-            if n then s.s1, s.s2 = _seedState(n) end
+            if n then s.s1, s.s2, s.s3 = _seedState(n) end
         end
     end
 

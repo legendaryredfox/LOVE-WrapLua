@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `chore/luals-types`
+
+- `.luarc.json` and `types/lv1lua.lua`: LuaLS configuration (Lua 5.5, the love2d library as reference) and the
+  `---@meta` types for the names only this wrapper has (`lv1lua`, `lv1luaconf`, `lv1lua.core`, `lv1lua.gfx`). The
+  SDK globals each player provides are declared as globals and `duplicate-set-field` is off, since a backend
+  redefines the shared function by design. The check from `AGENTS.md` went from 865 to 176 findings; the rest
+  (injected fields on `love` tables, signature mismatches against the LÖVE library) are not yet worked through.
+
 ### 2026-11-17, branch `feat/screenshot-vita`
 
 - lpp-vita: `love.graphics.captureScreenshot("name.png")` writes the frame to the save directory with

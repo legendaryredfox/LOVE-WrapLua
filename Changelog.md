@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/particle-curves`
+
+- `ParticleSystem:setSizes`, `getSizes`, `setColors`, `setSizeVariation`, `getSizeVariation`, `setRotation`
+  and `setSpin` take effect: a particle is drawn about the centre of its image with its size, colour and angle
+  for its point in life. A system with none of them set draws as before (same call, no extra work per particle).
+
 ### 2026-11-17, branch `feat/shear`
 
 - `love.graphics.shear` works. Each stack level keeps a 2x2 matrix, `translate`, `scale` and `shear` compose

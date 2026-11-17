@@ -82,8 +82,11 @@ defined, so calling it errors.
 SpriteBatch, Text and ParticleSystem objects replay their draws inside the
 transform of the call that draws them, so `draw(batch, x, y, r, sx, sy, ox, oy)`
 places, turns and scales the whole object. ParticleSystem is a basic emitter:
-emission rate, lifetime, speed, direction and spread work; size, colour and
-rotation curves are accepted and ignored.
+emission rate, lifetime, speed, direction and spread work. `setSizes` and
+`setColors` (up to 8 stops, linear along each particle's life), `setSizeVariation`,
+`setRotation` and `setSpin` work too; the colour multiplies the current colour and
+the current colour is restored after the draw. Radial and tangential acceleration,
+damping, offsets and quads are not implemented.
 
 ### Font object methods
 

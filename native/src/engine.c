@@ -813,9 +813,11 @@ static const luaL_Reg funcs[] = {
     {"listdir", l_listdir}, {"stat", l_stat}, {"mkdir", l_mkdir}, {"remove", l_remove},
     {"deflate", l_deflate}, {"inflate", l_inflate}, {NULL, NULL}
 };
+void audio_register(lua_State *L);
 int luaopen_native(lua_State *L) {
     luaL_newmetatable(L, "balatro.tex"); lua_pushcfunction(L, tex_gc); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
     luaL_newmetatable(L, "balatro.font"); lua_pushcfunction(L, font_gc); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
     luaL_register(L, "native", funcs);
+    audio_register(L);
     return 1;
 }

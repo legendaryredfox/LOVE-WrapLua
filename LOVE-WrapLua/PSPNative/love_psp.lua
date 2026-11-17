@@ -37,7 +37,7 @@ local love = love
 -- Honest capability table, same schema as LOVE-WrapLua's core/capabilities.lua (love._backend).
 love._backend = {
     renderer  = "PSP native (GU)",
-    tier      = 2,   -- partial: no audio or shader yet (canvas: 2 render targets in VRAM)
+    tier      = 2,   -- partial: no shader yet (canvas: 2 render targets in VRAM)
     limits    = { pointsize = 1, texturesize = 512, multicanvas = 1, canvasmsaa = 0, potonly = false },   -- larger images are tiled
     supported = { clampzero = false, glsl3 = false, instancing = false, multicanvasformats = false, lighten = false,
                   fullnpot = false, pixelshaderhighp = false, shaderderivatives = false, canvas = true, shader = false },
@@ -46,7 +46,7 @@ love._backend = {
     emulator  = "PPSSPP",
     rendersensitive = { blendmode = false, framebufferread = true, texturefilter = true, savepersistence = true },
     system    = { cores = 1, battery = false, vibrate = false, openurl = false, clipboard = "memory" },
-    audio     = { voices = 0, seek = false, pitch = false, formats = "none" },   -- love.audio is a silent stub
+    audio     = { voices = 24, seek = true, pitch = true, formats = "ogg wav" },   -- C mixer thread, see native/src/audio.c
     blend     = { native = true, modes = { alpha = true, add = true, multiply = true } },
 }
 
@@ -606,12 +606,114 @@ function g.present()
 end
 love._begin = function() N.begin_frame() end
 
--- ------------------------------------------------------------------------ audio / sound (silent for now)
-love.audio = {
-    newSource = function() return setmetatable({ _stub = true }, Stub) end,
-    play = noop, stop = noop, pause = noop, setVolume = noop, getVolume = function() return 1 end,
-    setPosition = noop, getActiveSourceCount = function() return 0 end,
-}
+-- ------------------------------------------------------------------------ audio / sound
+-- Sources are C voices mixed by the engine's audio thread (native/src/audio.c): .ogg and .wav, pitch, volume,
+-- looping, seek. A file that cannot be played (other formats, missing, unreadable) gives a silent source and a
+-- line in psp_log.txt, so a game that loads its sounds at start keeps running.
+local Source = {}; Source.__index = Source
+local all_sources = setmetatable({}, { __mode = "k" })
+
+local function wrap_source(h, kind)
+    local s = setmetatable({ _h = h, _kind = kind, _vol = 1, _pitch = 1, _loop = false }, Source)
+    all_sources[s] = true
+    return s
+end
+
+love.audio = {}
+function love.audio.newSource(path, kind)
+    if type(path) ~= "string" then
+        PSP_LOG("audio: newSource needs a file name, got " .. type(path) .. "; silent source")
+        return setmetatable({ _stub = true }, Stub)
+    end
+    local p = resolve(path)
+    if not p then
+        PSP_LOG("audio: " .. path .. " not found; silent source")
+        return setmetatable({ _stub = true }, Stub)
+    end
+    local h, err = N.audio_new(p, kind == "stream")
+    if not h then
+        PSP_LOG("audio: " .. path .. ": " .. tostring(err) .. "; silent source")
+        return setmetatable({ _stub = true }, Stub)
+    end
+    return wrap_source(h, kind or "static")
+end
+local function each(list, fn, ...)
+    if #list == 1 and type(list[1]) == "table" and not getmetatable(list[1]) then list = list[1] end
+    for i = 1, #list do local s = list[i]; if s and s[fn] then s[fn](s, ...) end end
+end
+function love.audio.play(...) each({ ... }, "play") end
+function love.audio.pause(...)
+    if select("#", ...) == 0 then for s in pairs(all_sources) do if s:isPlaying() then s:pause() end end
+    else each({ ... }, "pause") end
+end
+function love.audio.stop(...)
+    if select("#", ...) == 0 then for s in pairs(all_sources) do s:stop() end
+    else each({ ... }, "stop") end
+end
+function love.audio.resume(...) each({ ... }, "play") end
+function love.audio.setVolume(v) N.audio_master(v) end
+function love.audio.getVolume() return N.audio_master() end
+function love.audio.getActiveSourceCount() return N.audio_count() end
+love.audio.setPosition = noop
+love.audio.getPosition = function() return 0, 0, 0 end
+love.audio.setOrientation = noop
+love.audio.setVelocity = noop
+love.audio.setDistanceModel = noop
+love.audio.getDistanceModel = function() return "inverseclamped" end
+love.audio.setDopplerScale = noop
+love.audio.getMaxSourceEffects = function() return 0 end
+love.audio.isEffectsSupported = function() return false end
+love.audio.getRecordingDevices = function() return {} end
+
+function Source:play() return N.audio_play(self._h) end
+function Source:pause() N.audio_pause(self._h) end
+function Source:stop() N.audio_stop(self._h) end
+function Source:resume() N.audio_play(self._h) end
+function Source:rewind() N.audio_seek(self._h, 0) end
+function Source:isPlaying() return N.audio_is_playing(self._h) end
+function Source:isPaused() return N.audio_is_paused(self._h) end
+function Source:isStopped() return not N.audio_is_playing(self._h) and not N.audio_is_paused(self._h) end
+function Source:setVolume(v) self._vol = v; N.audio_volume(self._h, v) end
+function Source:getVolume() return self._vol end
+function Source:setPitch(p) self._pitch = p; N.audio_pitch(self._h, p) end
+function Source:getPitch() return self._pitch end
+function Source:setLooping(b) self._loop = b and true or false; N.audio_loop(self._h, self._loop) end
+function Source:isLooping() return self._loop end
+local function secs(self, v, unit)
+    if unit == "samples" then local rate = N.audio_info(self._h); return v * rate end
+    return v
+end
+function Source:seek(pos, unit)
+    if unit == "samples" then local rate = N.audio_info(self._h); pos = pos / rate end
+    N.audio_seek(self._h, pos)
+end
+function Source:tell(unit) return secs(self, N.audio_tell(self._h), unit) end
+function Source:getDuration(unit) return secs(self, N.audio_duration(self._h), unit) end
+function Source:getChannelCount() local _, ch = N.audio_info(self._h); return ch end
+function Source:getType() return self._kind end
+function Source:clone()
+    local h = N.audio_clone(self._h)
+    if not h then return setmetatable({ _stub = true }, Stub) end
+    local c = wrap_source(h, self._kind)
+    c:setVolume(self._vol); c:setPitch(self._pitch); c:setLooping(self._loop)
+    return c
+end
+function Source:release() N.audio_stop(self._h); return true end
+function Source:type() return "Source" end
+function Source:typeOf(t) return t == "Source" or t == "Object" end
+Source.setPosition = noop
+function Source:getPosition() return 0, 0, 0 end
+Source.setVelocity = noop
+Source.setDirection = noop
+Source.setCone = noop
+Source.setRelative = noop
+Source.setAttenuationDistances = noop
+Source.setRolloff = noop
+Source.setAirAbsorption = noop
+Source.setEffect = noop
+Source.setFilter = noop
+function Source:getEffect() return false end
+
 love.sound = { newSoundData = function() return setmetatable({ _stub = true }, Stub) end }
 function Stub:setVolume() end
 function Stub:setPitch() end

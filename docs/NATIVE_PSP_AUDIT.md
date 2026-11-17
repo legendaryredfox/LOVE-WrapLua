@@ -45,7 +45,7 @@ documents itself as `tier 2`.
 
 | Area | Native backend | LOVE-WrapLua |
 |---|---|---|
-| Audio | silent stub, 0 voices | OneLua 2 channels, lpp-vita, 3DS, PS3 stream |
+| Audio | **done 2026-11-17**: C mixer thread, 24 voices, `.ogg` (Tremor) and `.wav`, static or streamed, pitch, volume, loop, seek, clone | OneLua 2 channels, lpp-vita, 3DS, PS3 stream |
 | Canvas | real render-to-texture, 2 targets in VRAM, 512 max | stub on every backend |
 | Shader / Mesh | stubs | stubs |
 | Rotation and scale | on the GPU | OneLua copies the image per scale or turn |

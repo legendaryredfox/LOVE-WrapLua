@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/native-psp-audio`
+
+- Native PSP backend: real audio. `native/src/audio.c` mixes up to 24 voices on a thread feeding one sceAudio
+  channel (44.1 kHz stereo, 1024 frame blocks). Sources are `.wav` (PCM 8 or 16 bit) or `.ogg` through Tremor
+  (`libvorbisidec`), decoded whole when under 3 MB and streamed from the file otherwise or on request, with pitch by
+  linear resampling, volume, looping, pause, seek and clone. `love.audio` and `Source` in `love_psp.lua` follow the
+  LÖVE 11 API (play, pause, stop, resume, seek and tell in seconds or samples, getDuration, clone, master volume);
+  a file that cannot be played gives a silent source and a log line, as the stub did. The test mock has the same
+  voice state machine, ten new contract cases cover it, and `tests/games/audio` checks 21 behaviours on the EBOOT in
+  PPSSPP (all pass). Not covered: MP3, queueable sources, effects and 3D positions, hearing it on hardware.
+
 ### 2026-11-17, branch `docs/native-perf-profile`
 
 - `docs/NATIVE_PSP_AUDIT.md`: sampling profile of the native path in `SELECTING_HAND` (the backend layer is about 5% of

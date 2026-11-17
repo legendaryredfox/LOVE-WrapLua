@@ -96,4 +96,52 @@ function M.mkdir(p) return os.execute("mkdir '" .. p .. "' 2>/dev/null") == 0 en
 function M.remove(p) return os.execute("rm -r '" .. p .. "' 2>/dev/null") == 0 end
 function M.inflate(d) return d end
 function M.deflate(d) return d end
+-- Audio voices: a state machine with the same contract as native/src/audio.c (play, pause, stop, volume, pitch,
+-- loop, seek, tell, duration, clone, master volume). Tests move time with M.audio_advance(seconds).
+local voices, master = {}, 1
+local function audio_check(h) assert(h and h.audio, "not an audio source") return h end
+function M.audio_new(path, stream)
+    rec("audio_new", path, stream)
+    if not (path:find("%.ogg$") or path:find("%.wav$")) then return nil, "unsupported audio format (use .ogg or .wav)" end
+    local h = { audio = true, path = path, stream = stream and true or false, rate = 44100, channels = 2, dur = 2,
+                state = "stopped", vol = 1, pitch = 1, loop = false, pos = 0 }
+    voices[#voices + 1] = h
+    return h
+end
+function M.audio_play(h) audio_check(h); rec("audio_play"); if h.state ~= "playing" then h.state = "playing" end; return true end
+function M.audio_pause(h) audio_check(h); if h.state == "playing" then h.state = "paused" end end
+function M.audio_stop(h) audio_check(h); h.state = "stopped"; h.pos = 0 end
+function M.audio_volume(h, v) audio_check(h).vol = v end
+function M.audio_pitch(h, p) audio_check(h).pitch = p end
+function M.audio_loop(h, b) audio_check(h).loop = b and true or false end
+function M.audio_is_playing(h) return audio_check(h).state == "playing" end
+function M.audio_is_paused(h) return audio_check(h).state == "paused" end
+function M.audio_tell(h) return audio_check(h).pos end
+function M.audio_seek(h, t) audio_check(h).pos = t end
+function M.audio_duration(h) return audio_check(h).dur end
+function M.audio_info(h) audio_check(h); return h.rate, h.channels, h.stream end
+function M.audio_clone(h)
+    audio_check(h)
+    local c = { audio = true, path = h.path, stream = h.stream, rate = h.rate, channels = h.channels, dur = h.dur,
+                state = "stopped", vol = h.vol, pitch = h.pitch, loop = h.loop, pos = 0 }
+    voices[#voices + 1] = c
+    return c
+end
+function M.audio_master(v) if v == nil then return master end; master = v end
+function M.audio_count()
+    local n = 0
+    for _, h in ipairs(voices) do if h.state == "playing" then n = n + 1 end end
+    return n
+end
+function M.audio_advance(sec)
+    for _, h in ipairs(voices) do
+        if h.state == "playing" then
+            h.pos = h.pos + sec * h.pitch
+            if h.pos >= h.dur then
+                if h.loop then h.pos = h.pos % h.dur else h.state = "stopped"; h.pos = 0 end
+            end
+        end
+    end
+end
+function M.audio_reset() voices, master = {}, 1 end
 return M

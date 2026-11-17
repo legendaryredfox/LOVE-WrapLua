@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `fix/coloured-text`
+
+- Coloured text (`{color, "string", color, "string"}`) works in `love.graphics.print`, `printf`,
+  `Font:getWidth`, `Font:getWrap` and `newText` / `Text:set` / `add` / `addf`. `print` draws one segment per
+  colour, each multiplied by the current colour, and moves on by the segment's width; `printf` and the
+  measuring calls use the joined strings (a coloured `printf` draws in the current colour). Balatro's main
+  menu builds its texts this way and failed in `love.load` with `bad argument #2 to 'textwidth'`.
+
 ### 2026-11-17, branch `perf/3ds-draw`
 
 - lpp-3ds quad draw keeps the whole-texel inset rectangle on the quad (as lpp-vita does) instead of calling

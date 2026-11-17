@@ -41,6 +41,7 @@ Font.__index = Font
 local WIDTH_CACHE_LIMIT = 256
 
 function Font:getWidth(text)
+    if type(text) == "table" then text = lv1lua.core.plainText(text) end
     if not text or text == "" then return 0 end
     if hooks.measure then
         local widths = self._widths
@@ -83,6 +84,7 @@ end
 -- LOVE's Font:getWrap: the width of the widest resulting line, then the lines.
 function Font:getWrap(text, wrapWidth)
     local self_ = self
+    text = lv1lua.core.plainText(text)
     local lines = lv1lua.core.wrapText(text, wrapWidth,
                                        function(s) return self_:getWidth(s) end)
     local widest = 0

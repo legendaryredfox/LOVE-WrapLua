@@ -44,7 +44,7 @@ end
 
 function love.graphics.printf(text, x, y, wrapWidth, align)
     if not text or text == "" then return end
-    text = tostring(text)
+    text = type(text) == "table" and core.plainText(text) or tostring(text)
     x, y = x or 0, y or 0
     align = align or "left"
     wrapWidth = wrapWidth or lv1lua.screenWidth
@@ -59,4 +59,33 @@ function love.graphics.printf(text, x, y, wrapWidth, align)
         local ox = core.alignOffset(align, measure(lines[i]), wrapWidth)
         love.graphics.print(lines[i], x + ox, y + (i - 1) * lineH)
     end
+end
+
+-- Coloured text goes through the backend's print one segment at a time; a segment's colour multiplies
+-- the current colour, as LÖVE's does. A segment that holds a newline is not laid out as several lines.
+function core.printColoured(nativePrint, text, x, y)
+    x, y = x or 0, y or 0
+    local fnt = lv1lua.current.font
+    local br, bg, bb, ba = love.graphics.getColor()
+    local r, g, b, a = br, bg, bb, ba
+    for i = 1, #text do
+        local seg = text[i]
+        if type(seg) == "table" then
+            r, g, b, a = br * (seg[1] or 1), bg * (seg[2] or 1), bb * (seg[3] or 1), ba * (seg[4] or 1)
+        else
+            seg = tostring(seg)
+            if seg ~= "" then
+                love.graphics.setColor(r, g, b, a)
+                nativePrint(seg, x, y)
+                x = x + fnt:getWidth(seg)
+            end
+        end
+    end
+    love.graphics.setColor(br, bg, bb, ba)
+end
+
+local nativePrint = love.graphics.print
+function love.graphics.print(text, x, y)
+    if type(text) == "table" then return core.printColoured(nativePrint, text, x, y) end
+    return nativePrint(text, x, y)
 end

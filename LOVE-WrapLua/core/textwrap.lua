@@ -6,6 +6,17 @@
 
 lv1lua.core = lv1lua.core or {}
 
+-- LÖVE's coloured text is {color, string, color, string, ...}; the measuring and wrapping code works on
+-- the strings alone.
+function lv1lua.core.plainText(text)
+    if type(text) ~= "table" then return text end
+    local out, n = {}, 0
+    for i = 1, #text do
+        if type(text[i]) ~= "table" then n = n + 1; out[n] = tostring(text[i]) end
+    end
+    return table.concat(out)
+end
+
 -- Splits `text` into lines no wider than `wrapWidth`. Explicit newlines are
 -- honoured (LÖVE breaks on them regardless of the wrap limit), and a single
 -- word wider than the limit gets its own line instead of being dropped.

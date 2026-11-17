@@ -40,6 +40,7 @@ local test_files = {
     "tests/quad_inset_test.lua",
     "tests/desanim8_test.lua",
     "tests/text_test.lua",
+    "tests/coloured_text_test.lua",
     "tests/font_test.lua",
     "tests/keyboard_test.lua",
     "tests/input_test.lua",

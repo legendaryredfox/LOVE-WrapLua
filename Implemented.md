@@ -55,8 +55,8 @@ defined, so calling it errors.
 | setLineWidth / getLineWidth | ✓ | ✓ | ✓ | ✓ thick lines | ✓ |
 | setLineStyle / setLineJoin / setPointSize | stub | stub | stub | stub | stub |
 | newFont / setFont / getFont / setNewFont | ✓ TTF, cached per face and size | ✓ PGF system face, size varies | ✓ TTF | ✓ TTF (`gfx.FontAddTTF`), metrics estimated | ✓ TTF |
-| print(text, x, y) | ✓ follows the transform stack | ✓ | ✓ | ✓ | ✓ printed after the frame, always on top |
-| printf(text, x, y, limit, align) | ✓ wrap, left / center / right | ✓ | ✓ | ✓ | ✓ |
+| print(text, x, y) | ✓ follows the transform stack; coloured text prints one segment per colour | ✓ | ✓ | ✓ | ✓ printed after the frame, always on top |
+| printf(text, x, y, limit, align) | ✓ wrap, left / center / right; coloured text draws in the current colour | ✓ | ✓ | ✓ | ✓ |
 | rectangle / circle / ellipse / arc / line / points | ✓ rounded corners (`rx`, `ry`, `segments`) are polygons | ✓ | ✓ | ✓ | ✓ |
 | polygon(mode, vertices) | ✓ even-odd scanline fill | ✓ | ✓ | ✓ | ✓ |
 | push / pop / origin / reset | ✓ | ✓ | ✓ | ✓ | ✓ |

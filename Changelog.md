@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `perf/polygon-fill-hits`
+
+- OneLua (Vita and PSP), lpp-vita and the 3DS gained the `fillRuns` hook the PS3 already had: a cached polygon's
+  rectangles are drawn by one backend call that loops over the native fill, instead of one wrapper closure call
+  per rectangle. A cache hit on a five-point polygon costs 446 VM instructions, down from 520, and the synthetic
+  frame about 4% fewer (lua5.1: PSP 104.7k to 100.7k). `tests/bench/vm_profile.lua` gained the `polygon` and
+  `translate` ops.
+- Tried and dropped: caching each stack level's composed transform so a change to the top level flattens one
+  level. At the depth of the synthetic frame it costs more (`push` + `pop` 93 to 102 instructions): the extra
+  stores outweigh the saved loop.
+
 ### 2026-11-17, branch `chore/luals-types`
 
 - `.luarc.json` and `types/lv1lua.lua`: LuaLS configuration (Lua 5.5, the love2d library as reference) and the

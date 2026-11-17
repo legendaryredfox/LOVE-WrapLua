@@ -1,5 +1,5 @@
 -- Where the VM instructions of one love.graphics call go (per source line). Lua 5.1:
---   lua5.1 tests/bench/vm_profile.lua <mode> <op>     op: setColor | image | quad | quadscaled | rect | print | pushpop
+--   lua5.1 tests/bench/vm_profile.lua <mode> <op>     op: setColor | image | quad | quadscaled | rect | print | pushpop | polygon | translate
 local GFX = {
     ["PSP"] = "LOVE-WrapLua/OneLua/graphics_psp.lua", ["OneLua"] = "LOVE-WrapLua/OneLua/graphics.lua",
     ["lpp-vita"] = "LOVE-WrapLua/lpp-vita/graphics.lua", ["PS3"] = "LOVE-WrapLua/PS3/graphics.lua", ["3DS"] = "LOVE-WrapLua/3DS/graphics.lua",
@@ -13,6 +13,7 @@ __rec.log = function() end
 local img = love.graphics.newImage("sheet.png")
 local quad = love.graphics.newQuad(0, 0, 16, 16, img)
 love.graphics.origin()
+local polyPts = { 0, 0, 10, 0, 12, 6, 6, 12, 0, 6 }
 local ops = {
     setColor = function() love.graphics.setColor(1, 0.5, 0.2, 1) end,
     image = function() love.graphics.draw(img, 10, 20) end,
@@ -20,6 +21,8 @@ local ops = {
     quadscaled = function() love.graphics.draw(img, quad, 10, 20, 0, 2, 2) end,
     rect = function() love.graphics.rectangle("fill", 10, 20, 30, 40) end,
     print = function() love.graphics.print("Hello", 10, 20) end,
+    polygon = function() love.graphics.polygon("fill", polyPts) end,
+    translate = function() love.graphics.translate(3, 4) end,
     pushpop = function() love.graphics.push(); love.graphics.translate(3, 4); love.graphics.pop() end,
 }
 local fn = ops[opname]; fn(); fn()

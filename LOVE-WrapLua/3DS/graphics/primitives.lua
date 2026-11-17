@@ -12,6 +12,14 @@ gfx.prims = {
     fillRect = function(x, y, w, h, c)
         if gfx.canDraw() then Graphics.fillRect(x, x + w, y, y + h, c) end
     end,
+    fillRuns = function(runs, dx, dy, c)
+        if not gfx.canDraw() then return end
+        local fill = Graphics.fillRect
+        for i = 1, #runs, 4 do
+            local x, y = runs[i] + dx, runs[i + 1] + dy
+            fill(x, x + runs[i + 2], y, y + runs[i + 3], c)
+        end
+    end,
     rectOutline = function(x, y, w, h, c)
         if gfx.canDraw() then Graphics.fillEmptyRect(x, x + w, y, y + h, c) end
     end,

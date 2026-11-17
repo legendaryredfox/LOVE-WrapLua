@@ -11,6 +11,13 @@ local stack = lv1lua.gfx.transform
 
 lv1lua.gfx.prims = {
     fillRect    = function(x, y, w, h, c) Graphics.fillRect(x, x + w, y, y + h, c) end,
+    fillRuns    = function(runs, dx, dy, c)
+        local fill = Graphics.fillRect
+        for i = 1, #runs, 4 do
+            local x, y = runs[i] + dx, runs[i + 1] + dy
+            fill(x, x + runs[i + 2], y, y + runs[i + 3], c)
+        end
+    end,
     rectOutline = function(x, y, w, h, c) Graphics.fillEmptyRect(x, x + w, y, y + h, c) end,
     line        = function(x1, y1, x2, y2, c) Graphics.drawLine(x1, x2, y1, y2, c) end,
     fillCircle  = function(x, y, r, c) Graphics.fillCircle(x, y, r, c) end,

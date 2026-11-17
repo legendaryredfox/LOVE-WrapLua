@@ -164,7 +164,17 @@ Timer = {
 }
 
 -- ── System (filesystem + process) ────────────────────────────────
+-- source/luaSystem.cpp: FORMAT_BMP 0, FORMAT_PNG 1, FORMAT_JPG 2.
+FORMAT_BMP, FORMAT_PNG, FORMAT_JPG = 0, 1, 2
+
 System = {
+    -- lua_screenshot: one to three arguments (path, format = BMP, jpeg ratio = 127). It waits for the vblank and
+    -- writes the frame buffer of the NEXT frame, so it belongs after Screen.flip.
+    takeScreenshot = function(path, format, ratio)
+        if type(path) ~= "string" then error("bad argument #1 to 'takeScreenshot' (string expected)", 2) end
+        if format ~= nil then __checkInteger("System.takeScreenshot", 2, format) end
+        __rec.log("System.takeScreenshot", path, format)
+    end,
     -- Reads the mock VFS directly: core/runtime.lua points lv1lua.exists at
     -- this function on lpp-vita, so delegating back to it recurses forever.
     doesFileExist  = function(f) return files.exists(f) end,

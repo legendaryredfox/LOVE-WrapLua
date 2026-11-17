@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/screenshot-vita`
+
+- lpp-vita: `love.graphics.captureScreenshot("name.png")` writes the frame to the save directory with
+  `System.takeScreenshot` right after the frame that follows the request is presented (PNG, JPEG or BMP by
+  extension, PNG when there is none). A callback cannot be served (no ImageData) and warns once.
+
 ### 2026-11-17, branch `feat/vibration`
 
 - lpp-vita: `Joystick:setVibration(left, right, duration)` drives `Controls.rumble` with the larger intensity

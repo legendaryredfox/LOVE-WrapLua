@@ -78,7 +78,7 @@ defined, so calling it errors.
 | getDimensions / getWidth / getHeight | 960x544 | 480x272 | 960x544 | 720x480 | 400x240 |
 | getSystemLimits / getSupported | ✓ from the capability table | ✓ | ✓ | ✓ | ✓ |
 | getStats / getRendererInfo / isGammaCorrect / isActive / present | ✓ (stats are all zero) | ✓ | ✓ | ✓ | ✓ |
-| captureScreenshot | stub | stub | stub | stub | stub |
+| captureScreenshot | stub | stub | ✓ file name only (`System.takeScreenshot`, format from the extension, PNG by default); a callback cannot be served | stub | stub |
 
 SpriteBatch, Text and ParticleSystem objects replay their draws inside the
 transform of the call that draws them, so `draw(batch, x, y, r, sx, sy, ox, oy)`

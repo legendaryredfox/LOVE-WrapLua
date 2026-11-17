@@ -13,6 +13,7 @@ function lv1lua.draw()
     Graphics.fillRect(0, w, h - 4, h, Color.new(0, 0, 0, 255))
     Graphics.termBlend()
     Screen.flip()
+    if lv1lua.gfx.pendingShot then lv1lua.gfx.takeScreenshot() end
 end
 
 local keys = lv1lua.core.newKeyTracker()

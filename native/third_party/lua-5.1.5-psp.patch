@@ -1,0 +1,521 @@
+diff -ruN lua-5.1.5/src/lmathlib.c lua-5.1.5-psp/src/lmathlib.c
+--- lua-5.1.5/src/lmathlib.c	2007-12-27 11:02:25.000000000 -0200
++++ lua-5.1.5-psp/src/lmathlib.c	2026-11-17 09:50:00.359721978 -0300
+@@ -17,6 +17,31 @@
+ #include "lualib.h"
+ 
+ 
++#ifdef PSP_LUA_FLOAT
++/* Lua numbers are float: use the single-precision libm (hardware FPU) instead of
++   the double versions, which run in software on the Allegrex. */
++#include <pspmath.h>
++#define sin vfpu_sinf
++#define sinh sinhf
++#define cos vfpu_cosf
++#define cosh coshf
++#define tan tanf
++#define tanh tanhf
++#define asin asinf
++#define acos acosf
++#define atan atanf
++#define atan2 atan2f
++#define floor floorf
++#define ceil ceilf
++#define fmod fmodf
++#define sqrt sqrtf
++#define pow powf
++#define log logf
++#define log10 log10f
++#define exp expf
++#define fabs fabsf
++#endif
++
+ #undef PI
+ #define PI (3.14159265358979323846)
+ #define RADIANS_PER_DEGREE (PI/180.0)
+diff -ruN lua-5.1.5/src/luaconf.h lua-5.1.5-psp/src/luaconf.h
+--- lua-5.1.5/src/luaconf.h	2008-02-11 14:25:08.000000000 -0200
++++ lua-5.1.5-psp/src/luaconf.h	2026-11-17 09:50:00.356721970 -0300
+@@ -348,7 +348,7 @@
+ ** CHANGE it to 2 if you want the old behaviour, or undefine it to turn
+ ** off the advisory error when nesting [[...]].
+ */
+-#define LUA_COMPAT_LSTR		1
++#define LUA_COMPAT_LSTR		0   /* like LuaJIT: no error for "[[" inside a long string */
+ 
+ /*
+ @@ LUA_COMPAT_GFIND controls compatibility with old 'string.gfind' name.
+@@ -502,7 +502,11 @@
+ */
+ 
+ #define LUA_NUMBER_DOUBLE
++#ifdef PSP_LUA_FLOAT
++#define LUA_NUMBER	float   /* PSP FPU is single precision; doubles are emulated in software */
++#else
+ #define LUA_NUMBER	double
++#endif
+ 
+ /*
+ @@ LUAI_UACNUMBER is the result of an 'usual argument conversion'
+@@ -518,11 +522,20 @@
+ @@ LUAI_MAXNUMBER2STR is maximum size of previous conversion.
+ @@ lua_str2number converts a string to a number.
+ */
++#ifdef PSP_LUA_FLOAT
++#define LUA_NUMBER_SCAN		"%f"
++#define LUA_NUMBER_FMT		"%.7g"
++#else
+ #define LUA_NUMBER_SCAN		"%lf"
+ #define LUA_NUMBER_FMT		"%.14g"
++#endif
+ #define lua_number2str(s,n)	sprintf((s), LUA_NUMBER_FMT, (n))
+ #define LUAI_MAXNUMBER2STR	32 /* 16 digits, sign, point, and \0 */
++#ifdef PSP_LUA_FLOAT
++#define lua_str2number(s,p)	((float)strtod((s), (p)))
++#else
+ #define lua_str2number(s,p)	strtod((s), (p))
++#endif
+ 
+ 
+ /*
+@@ -534,8 +547,13 @@
+ #define luai_numsub(a,b)	((a)-(b))
+ #define luai_nummul(a,b)	((a)*(b))
+ #define luai_numdiv(a,b)	((a)/(b))
++#ifdef PSP_LUA_FLOAT
++#define luai_nummod(a,b)	((a) - floorf((a)/(b))*(b))
++#define luai_numpow(a,b)	(powf(a,b))
++#else
+ #define luai_nummod(a,b)	((a) - floor((a)/(b))*(b))
+ #define luai_numpow(a,b)	(pow(a,b))
++#endif
+ #define luai_numunm(a)		(-(a))
+ #define luai_numeq(a,b)		((a)==(b))
+ #define luai_numlt(a,b)		((a)<(b))
+diff -ruN lua-5.1.5/src/lvm.c lua-5.1.5-psp/src/lvm.c
+--- lua-5.1.5/src/lvm.c	2011-08-17 17:43:11.000000000 -0300
++++ lua-5.1.5-psp/src/lvm.c	2026-11-17 09:50:00.359721978 -0300
+@@ -374,11 +374,58 @@
+ 
+ 
+ 
++#if defined(__GNUC__) && !defined(LUA_NO_THREADED)
++#define NEXT { i = *pc++; if (L->hookmask) { pc--; goto top; } ra = RA(i); goto *disptab[GET_OPCODE(i)]; }
++#else
++#define NEXT continue
++#endif
+ void luaV_execute (lua_State *L, int nexeccalls) {
++  static const void *const disptab[NUM_OPCODES] = {
++    &&L_OP_MOVE,
++    &&L_OP_LOADK,
++    &&L_OP_LOADBOOL,
++    &&L_OP_LOADNIL,
++    &&L_OP_GETUPVAL,
++    &&L_OP_GETGLOBAL,
++    &&L_OP_GETTABLE,
++    &&L_OP_SETGLOBAL,
++    &&L_OP_SETUPVAL,
++    &&L_OP_SETTABLE,
++    &&L_OP_NEWTABLE,
++    &&L_OP_SELF,
++    &&L_OP_ADD,
++    &&L_OP_SUB,
++    &&L_OP_MUL,
++    &&L_OP_DIV,
++    &&L_OP_MOD,
++    &&L_OP_POW,
++    &&L_OP_UNM,
++    &&L_OP_NOT,
++    &&L_OP_LEN,
++    &&L_OP_CONCAT,
++    &&L_OP_JMP,
++    &&L_OP_EQ,
++    &&L_OP_LT,
++    &&L_OP_LE,
++    &&L_OP_TEST,
++    &&L_OP_TESTSET,
++    &&L_OP_CALL,
++    &&L_OP_TAILCALL,
++    &&L_OP_RETURN,
++    &&L_OP_FORLOOP,
++    &&L_OP_FORPREP,
++    &&L_OP_TFORLOOP,
++    &&L_OP_SETLIST,
++    &&L_OP_CLOSE,
++    &&L_OP_CLOSURE,
++    &&L_OP_VARARG
++  };
+   LClosure *cl;
+   StkId base;
+   TValue *k;
+   const Instruction *pc;
++  Instruction i;
++  StkId ra;
+  reentry:  /* entry point */
+   lua_assert(isLua(L->ci));
+   pc = L->savedpc;
+@@ -387,8 +434,8 @@
+   k = cl->p->k;
+   /* main loop of interpreter */
+   for (;;) {
+-    const Instruction i = *pc++;
+-    StkId ra;
++   top:
++    i = *pc++;
+     if ((L->hookmask & (LUA_MASKLINE | LUA_MASKCOUNT)) &&
+         (--L->hookcount == 0 || L->hookmask & LUA_MASKLINE)) {
+       traceexec(L, pc);
+@@ -404,98 +451,98 @@
+     lua_assert(base <= L->top && L->top <= L->stack + L->stacksize);
+     lua_assert(L->top == L->ci->top || luaG_checkopenop(i));
+     switch (GET_OPCODE(i)) {
+-      case OP_MOVE: {
++      L_OP_MOVE: case OP_MOVE: {
+         setobjs2s(L, ra, RB(i));
+-        continue;
++        NEXT;
+       }
+-      case OP_LOADK: {
++      L_OP_LOADK: case OP_LOADK: {
+         setobj2s(L, ra, KBx(i));
+-        continue;
++        NEXT;
+       }
+-      case OP_LOADBOOL: {
++      L_OP_LOADBOOL: case OP_LOADBOOL: {
+         setbvalue(ra, GETARG_B(i));
+         if (GETARG_C(i)) pc++;  /* skip next instruction (if C) */
+-        continue;
++        NEXT;
+       }
+-      case OP_LOADNIL: {
++      L_OP_LOADNIL: case OP_LOADNIL: {
+         TValue *rb = RB(i);
+         do {
+           setnilvalue(rb--);
+         } while (rb >= ra);
+-        continue;
++        NEXT;
+       }
+-      case OP_GETUPVAL: {
++      L_OP_GETUPVAL: case OP_GETUPVAL: {
+         int b = GETARG_B(i);
+         setobj2s(L, ra, cl->upvals[b]->v);
+-        continue;
++        NEXT;
+       }
+-      case OP_GETGLOBAL: {
++      L_OP_GETGLOBAL: case OP_GETGLOBAL: {
+         TValue g;
+         TValue *rb = KBx(i);
+         sethvalue(L, &g, cl->env);
+         lua_assert(ttisstring(rb));
+         Protect(luaV_gettable(L, &g, rb, ra));
+-        continue;
++        NEXT;
+       }
+-      case OP_GETTABLE: {
++      L_OP_GETTABLE: case OP_GETTABLE: {
+         Protect(luaV_gettable(L, RB(i), RKC(i), ra));
+-        continue;
++        NEXT;
+       }
+-      case OP_SETGLOBAL: {
++      L_OP_SETGLOBAL: case OP_SETGLOBAL: {
+         TValue g;
+         sethvalue(L, &g, cl->env);
+         lua_assert(ttisstring(KBx(i)));
+         Protect(luaV_settable(L, &g, KBx(i), ra));
+-        continue;
++        NEXT;
+       }
+-      case OP_SETUPVAL: {
++      L_OP_SETUPVAL: case OP_SETUPVAL: {
+         UpVal *uv = cl->upvals[GETARG_B(i)];
+         setobj(L, uv->v, ra);
+         luaC_barrier(L, uv, ra);
+-        continue;
++        NEXT;
+       }
+-      case OP_SETTABLE: {
++      L_OP_SETTABLE: case OP_SETTABLE: {
+         Protect(luaV_settable(L, ra, RKB(i), RKC(i)));
+-        continue;
++        NEXT;
+       }
+-      case OP_NEWTABLE: {
++      L_OP_NEWTABLE: case OP_NEWTABLE: {
+         int b = GETARG_B(i);
+         int c = GETARG_C(i);
+         sethvalue(L, ra, luaH_new(L, luaO_fb2int(b), luaO_fb2int(c)));
+         Protect(luaC_checkGC(L));
+-        continue;
++        NEXT;
+       }
+-      case OP_SELF: {
++      L_OP_SELF: case OP_SELF: {
+         StkId rb = RB(i);
+         setobjs2s(L, ra+1, rb);
+         Protect(luaV_gettable(L, rb, RKC(i), ra));
+-        continue;
++        NEXT;
+       }
+-      case OP_ADD: {
++      L_OP_ADD: case OP_ADD: {
+         arith_op(luai_numadd, TM_ADD);
+-        continue;
++        NEXT;
+       }
+-      case OP_SUB: {
++      L_OP_SUB: case OP_SUB: {
+         arith_op(luai_numsub, TM_SUB);
+-        continue;
++        NEXT;
+       }
+-      case OP_MUL: {
++      L_OP_MUL: case OP_MUL: {
+         arith_op(luai_nummul, TM_MUL);
+-        continue;
++        NEXT;
+       }
+-      case OP_DIV: {
++      L_OP_DIV: case OP_DIV: {
+         arith_op(luai_numdiv, TM_DIV);
+-        continue;
++        NEXT;
+       }
+-      case OP_MOD: {
++      L_OP_MOD: case OP_MOD: {
+         arith_op(luai_nummod, TM_MOD);
+-        continue;
++        NEXT;
+       }
+-      case OP_POW: {
++      L_OP_POW: case OP_POW: {
+         arith_op(luai_numpow, TM_POW);
+-        continue;
++        NEXT;
+       }
+-      case OP_UNM: {
++      L_OP_UNM: case OP_UNM: {
+         TValue *rb = RB(i);
+         if (ttisnumber(rb)) {
+           lua_Number nb = nvalue(rb);
+@@ -504,14 +551,14 @@
+         else {
+           Protect(Arith(L, ra, rb, rb, TM_UNM));
+         }
+-        continue;
++        NEXT;
+       }
+-      case OP_NOT: {
++      L_OP_NOT: case OP_NOT: {
+         int res = l_isfalse(RB(i));  /* next assignment may change this value */
+         setbvalue(ra, res);
+-        continue;
++        NEXT;
+       }
+-      case OP_LEN: {
++      L_OP_LEN: case OP_LEN: {
+         const TValue *rb = RB(i);
+         switch (ttype(rb)) {
+           case LUA_TTABLE: {
+@@ -529,20 +576,20 @@
+             )
+           }
+         }
+-        continue;
++        NEXT;
+       }
+-      case OP_CONCAT: {
++      L_OP_CONCAT: case OP_CONCAT: {
+         int b = GETARG_B(i);
+         int c = GETARG_C(i);
+         Protect(luaV_concat(L, c-b+1, c); luaC_checkGC(L));
+         setobjs2s(L, RA(i), base+b);
+-        continue;
++        NEXT;
+       }
+-      case OP_JMP: {
++      L_OP_JMP: case OP_JMP: {
+         dojump(L, pc, GETARG_sBx(i));
+-        continue;
++        NEXT;
+       }
+-      case OP_EQ: {
++      L_OP_EQ: case OP_EQ: {
+         TValue *rb = RKB(i);
+         TValue *rc = RKC(i);
+         Protect(
+@@ -550,40 +597,40 @@
+             dojump(L, pc, GETARG_sBx(*pc));
+         )
+         pc++;
+-        continue;
++        NEXT;
+       }
+-      case OP_LT: {
++      L_OP_LT: case OP_LT: {
+         Protect(
+           if (luaV_lessthan(L, RKB(i), RKC(i)) == GETARG_A(i))
+             dojump(L, pc, GETARG_sBx(*pc));
+         )
+         pc++;
+-        continue;
++        NEXT;
+       }
+-      case OP_LE: {
++      L_OP_LE: case OP_LE: {
+         Protect(
+           if (lessequal(L, RKB(i), RKC(i)) == GETARG_A(i))
+             dojump(L, pc, GETARG_sBx(*pc));
+         )
+         pc++;
+-        continue;
++        NEXT;
+       }
+-      case OP_TEST: {
++      L_OP_TEST: case OP_TEST: {
+         if (l_isfalse(ra) != GETARG_C(i))
+           dojump(L, pc, GETARG_sBx(*pc));
+         pc++;
+-        continue;
++        NEXT;
+       }
+-      case OP_TESTSET: {
++      L_OP_TESTSET: case OP_TESTSET: {
+         TValue *rb = RB(i);
+         if (l_isfalse(rb) != GETARG_C(i)) {
+           setobjs2s(L, ra, rb);
+           dojump(L, pc, GETARG_sBx(*pc));
+         }
+         pc++;
+-        continue;
++        NEXT;
+       }
+-      case OP_CALL: {
++      L_OP_CALL: case OP_CALL: {
+         int b = GETARG_B(i);
+         int nresults = GETARG_C(i) - 1;
+         if (b != 0) L->top = ra+b;  /* else previous instruction set top */
+@@ -597,14 +644,14 @@
+             /* it was a C function (`precall' called it); adjust results */
+             if (nresults >= 0) L->top = L->ci->top;
+             base = L->base;
+-            continue;
++            NEXT;
+           }
+           default: {
+             return;  /* yield */
+           }
+         }
+       }
+-      case OP_TAILCALL: {
++      L_OP_TAILCALL: case OP_TAILCALL: {
+         int b = GETARG_B(i);
+         if (b != 0) L->top = ra+b;  /* else previous instruction set top */
+         L->savedpc = pc;
+@@ -629,14 +676,14 @@
+           }
+           case PCRC: {  /* it was a C function (`precall' called it) */
+             base = L->base;
+-            continue;
++            NEXT;
+           }
+           default: {
+             return;  /* yield */
+           }
+         }
+       }
+-      case OP_RETURN: {
++      L_OP_RETURN: case OP_RETURN: {
+         int b = GETARG_B(i);
+         if (b != 0) L->top = ra+b-1;
+         if (L->openupval) luaF_close(L, base);
+@@ -651,7 +698,7 @@
+           goto reentry;
+         }
+       }
+-      case OP_FORLOOP: {
++      L_OP_FORLOOP: case OP_FORLOOP: {
+         lua_Number step = nvalue(ra+2);
+         lua_Number idx = luai_numadd(nvalue(ra), step); /* increment index */
+         lua_Number limit = nvalue(ra+1);
+@@ -661,9 +708,9 @@
+           setnvalue(ra, idx);  /* update internal index... */
+           setnvalue(ra+3, idx);  /* ...and external index */
+         }
+-        continue;
++        NEXT;
+       }
+-      case OP_FORPREP: {
++      L_OP_FORPREP: case OP_FORPREP: {
+         const TValue *init = ra;
+         const TValue *plimit = ra+1;
+         const TValue *pstep = ra+2;
+@@ -676,9 +723,9 @@
+           luaG_runerror(L, LUA_QL("for") " step must be a number");
+         setnvalue(ra, luai_numsub(nvalue(ra), nvalue(pstep)));
+         dojump(L, pc, GETARG_sBx(i));
+-        continue;
++        NEXT;
+       }
+-      case OP_TFORLOOP: {
++      L_OP_TFORLOOP: case OP_TFORLOOP: {
+         StkId cb = ra + 3;  /* call base */
+         setobjs2s(L, cb+2, ra+2);
+         setobjs2s(L, cb+1, ra+1);
+@@ -692,9 +739,9 @@
+           dojump(L, pc, GETARG_sBx(*pc));  /* jump back */
+         }
+         pc++;
+-        continue;
++        NEXT;
+       }
+-      case OP_SETLIST: {
++      L_OP_SETLIST: case OP_SETLIST: {
+         int n = GETARG_B(i);
+         int c = GETARG_C(i);
+         int last;
+@@ -714,13 +761,13 @@
+           setobj2t(L, luaH_setnum(L, h, last--), val);
+           luaC_barriert(L, h, val);
+         }
+-        continue;
++        NEXT;
+       }
+-      case OP_CLOSE: {
++      L_OP_CLOSE: case OP_CLOSE: {
+         luaF_close(L, ra);
+-        continue;
++        NEXT;
+       }
+-      case OP_CLOSURE: {
++      L_OP_CLOSURE: case OP_CLOSURE: {
+         Proto *p;
+         Closure *ncl;
+         int nup, j;
+@@ -738,9 +785,9 @@
+         }
+         setclvalue(L, ra, ncl);
+         Protect(luaC_checkGC(L));
+-        continue;
++        NEXT;
+       }
+-      case OP_VARARG: {
++      L_OP_VARARG: case OP_VARARG: {
+         int b = GETARG_B(i) - 1;
+         int j;
+         CallInfo *ci = L->ci;
+@@ -759,9 +806,10 @@
+             setnilvalue(ra + j);
+           }
+         }
+-        continue;
++        NEXT;
+       }
+     }
+   }
+ }
++#undef NEXT
+ 

@@ -11,6 +11,7 @@ unmodified on retro console targets:
 
 | Target | SDK | Platform files |
 |---|---|---|
+| PSP (native) | **C engine on sceGu + Lua 5.1** (`native/`) | `LOVE-WrapLua/PSPNative/` |
 | PSP | **OneLua** (PSP sub-mode) | `LOVE-WrapLua/OneLua/` + `OneLua/psp/` |
 | PS3 | **PS3 Lua Player** (tiny3D) | `LOVE-WrapLua/PS3/` |
 | PS Vita (native) | **OneLua** | `LOVE-WrapLua/OneLua/` + `OneLua/graphics/` |
@@ -20,13 +21,22 @@ unmodified on retro console targets:
 A game author drops their LÖVE project into `game/` and boots the wrapper; the
 wrapper re-implements the LÖVE 11.5 API on each platform's native Lua SDK.
 
+**The goal** is to write PSP games with LÖVE, and a game the size of Balatro has to run smoothly on the
+console. Performance is part of the objective, not a side effect: the native PSP backend exists because
+OneLua's interpreter and per-call overhead cap Balatro near 1 fps against 16 fps on the native engine (see
+`docs/NATIVE_PSP_AUDIT.md`). The split is fixed: **C only for the engine** (rendering, input, audio, files,
+zlib), **Lua for everything above it**: the `love.*` layer, the game, and every development step (build,
+package, test, profile). Tools are Lua scripts run with `lua`, not bash or Python.
+
 **Platform priority: PSP > PS3 > Vita > 3DS.** When work could go to more than
 one target, or a fix cannot be finished everywhere at once, the earlier
 platform wins. The 3DS is the newest backend and last on purpose. Both Vita
 backends (OneLua and lpp-vita) share the Vita slot.
 
-The wrapper never runs on a desktop PC (the tests do, against mocks). There is
-no build step and no package manager: everything is plain `.lua`.
+The wrapper never runs on a desktop PC (the tests do, against mocks). The Lua
+backends have no build step and no package manager: everything is plain `.lua`.
+The native PSP backend is the one exception: its C engine needs the pspdev toolchain
+(`lua tools/lovepsp.lua build`, docker image `pspdev/pspdev`), and nothing else does.
 
 ---
 
@@ -43,6 +53,8 @@ script.lua            Boot: ordered core/* steps, then the main loop.
 index.lua / app.lua   Entry points (lpp-vita and 3DS / PS3).
 game/                 The game (main.lua, conf.lua, assets); libraries/anim8.lua (upstream), desAnim8.lua.
 docs/adr/             Architecture decision records.
+native/               C engine for the native PSP backend (src/, Makefile, Lua 5.1.5 tarball + PSP patch).
+tools/lovepsp.lua     Dev steps in Lua: build the EBOOT, package a game, print a directory manifest.
 tests/                See "Running the tests".
 LOVE-WrapLua/
   core/               Backend-agnostic, no native calls:
@@ -64,6 +76,8 @@ LOVE-WrapLua/
   OneLua/             native.lua (probes the SDK: lv1lua.native), graphics.lua + graphics/ (Vita), graphics_psp.lua + psp/ (PSP),
                       imagedraw.lua (draw for both), audio (2 channels), keyboard (+OSK),
                       timer, whileloop (draw/update/controls + touch), event, touch/mouse (Vita)
+  PSPNative/          native PSP backend, Lua side: love_psp.lua (the `love.*` layer over the C module
+                      `native`), boot.lua, psp_ffi.lua (ffi shim for LuaJIT-style games)
   lpp-vita/, PS3/     graphics.lua + graphics/{state,image,draw,font,text,primitives,info},
                       audio, keyboard, timer, whileloop, event
   3DS/                same, plus graphics/scissor.lua, text (deferred CPU print), fileio.lua

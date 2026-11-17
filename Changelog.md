@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/native-psp-import`
+
+- The native PSP engine and its Lua backend came into this repository: `native/` (C engine, Makefile, Lua 5.1.5
+  tarball and a 521-line patch for the single-precision VM) and `LOVE-WrapLua/PSPNative/` (`love_psp.lua`,
+  `boot.lua`, `psp_ffi.lua`). Project goal recorded in `AGENTS.md`: write PSP games with LÖVE, Balatro running
+  smoothly, performance part of the objective.
+- `tools/lovepsp.lua`: build the EBOOT (`build [--double] [--opt=...]`), package a game (`package`) and print the
+  directory manifest (`manifest`), in Lua over the shell. A clean `build` takes 15 s; the sample `game/` packaged
+  with it renders its animated sprite in PPSSPP.
+- `tests/native_psp_test.lua` runs the backend's 68 contract cases (mocked `native`, `tests/native_psp/`) in a
+  scratch directory; it runs on Lua 5.1 and LuaJIT and is skipped on 5.3 and 5.4, which lack `unpack` and
+  `loadstring` the backend uses.
+
 ### 2026-11-17, branch `docs/native-psp-audit`
 
 - `docs/NATIVE_PSP_AUDIT.md`: audit of the native PSP engine in `balatro_psp` as a candidate backend. Balatro

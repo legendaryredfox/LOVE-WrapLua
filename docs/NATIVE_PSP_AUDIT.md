@@ -1,5 +1,9 @@
 # Native PSP backend: audit of what exists (2026-11-17)
 
+Goal (user, 2026-11-17): write games for the PSP with LÖVE, and a game like Balatro must run smoothly, so
+performance is part of the objective. The engine may be C; the `love.*` layer, the game and every development
+step stay in Lua.
+
 Scope: the native PSP engine that lives in `~/development/games/balatro_psp` (not a git repository), judged as a
 candidate first-class PSP backend for LOVE-WrapLua. Nothing here was changed in either repository.
 
@@ -91,10 +95,21 @@ with two decisions that change the design:
 - Balatro and Gravity Circuit are the only validators. Neither is committed anywhere; the bench harness
   depends on a local Steam copy.
 
-## 6. Suggested order
+## 6. Performance target
+
+"Smoothly" is taken as a steady 30 fps in Balatro's heaviest scene, `SELECTING_HAND` (33 ms for update and
+draw together). Today: 16.4 fps (31.4 + 29.7 ms). The native plan's Gate 1 is 20 fps. Every step below is
+measured with `tools/bench.sh` in the Balatro harness and with the synthetic `frame_cost` bench, and a change
+that costs frame time needs a reason. Levers already identified in `PLAN_PERFORMANCE.md`: fewer Lua-to-C
+crossings, batching, a game-side update diet (`Game:update` at 1 Hz, invisible nodes skipped), and a C hybrid for
+`Node` / `Moveable` behind the same Lua field API.
+
+## 7. Suggested order
 
 1. Put the engine and its Lua backend under version control in this repository as `native/` and
-   `LOVE-WrapLua/native/`, with the docker build pinned and `tests/backend/` registered in `tests/run_all.lua`.
+   `LOVE-WrapLua/PSPNative/`, with the build and packaging as Lua (`tools/lovepsp.lua`) and the contract suite
+   registered in `tests/run_all.lua`. **Done 2026-11-17** (see the Changelog); a clean build takes 15 s and a
+   packaged sample game renders in PPSSPP.
 2. Add a `"PSP-native"` mode to `core/runtime.lua` and a `native` row to `core/capabilities.lua`, so the shared
    test suites can run it against the existing mock style (`tests/mock_native.lua`).
 3. Replace the duplicated `love.math`, `love.data`, `love.thread`, `love.filesystem` and `love.joystick` parts of

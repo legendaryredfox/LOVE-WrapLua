@@ -17,18 +17,20 @@ local function sh(cmd) return os.execute(cmd) end
 
 local scratch = os.tmpname()
 os.remove(scratch)
-sh("mkdir -p '" .. scratch .. "/game/sub' '" .. scratch .. "/save'")
+local src = scratch .. ".game"
+sh("mkdir -p '" .. src .. "/sub'")
 local function put(path, data)
-    local f = assert(io.open(scratch .. "/" .. path, "wb"))
+    local f = assert(io.open(src .. "/" .. path, "wb"))
     f:write(data)
     f:close()
 end
-put("game/hello.txt", "hi\n")
-put("game/chunk.lua", "return 42\n")
-put("game/pic.png", "x")
-put("game/tone.wav", "x")
-put("game/default.ttf", "x")
-sh("cp '" .. root .. "/LOVE-WrapLua/PSPNative/love_psp.lua' '" .. root .. "/LOVE-WrapLua/PSPNative/psp_ffi.lua' '" .. scratch .. "/'")
+put("hello.txt", "hi\n")
+put("chunk.lua", "return 42\n")
+put("pic.png", "x")
+put("tone.wav", "x")
+put("default.ttf", "x")
+-- the same staging the packaging command does, minus the EBOOT
+sh("cd '" .. root .. "' && " .. interpreter .. " tools/lovepsp.lua stage '" .. src .. "' '" .. scratch .. "'")
 
 local function child(script)
     local p = io.popen("cd '" .. scratch .. "' && TESTDIR='" .. root .. "/tests/native_psp' "
@@ -50,6 +52,6 @@ T.describe("native PSP backend contract", function()
     end)
 end)
 
-sh("rm -rf '" .. scratch .. "'")
+sh("rm -rf '" .. scratch .. "' '" .. src .. "'")
 io.write("\n=== native PSP backend ===\n")
 return T.summary()

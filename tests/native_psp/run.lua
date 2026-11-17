@@ -14,6 +14,7 @@ bit = { band = function(a, b) local r, m = 0, 1; while a > 0 and b > 0 do if a %
 native = dofile(os.getenv("TESTDIR") .. "/mock_native.lua")
 PSP_CONFIG = { identity = "t", title = "T", os = "TestOS", font = "default.ttf" }
 dofile("love_psp.lua")
+dofile("shared.lua")
 local N = native
 for _, f in ipairs({ "cases.lua" }) do dofile(os.getenv("TESTDIR") .. "/" .. f) end
 io.write(("backend tests: %d passed, %d failed\n"):format(pass, fail))

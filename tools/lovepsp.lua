@@ -1,6 +1,7 @@
 -- Development steps for the native PSP backend, all in Lua. Run from the project root:
 --   lua tools/lovepsp.lua build [--double] [--opt="-O2"]      compile native/EBOOT.PBP (docker pspdev)
 --   lua tools/lovepsp.lua package <game_dir> <out_dir> [identity] [title]
+--   lua tools/lovepsp.lua stage <game_dir> <out_dir>           package without the EBOOT (tests)
 --   lua tools/lovepsp.lua manifest <dir>                      print the directory manifest the EBOOT reads
 -- The C engine is the only part that needs a toolchain; everything else here is Lua over the shell.
 
@@ -100,19 +101,34 @@ local function build(opts)
 end
 
 -- ── package ──────────────────────────────────────────────────────
-local function package(game, out, identity, title)
-    if not exists("native/EBOOT.PBP") then error("build the EBOOT first: lua tools/lovepsp.lua build", 0) end
+-- Shared wrapper modules the backend loads at boot (PSPNative/shared.lua). Hash libraries in vendor/ are read
+-- only when a game calls love.data.hash.
+local SHARED = {
+    "core/loader.lua", "core/util.lua", "math.lua", "math", "data.lua", "data", "vendor",
+}
+
+-- Everything except the EBOOT: the game, the backend, the shared modules, the config and the manifest.
+local function stage(game, out, identity, title)
     identity = identity or game:gsub("/+$", ""):match("([^/]+)$")
     title = title or identity
-    must("rm -rf " .. q(out) .. " && mkdir -p " .. q(out .. "/game") .. " " .. q(out .. "/save"))
+    must("rm -rf " .. q(out) .. " && mkdir -p " .. q(out .. "/game") .. " " .. q(out .. "/save")
+        .. " " .. q(out .. "/LOVE-WrapLua/core"))
     must("cp -R " .. q(game .. "/.") .. " " .. q(out .. "/game/"), "copying the game")
     if not exists(out .. "/game/default.ttf") then must("cp " .. q(FONT) .. " " .. q(out .. "/game/default.ttf")) end
-    must("cp native/EBOOT.PBP " .. q(out .. "/EBOOT.PBP"))
-    for _, f in ipairs({ "boot.lua", "love_psp.lua", "psp_ffi.lua" }) do
+    for _, f in ipairs({ "boot.lua", "love_psp.lua", "psp_ffi.lua", "shared.lua" }) do
         must("cp " .. q("LOVE-WrapLua/PSPNative/" .. f) .. " " .. q(out .. "/" .. f))
+    end
+    for _, f in ipairs(SHARED) do
+        must("cp -R " .. q("LOVE-WrapLua/" .. f) .. " " .. q(out .. "/LOVE-WrapLua/" .. f:gsub("[^/]*$", "")), "copying " .. f)
     end
     write(out .. "/psp_config.lua", string.format("return { identity = %q, title = %q, font = \"default.ttf\" }\n", identity, title))
     write(out .. "/manifest.lua", manifest(out .. "/game"))
+end
+
+local function package(game, out, identity, title)
+    if not exists("native/EBOOT.PBP") then error("build the EBOOT first: lua tools/lovepsp.lua build", 0) end
+    stage(game, out, identity, title)
+    must("cp native/EBOOT.PBP " .. q(out .. "/EBOOT.PBP"))
     print("packaged " .. out)
 end
 
@@ -131,11 +147,14 @@ local ok, err = pcall(function()
     elseif cmd == "package" then
         if #rest < 2 then error("usage: package <game_dir> <out_dir> [identity] [title]", 0) end
         package(rest[1], rest[2], rest[3], rest[4])
+    elseif cmd == "stage" then
+        if #rest < 2 then error("usage: stage <game_dir> <out_dir> [identity] [title]", 0) end
+        stage(rest[1], rest[2], rest[3], rest[4])
     elseif cmd == "manifest" then
         if not rest[1] then error("usage: manifest <dir>", 0) end
         io.write(manifest(rest[1]))
     else
-        error("usage: lua tools/lovepsp.lua build | package | manifest", 0)
+        error("usage: lua tools/lovepsp.lua build | package | stage | manifest", 0)
     end
 end)
 if not ok then io.stderr:write(tostring(err), "\n"); os.exit(1) end

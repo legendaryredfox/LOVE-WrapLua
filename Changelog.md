@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/native-psp-shared-modules`
+
+- Native PSP backend: `PSPNative/shared.lua` loads the wrapper's shared `love.math` and `love.data` over the backend
+  (noise, triangulate, bezier, Transform, RandomGenerator, colour helpers, pack, unpack, ByteData), keeping the C
+  engine's fast paths for `random` / `setRandomSeed`, base64, hex and zlib. `love.data.hash` raises a clear error on
+  single precision numbers (`sha2.lua` needs 53 bits); a native hash is open work. Heap after boot is 282 KB.
+- `tools/lovepsp.lua` stages the shared modules next to the EBOOT (`stage` command, used by `package` and by the
+  tests). `tests/games/shared` checks the lot on the EBOOT in PPSSPP.
+
+### 2026-11-17, branch `fix/random-single-precision`
+
+- `love.math` generators on single precision Lua numbers (the native PSP build keeps 24 exact bits, so the
+  L'Ecuyer products no longer fit): a Wichmann-Hill generator with every product below 2^24 takes over, chosen by
+  testing the precision at load. Same API, `getState` carries a third word there. Doubles keep the old generator and
+  the same sequences. `tests/math_test.lua` forces the console path and checks range, determinism, uniformity and
+  cycle length.
+
+### 2026-11-17, branch `fix/love-data-pack`
+
+- `love.data.pack` and `unpack` follow LÖVE's signatures (`pack(container, format, ...)`, `unpack(format, data [, pos])`
+  returning the next position) and work on Lua 5.1 and LuaJIT, where the shared module returned an empty string and
+  nil. `LOVE-WrapLua/data/pack.lua` implements the Lua 5.3 format language (endianness, `b h i[n] l j T f d n s z c x`)
+  with no bit operators and is compared byte for byte against `string.pack` on 5.4 in `tests/data_test.lua`.
+
 ### 2026-11-17, branch `feat/native-psp-transform`
 
 - Native PSP backend: the matrix stack stays in C. Measured on the packaged EBOOT in PPSSPP, one synthetic frame

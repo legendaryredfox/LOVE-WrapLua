@@ -622,7 +622,9 @@ local function wrap_source(h, kind)
 end
 
 love.audio = {}
+local NOAUDIO = loadfile("noaudio.flag") ~= nil   -- noaudio.flag next to the EBOOT: every source is silent (A/B runs)
 function love.audio.newSource(path, kind)
+    if NOAUDIO then return setmetatable({ _stub = true }, Stub) end
     if type(path) ~= "string" then
         PSP_LOG("audio: newSource needs a file name, got " .. type(path) .. "; silent source")
         return setmetatable({ _stub = true }, Stub)
@@ -1009,6 +1011,8 @@ do
     g.stencil, g.setStencilTest, g.getStencilTest = noop, noop, function() return "always", 0 end   -- no stencil buffer: everything draws
     g.flushBatch = noop
     love._backend.features.stencil = false
+    -- an inert fallback for a host that does not load extras.lua; extras.lua replaces it with the shared ParticleSystem
+    g.newParticleSystem = function() return setmetatable({ _stub = true }, { __index = function() return noop end }) end
     love._backend.features.particles = "basic"
     love.filesystem.getRealDirectory = function() return GAME end
     love.filesystem.newFileData = function(data, name)

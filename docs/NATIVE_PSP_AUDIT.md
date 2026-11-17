@@ -121,6 +121,16 @@ unprofiled baseline from that build is the same 16.4 fps (update 31.4 ms, draw 2
   the other per-node updates to C behind the same field API (`~-8 ms` for `move` alone), skipping invisible nodes,
   and `Game:update` work done at 1 Hz. Reaching 30 fps needs several of them; the first two are the large ones.
 
+### Cost of audio in Balatro (2026-11-17)
+
+With the audio mixer on, Balatro's `SELECTING_HAND` runs at 11.9 fps (update 43.7 ms, draw 40.5 ms); with every
+source silent (`noaudio.flag` next to the EBOOT) it is the 16.4 fps of before (31.3 + 29.7 ms). Mixing and software
+Ogg decoding on the one 333 MHz core cost about 12.7 ms per frame, three times the whole backend layer. A game that
+plays music on the PSP cannot afford that. Levers, cheapest first: stream music at a lower rate or in mono, mix at
+22.05 kHz, skip interpolation when pitch is 1 and the rate is 44.1 kHz, and decode on the Media Engine (the
+`sceMp3` library, with the assets converted to MP3 by the packaging tool using ffmpeg) so the main core only mixes.
+The Balatro harness builds with audio off by default so its numbers stay comparable; `AUDIO=1` turns it on.
+
 ## 5. Risks and open items
 
 - `balatro_psp` is not under version control. Its `git init` and `.gitignore` are open items in its own

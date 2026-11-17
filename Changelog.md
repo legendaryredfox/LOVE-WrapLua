@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `fix/native-psp-particle-fallback`
+
+- Native PSP backend: `noaudio.flag` next to the EBOOT makes every source silent (A/B runs). Measured with it: real
+  audio costs Balatro about 12.7 ms per frame (11.9 fps with the mixer, 16.4 fps without); see
+  `docs/NATIVE_PSP_AUDIT.md` for the levers. `love_psp.lua` keeps an inert `newParticleSystem` as the fallback for a
+  host that does not load `extras.lua`.
+
 ### 2026-11-17, branch `feat/native-psp-api-gaps`
 
 - Native PSP backend, API gaps closed (104 `love.*` functions were missing against the LÖVE 11 definitions; about 40

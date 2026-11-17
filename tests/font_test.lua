@@ -120,6 +120,18 @@ local function shared_suite(mode)
             T.nok(f:hasGlyph("a\0b"))
         end)
 
+        T.it("setFallbacks takes Fonts, keeps them and rejects anything else", function()
+            local f = love.graphics.newFont(nil, 12)
+            local g = love.graphics.newFont(nil, 14)
+            f:setFallbacks(g)
+            T.eq(f._fallbacks[1], g)
+            f:setFallbacks()
+            T.eq(#f._fallbacks, 0)
+            T.nok(pcall(f.setFallbacks, f, "not a font"))
+            T.nok(pcall(f.setFallbacks, f, g, 3))
+            T.eq(#f._fallbacks, 0)
+        end)
+
         T.it("every metric method exists", function()
             local f = love.graphics.newFont(nil, 12)
             for _, m in ipairs({"getWidth", "getHeight", "getBaseline", "getAscent",

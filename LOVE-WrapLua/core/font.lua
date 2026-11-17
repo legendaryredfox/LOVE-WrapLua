@@ -83,7 +83,17 @@ function Font:hasGlyph(...)
     return true
 end
 function Font:getKerning()     return 0 end
-function Font:setFallbacks()   end
+function Font:setFallbacks(...)
+    local list = {}
+    for i = 1, select("#", ...) do
+        local fb = select(i, ...)
+        if type(fb) ~= "table" or not fb.typeOf or not fb:typeOf("Font") then
+            error("Bad argument #" .. i .. " to 'setFallbacks' (Font expected)", 2)
+        end
+        list[i] = fb
+    end
+    self._fallbacks = list
+end
 function Font:getDPIScale()    return 1 end
 function Font:setFilter(min, mag, anisotropy)
     min = min or "linear"

@@ -98,7 +98,7 @@ are native.
 | getLineHeight / setLineHeight | ✓ default 1.2, used by printf | same | same | same | same |
 | getWrap(text, width) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | hasGlyph / getFilter / setFilter | tracked (`hasGlyph` is false only for code point 0) | same | same | same | same |
-| setFallbacks | stub | stub | stub | stub | stub |
+| setFallbacks | tracked: the fonts are checked and kept, glyphs are never drawn from them | same | same | same | same |
 | type / typeOf / release | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 printf line spacing is `getHeight() * getLineHeight()` and wrapping is measured

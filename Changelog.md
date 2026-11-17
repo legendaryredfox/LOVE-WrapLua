@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/font-fallbacks`
+
+- `Font:setFallbacks` checks that every argument is a Font and keeps the list. No glyph is drawn from a
+  fallback: the SDK print calls take one face per string.
+
 ### 2026-11-17, branch `feat/filesystem-mount`
 
 - `love.filesystem.mount` and `unmount` work for directories: the folder is mounted at a mount point, and

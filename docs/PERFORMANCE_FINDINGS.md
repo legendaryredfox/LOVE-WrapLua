@@ -178,13 +178,28 @@ Ordered roughly by expected gain per effort. Each item states the evidence.
 
 ## 7. Not verified yet
 
-- Balatro through the wrapper with the fixes of sections 3 and 4: the earlier attempt predates them, and
-  no frame-rate number exists for the current state.
+- Balatro at the same scene as the native engine (`SELECTING_HAND`, fixed seed): the autoplay scripts are wired
+  only into the native boot, not the OneLua `psp/main.lua`. See the 2026-11-17 run below for the title screen.
 - Everything on real hardware (cache effects, memory limits, file I/O).
 - 3DS timings: only the test mock was used.
 - LuaJIT: lpp-vita already runs LuaJIT 2.1 (whether with JIT on is not confirmed); the other players are PUC Lua. Assessment and gated experiment in `PERFORMANCE_SPEC.md` section 3.
 
 The decision-oriented summary is `PERFORMANCE_REPORT.md`. Next steps are in `PERFORMANCE_SPEC.md` (catalogue W1-W21) and `PERFORMANCE_PLAN.md` (phases).
+
+### Balatro through the wrapper, 2026-11-17 (title screen only)
+
+Build `tools/build.sh` in `balatro_psp` against wrapper master, run in PPSSPP (RetroArch core, uncapped, no
+audio). The earlier attempt died on frame 1; this one runs 600 updates:
+
+- First crash fixed: `Canvas` had no `getPixelWidth` / `getPixelHeight` / `getPixelDimensions`.
+- Boot to first `love.draw`: about 7 s (emulated clock).
+- Title scene (cards flying in): about 8.6 draws per second in the first second, falling to about 1.4 per
+  second at 50 s; the `love.update` call time grows from about 23 ms to about 150 ms over the same period.
+  Cause not isolated: scene load, garbage or memory pressure are all candidates.
+- Visual gaps: no background or shader, white rectangles around rotated cards (the whole-copy rotation of the
+  OneLua draw), so the scene is not faithful.
+- Not measured: the `SELECTING_HAND` scene the native engine reports (15.6 fps), so Gate 1 is not decided: the
+  title scene is already below 5 fps, but it is a different scene.
 
 ## 8. Reproducing
 

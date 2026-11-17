@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `fix/canvas-pixel-size`
+
+- `Canvas` answers `getPixelWidth`, `getPixelHeight` and `getPixelDimensions`, as every LÖVE 11.5 Texture
+  does. Balatro through the wrapper died on its first `love.draw` without them; it now runs. First frame-rate
+  numbers for the real game are in `docs/PERFORMANCE_FINDINGS.md` (section 7).
+
 ### 2026-11-17, branch `perf/event-keyboard`
 
 Input audit (event, keyboard, the four `updatecontrols`):

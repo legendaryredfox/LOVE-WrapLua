@@ -25,6 +25,8 @@ for _, mode in ipairs({ "PSP", "OneLua", "lpp-vita", "PS3" }) do
         local pts = { 0, 0, 10, 0, 12, 6, 6, 12, 0, 6 }
         love.graphics.origin()
         local g = love.graphics
+        local runtime = _VERSION
+        if jit then runtime = jit.version .. (jit.status() and "" or " -joff") end
         local function frame()
             for i = 1, 213 do g.push(); g.translate(i % 7, i % 5); g.scale(1.01, 1.01); g.pop() end
             for i = 1, 168 do g.setColor((i % 5) / 4, (i % 3) / 2, 0.5, 1) end
@@ -54,9 +56,14 @@ for _, mode in ipairs({ "PSP", "OneLua", "lpp-vita", "PS3" }) do
         debug.sethook()
         local bytes = (collectgarbage("count") - mem0) * 1024
         collectgarbage("restart")
+        local dh, dm, ds = ps.hit - h0, ps.miss - m0, ps.skipped - s0
+        local runs, t0 = 200, os.clock()
+        for _ = 1, runs do frame() end
+        local wall = (os.clock() - t0) / runs * 1000
         results[mode] = { instr = n, bytes = bytes }
         local line = string.format("%-9s %8d instr/frame (~%.1f ms at 3M instr/s)  %8.0f B/frame", mode, n, n / 3000, bytes)
-        line = line .. string.format("  poly h/m/s %d/%d/%d", ps.hit - h0, ps.miss - m0, ps.skipped - s0)
+        line = line .. string.format("  poly h/m/s %d/%d/%d", dh, dm, ds)
+        line = line .. string.format("  wall %.3f ms [%s]", wall, runtime)
         local b = base[mode]
         if b then
             local d = (n - b.instr) / b.instr * 100

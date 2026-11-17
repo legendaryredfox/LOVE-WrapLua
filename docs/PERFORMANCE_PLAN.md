@@ -6,10 +6,10 @@ in `Changelog.md`.
 
 ## Status, 2026-11-17
 
-Done, or done in part judging by the commit history (2.1 to 2.3 were not re-audited against their task text): 0.1, 0.3 (`api_coverage.lua` boots the runtime in `script.lua` order; checked against ten calls), 1.1, 1.2 (first same-scene number, `PERFORMANCE_FINDINGS.md` section 7), 2.1, 2.2 (font width cache, 3DS text), 2.3 (circle and ellipse point cache), 2.4 (the polygon cache snaps to the nearest pixel, so animated shapes hit it), 2.5, 2.6, 2b.1
+Done, or done in part judging by the commit history (2.1 to 2.3 were not re-audited against their task text): 0.1, 0.2 (`frame_cost.lua` prints wall time per frame and the Lua runtime, `-joff` included), 0.3 (`api_coverage.lua` boots the runtime in `script.lua` order; checked against ten calls), 1.1, 1.2 (first same-scene number, `PERFORMANCE_FINDINGS.md` section 7), 2.1, 2.2 (font width cache, 3DS text), 2.3 (circle and ellipse point cache), 2.4 (the polygon cache snaps to the nearest pixel, so animated shapes hit it), 2.5, 2.6, 2b.1
 (partial: plain blit measured, rotated blit not), 2b.2 (W25 as an opt-in; W24 already held at scale 1),
 3.1 (OneLua; the PS3 draw path and the 3DS quad inset cache followed), 3.2, 3.4, 3.5, and from 3b.1 the pure-Lua stubs `shear`, `setLineStyle`/`setLineJoin`/`setPointSize`, `Font:hasGlyph`/`setFilter`/`setFallbacks` and `filesystem.mount`/`unmount` (directories only). Decided against: 3.3.
-Not started: 0.2, 1.3, 2b.3, 3b.2 to 3b.6, 3b.1 particle curves (W45), 4.*, 5.*.
+Not started: 1.3, 2b.3, 3b.2 to 3b.6, 3b.1 particle curves (W45), 4.*, 5.*.
 
 Open at Gate 1: Balatro `SELECTING_HAND` runs at about 1.1 fps (draw 372 ms, update 105 ms per step) against
 15.6 fps for the native engine. Update alone caps the game near 9.5 steps/s. The 105 ms update cost is

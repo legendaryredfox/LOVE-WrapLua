@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/bench-wall-time`
+
+- `tests/bench/frame_cost.lua` prints the wall time of one synthetic frame (mean of 200) and the Lua runtime
+  (`LuaJIT ... -joff` when the JIT is off, so `luajit -joff` gives the interpreter number). Printed only: never
+  part of `--check`, since wall time is not stable across machines.
+
 ### 2026-11-17, branch `fix/api-coverage-boot`
 
 - `tests/bench/api_coverage.lua` boots the runtime in the order `script.lua` does. It loaded some modules from

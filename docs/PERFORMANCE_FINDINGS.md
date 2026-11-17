@@ -195,11 +195,34 @@ audio). The earlier attempt died on frame 1; this one runs 600 updates:
 - Boot to first `love.draw`: about 7 s (emulated clock).
 - Title scene (cards flying in): about 8.6 draws per second in the first second, falling to about 1.4 per
   second at 50 s; the `love.update` call time grows from about 23 ms to about 150 ms over the same period.
-  Cause not isolated: scene load, garbage or memory pressure are all candidates.
+  The growth is the scene, not the wrapper: Balatro's splash vortex queues 200 `make_splash_card` events by
+  game time, and the card count (0 at 10 s, 57 at 57 s on the emulated clock) tracks the update time (19 ms
+  with 1 card, 143 ms with 57). `psp/main.lua` with `AUTOPLAY=1` now skips the splash for benchmarks.
 - Visual gaps: no background or shader, white rectangles around rotated cards (the whole-copy rotation of the
   OneLua draw), so the scene is not faithful.
-- Not measured: the `SELECTING_HAND` scene the native engine reports (15.6 fps), so Gate 1 is not decided: the
-  title scene is already below 5 fps, but it is a different scene.
+
+### Balatro blind-select scene, 2026-11-17
+
+`AUTOPLAY=1 tools/build.sh` wires the native boot's `autoplay.lua` into the OneLua boot (`psp/main.lua`) and logs
+the cost every 3 s (`BENCH` lines: update and draw time, rates, heap, polygon cache, time inside native
+calls; `PROFILE=1` adds a sampling profile of `love.draw`). The emulator runs this at about 0.06 of real
+time, so a run only reaches the blind select screen (state 7, 53 cards) in the time available; the
+`SELECTING_HAND` number is still missing.
+
+- Second crash fixed: coloured text (`{color, "string", ...}`) raised `bad argument #2 to 'textwidth'` in
+  `love.load`; `print`, `printf`, `Font` and `Text` now accept it.
+- Blind select as measured first: `love.draw` 1090 ms (0.6 draws per second), `love.update` 97 ms.
+  Time inside native calls was about 120 ms per 3 s window, so the draw was Lua VM time. The sampling
+  profile put 61 to 67% of the draw in `core/polyfill.lua polygonRuns`, called for Balatro's pixelated UI
+  rectangles (about 40 polygon fills and 1300 rectangles per draw).
+- Cause: the polygon run cache was keyed on the sub-pixel part of the shape's origin as well, and an animated UI
+  drifts by fractions of a pixel every frame. All 80 lookups per window missed (`frac`, never `sum` or
+  `scale`). The origin now lands on the nearest whole pixel and the runs are kept relative to it, so every
+  lookup hits. A polygon drawn at a fractional offset sits up to half a pixel from where it sat before; the
+  vertices' own fractions are unchanged.
+- After: `love.draw` about 270 ms (1.2 draws per second), 4x faster, cache 160 hits and 0 misses per window.
+  The scene is still slow: what remains is 53 cards plus the UI, now spread over the image draw and the
+  remaining polygon work.
 
 ## 8. Reproducing
 

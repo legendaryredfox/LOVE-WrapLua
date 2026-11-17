@@ -78,7 +78,7 @@ T.describe("polygon fill cache", function()
         local c = __rec.last("draw.fillrect")
         T.eq(c.args[1], x1 + 7); T.eq(c.args[2], y1 + 5)
     end)
-    T.it("a fractional translation rebuilds instead of shifting", function()
+    T.it("a fractional translation lands on the nearest pixel", function()
         love.graphics.origin()
         local v = { 0, 0, 10, 0, 10, 10, 0, 10 }
         love.graphics.polygon("fill", v)
@@ -126,14 +126,14 @@ T.describe("circle and ellipse fills without a native circle", function()
         T.eq(calls, 1)
     end)
 
-    T.it("circle fill covers the pixels of the direct polygon", function()
+    T.it("circle fill covers the pixels of the direct polygon at the nearest whole-pixel centre", function()
         local saved = lv1lua.gfx.prims.fillCircle
         lv1lua.gfx.prims.fillCircle = nil
         love.graphics.origin()
         for _, pos in ipairs({ { 100, 80 }, { 37, 11 }, { 50.5, 20.25 } }) do
             __rec.reset()
             love.graphics.circle("fill", pos[1], pos[2], 9, 24)
-            T.ok(same(pixels(fills()), reference(pos[1], pos[2], 9, 24)),
+            T.ok(same(pixels(fills()), reference(math.floor(pos[1] + 0.5), math.floor(pos[2] + 0.5), 9, 24)),
                  "circle at " .. pos[1] .. "," .. pos[2])
         end
         lv1lua.gfx.prims.fillCircle = saved

@@ -95,25 +95,25 @@ function lv1lua.core.polygonCacheStats() return polyStats end
 
 -- `ox`, `oy` place a shape stored relative to its own origin (circles and ellipses), so one cached
 -- table serves every position; `fixed` marks such a table as never mutated, which skips the fingerprint.
+-- The origin lands on the nearest whole pixel and the runs are kept relative to it, so a shape that
+-- drifts by fractions of a pixel (an animated UI) keeps hitting the cache instead of being rasterised
+-- again on every frame.
 local function polygonFill(p, src, ox, oy, fixed)
     ox, oy = ox or 0, oy or 0
     local x0, y0 = mapPoint(ox, oy)
-    local x1, y1 = mapPoint(ox + 1, oy + 1)
-    local sx, sy = x1 - x0, y1 - y0
-    local ix, iy = floor(x0), floor(y0)
-    local fx, fy = x0 - ix, y0 - iy
+    local sx, sy = mapScale(1, 1)
+    local ix, iy = floor(x0 + 0.5), floor(y0 + 0.5)
     local n, sum = #src, 0
     if not fixed then
         for i = 1, n do sum = sum + src[i] * ((i % 13) + 1) end
     end
     local c = polyCache[src]
-    if c and c.n == n and c.sum == sum and c.sx == sx and c.sy == sy and c.fx == fx and c.fy == fy then
+    if c and c.n == n and c.sum == sum and c.sx == sx and c.sy == sy then
         polyStats.hit = polyStats.hit + 1
     else
         local v = {}
-        for i = 1, n - 1, 2 do v[i], v[i+1] = mapPoint(ox + src[i], oy + src[i+1]) end
-        c = { n = n, sum = sum, sx = sx, sy = sy, fx = fx, fy = fy, ix = ix, iy = iy,
-              runs = lv1lua.core.polygonRuns(v) }
+        for i = 1, n - 1, 2 do v[i], v[i+1] = src[i] * sx, src[i+1] * sy end
+        c = { n = n, sum = sum, sx = sx, sy = sy, runs = lv1lua.core.polygonRuns(v) }
         if #c.runs > MAX_CACHED_RECTS * 4 then
             polyStats.skipped = polyStats.skipped + 1
             polyCache[src] = nil
@@ -122,10 +122,10 @@ local function polygonFill(p, src, ox, oy, fixed)
             polyCache[src] = c
         end
     end
-    local dx, dy, runs, col = ix - c.ix, iy - c.iy, c.runs, color()
-    if p.fillRuns then return p.fillRuns(runs, dx, dy, col) end
+    local runs, col = c.runs, color()
+    if p.fillRuns then return p.fillRuns(runs, ix, iy, col) end
     local fill = p.fillRect
-    for i = 1, #runs, 4 do fill(runs[i] + dx, runs[i + 1] + dy, runs[i + 2], runs[i + 3], col) end
+    for i = 1, #runs, 4 do fill(runs[i] + ix, runs[i + 1] + iy, runs[i + 2], runs[i + 3], col) end
 end
 
 -- `open` leaves the outline unclosed; only arc("line", "open", ...) asks. `ox`, `oy` and `fixed` are

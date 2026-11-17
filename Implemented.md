@@ -58,7 +58,7 @@ defined, so calling it errors.
 | print(text, x, y) | ✓ follows the transform stack; coloured text prints one segment per colour | ✓ | ✓ | ✓ | ✓ printed after the frame, always on top |
 | printf(text, x, y, limit, align) | ✓ wrap, left / center / right; coloured text draws in the current colour | ✓ | ✓ | ✓ | ✓ |
 | rectangle / circle / ellipse / arc / line / points | ✓ rounded corners (`rx`, `ry`, `segments`) are polygons | ✓ | ✓ | ✓ | ✓ |
-| polygon(mode, vertices) | ✓ even-odd scanline fill | ✓ | ✓ | ✓ | ✓ |
+| polygon(mode, vertices) | ✓ even-odd scanline fill; the shape's origin snaps to the nearest pixel (cached runs) | ✓ | ✓ | ✓ | ✓ |
 | push / pop / origin / reset | ✓ | ✓ | ✓ | ✓ | ✓ |
 | translate / scale / rotate | ✓ images, shapes and text; `rotate` does not rotate later positions | ✓ | ✓ | ✓ | ✓ |
 | shear | stub | stub | stub | stub | stub |

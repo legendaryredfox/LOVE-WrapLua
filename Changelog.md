@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `perf/polygon-cache-snap`
+
+- `polygon("fill")` (and every shape built on it: rounded rectangles, circles, ellipses) places the cached
+  runs at the nearest whole pixel of the shape's origin instead of keeping the sub-pixel part in the cache
+  key. An animated polygon used to be rasterised again on every frame; in Balatro's blind-select scene all 40
+  fills per draw missed, 61 to 67% of the draw's VM time went into `polygonRuns`, and `love.draw` took
+  1090 ms. With the change every lookup hits and `love.draw` takes about 270 ms (emulated PSP clock). A shape
+  drawn at a fractional position can sit up to half a pixel from where it sat before; the vertices' own
+  fractions are untouched. The cache key's scale is now `mapScale(1, 1)`, no longer the difference of two
+  mapped points, which carried float noise from the offset.
+
 ### 2026-11-17, branch `fix/coloured-text`
 
 - Coloured text (`{color, "string", color, "string"}`) works in `love.graphics.print`, `printf`,

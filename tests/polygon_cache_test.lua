@@ -83,6 +83,25 @@ T.describe("polygon cache [PSP]", function()
         T.eq(s1.hit, h + 1)
     end)
 
+    T.it("a sub-pixel drift reuses the cached runs and lands on the nearest pixel", function()
+        love.graphics.origin()
+        local tri = { 0, 0, 20, 4, 6, 15, 3, 9 }
+        local st = lv1lua.core.polygonCacheStats()
+        love.graphics.polygon("fill", tri)
+        local hit0, miss0 = st.hit, st.miss
+        local at = {}
+        for _, dx in ipairs({ 0.2, 0.4, 0.6, 0.9 }) do
+            love.graphics.push(); love.graphics.translate(dx, dx)
+            __rec.reset(); love.graphics.polygon("fill", tri)
+            love.graphics.pop()
+            at[#at + 1] = __rec.all("draw.fillrect")[1].args[1]
+        end
+        T.eq(st.hit, hit0 + 4)
+        T.eq(st.miss, miss0)
+        T.ok(at[1] == at[2], "0.2 and 0.4 round to the same pixel")
+        T.ok(at[3] == at[4] and at[3] == at[1] + 1, "0.6 and 0.9 round to the next one")
+    end)
+
     T.it("a huge polygon is drawn but not kept", function()
         local pts, n = {}, 400
         for i = 0, n - 1 do

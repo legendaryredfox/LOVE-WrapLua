@@ -153,12 +153,25 @@ end
 -- ── Line width / style ───────────────────────────────────────────
 function love.graphics.setLineWidth(w) lv1lua.gfx.lineWidth = w or 1 end
 function love.graphics.getLineWidth()  return lv1lua.gfx.lineWidth end
-function love.graphics.setLineStyle()  end
-function love.graphics.getLineStyle()  return "smooth" end
-function love.graphics.setLineJoin()   end
-function love.graphics.getLineJoin()   return "miter" end
-function love.graphics.setPointSize()  end
-function love.graphics.getPointSize()  return 1 end
+local LINE_STYLES = {smooth = true, rough = true}
+local LINE_JOINS  = {none = true, miter = true, bevel = true}
+
+function love.graphics.setLineStyle(style)
+    if not LINE_STYLES[style] then
+        error("Invalid line style: " .. tostring(style), 2)
+    end
+    lv1lua.gfx.lineStyle = style
+end
+function love.graphics.getLineStyle() return lv1lua.gfx.lineStyle or "smooth" end
+function love.graphics.setLineJoin(join)
+    if not LINE_JOINS[join] then
+        error("Invalid line join: " .. tostring(join), 2)
+    end
+    lv1lua.gfx.lineJoin = join
+end
+function love.graphics.getLineJoin() return lv1lua.gfx.lineJoin or "miter" end
+function love.graphics.setPointSize(size) lv1lua.gfx.pointSize = size or 1 end
+function love.graphics.getPointSize() return lv1lua.gfx.pointSize or 1 end
 
 -- ── Default texture filter ───────────────────────────────────────
 -- The names are kept as LOVE strings (that is what getDefaultFilter must

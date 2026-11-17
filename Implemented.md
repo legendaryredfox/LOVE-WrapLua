@@ -53,7 +53,7 @@ defined, so calling it errors.
 | setBlendMode / getBlendMode | tracked | ✓ `add` / `subtract` on whole images | tracked | ✓ all eight modes (`gfx.BlendFunction`) | tracked |
 | isBlendModeSupported(mode) *(wrapper extension)* | ✓ | ✓ | ✓ | ✓ | ✓ |
 | setLineWidth / getLineWidth | ✓ | ✓ | ✓ | ✓ thick lines | ✓ |
-| setLineStyle / setLineJoin / setPointSize | stub | stub | stub | stub | stub |
+| setLineStyle / setLineJoin / setPointSize | tracked | tracked | tracked | tracked | tracked |
 | newFont / setFont / getFont / setNewFont | ✓ TTF, cached per face and size | ✓ PGF system face, size varies | ✓ TTF | ✓ TTF (`gfx.FontAddTTF`), metrics estimated | ✓ TTF |
 | print(text, x, y) | ✓ follows the transform stack; coloured text prints one segment per colour | ✓ | ✓ | ✓ | ✓ printed after the frame, always on top |
 | printf(text, x, y, limit, align) | ✓ wrap, left / center / right; coloured text draws in the current colour | ✓ | ✓ | ✓ | ✓ |
@@ -97,7 +97,8 @@ are native.
 | getDescent / getKerning / getDPIScale | 0 / 0 / 1 | same | same | same | same |
 | getLineHeight / setLineHeight | ✓ default 1.2, used by printf | same | same | same | same |
 | getWrap(text, width) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| hasGlyph / setFallbacks / getFilter / setFilter | stub | stub | stub | stub | stub |
+| hasGlyph / getFilter / setFilter | tracked (`hasGlyph` is false only for code point 0) | same | same | same | same |
+| setFallbacks | stub | stub | stub | stub | stub |
 | type / typeOf / release | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 printf line spacing is `getHeight() * getLineHeight()` and wrapping is measured

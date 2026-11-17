@@ -67,16 +67,35 @@ function Font:getAscent()      return self.size end
 function Font:getDescent()     return 0 end
 function Font:getLineHeight()  return self.lineHeight end
 function Font:setLineHeight(h) self.lineHeight = h or 1.2 end
-function Font:hasGlyph()       return true end
+function Font:hasGlyph(...)
+    local n = select("#", ...)
+    if n == 0 then error("Bad argument #1 to 'hasGlyph' (string or number expected)", 2) end
+    for i = 1, n do
+        local g = select(i, ...)
+        if type(g) == "number" then
+            if g == 0 then return false end
+        elseif type(g) == "string" then
+            if g:find("\0", 1, true) then return false end
+        else
+            error("Bad argument #" .. i .. " to 'hasGlyph' (string or number expected)", 2)
+        end
+    end
+    return true
+end
 function Font:getKerning()     return 0 end
 function Font:setFallbacks()   end
 function Font:getDPIScale()    return 1 end
-function Font:setFilter()      end
+function Font:setFilter(min, mag, anisotropy)
+    min = min or "linear"
+    self.filter = {min = min, mag = mag or min, anisotropy = anisotropy or 1}
+end
 function Font:release()        return false end
 function Font:type()           return "Font" end
 function Font:typeOf(t)        return t == "Font" or t == "Object" end
 
 function Font:getFilter()
+    local own = self.filter
+    if own then return own.min, own.mag, own.anisotropy end
     local f = lv1lua.gfx.filter or {}
     return f.minName or "linear", f.magName or "linear", f.anisotropy or 1
 end

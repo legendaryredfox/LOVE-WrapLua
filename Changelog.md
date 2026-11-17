@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/tracked-line-style-font-filter`
+
+- `love.graphics.setLineStyle`, `setLineJoin` and `setPointSize` store the value and the getters read it back
+  (they answered the defaults whatever was set). An unknown style or join raises, as in LÖVE. Nothing reaches
+  the hardware.
+- `Font:setFilter` is kept per font and `Font:getFilter` reads it, falling back to the default filter.
+  `Font:hasGlyph` takes strings and code points, answers false for code point 0 and raises on other types.
+
 ### 2026-11-17, branch `docs/selecting-hand-measure`
 
 - `docs/PERFORMANCE_FINDINGS.md`: first same-scene number for Balatro (`SELECTING_HAND`): about 1.1 fps through

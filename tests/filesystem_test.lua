@@ -162,12 +162,98 @@ T.describe("love.filesystem path helpers", function()
         T.ok(love.filesystem.isFused())
     end)
 
-    T.it("mount returns false (stub)", function()
-        T.nok(love.filesystem.mount("archive.zip", "/"))
+    T.it("mount of a missing archive returns false", function()
+        T.nok(love.filesystem.mount("no_such_pack", "/"))
     end)
 
-    T.it("unmount returns false (stub)", function()
-        T.nok(love.filesystem.unmount("archive.zip"))
+    T.it("unmount of something never mounted returns false", function()
+        T.nok(love.filesystem.unmount("no_such_pack"))
+    end)
+end)
+
+-- ── mount ────────────────────────────────────────────────────────
+T.describe("love.filesystem.mount", function()
+    os.execute("mkdir -p " .. TMPDIR .. "pack/sub " .. TMPDIR .. "pack2")
+    love.filesystem.write("pack/data.txt", "from pack")
+    love.filesystem.write("pack/sub/deep.txt", "deep")
+    love.filesystem.write("pack2/data.txt", "from pack2")
+    love.filesystem.write("pack2/only2.txt", "only2")
+
+    T.it("a directory in the save folder mounts at a mount point", function()
+        T.ok(love.filesystem.mount("pack", "mods"))
+        T.eq(love.filesystem.read("mods/data.txt"), "from pack")
+        T.eq(love.filesystem.read("mods/sub/deep.txt"), "deep")
+        T.ok(love.filesystem.isFile("mods/data.txt"))
+        T.ok(love.filesystem.isDirectory("mods/sub"))
+        T.eq(love.filesystem.getInfo("mods/data.txt").type, "file")
+        T.eq(love.filesystem.getInfo("mods/data.txt").size, 9)
+    end)
+
+    T.it("leading and trailing slashes on the mount point do not matter", function()
+        T.ok(love.filesystem.unmount("pack"))
+        T.ok(love.filesystem.mount("pack", "/mods/"))
+        T.eq(love.filesystem.read("mods/data.txt"), "from pack")
+    end)
+
+    T.it("files outside the mount point stay hidden", function()
+        T.ok(love.filesystem.read("data.txt") == nil)
+    end)
+
+    T.it("getDirectoryItems lists the mount point and its contents", function()
+        local saved = lv1lua.fileio
+        lv1lua.fileio = { list = function(dir)
+            local out = {}
+            local h = io.popen('ls -1 "' .. dir .. '" 2>/dev/null')
+            for line in h:lines() do out[#out + 1] = line end
+            h:close()
+            return out
+        end }
+        local items = love.filesystem.getDirectoryItems("mods")
+        T.eq(table.concat(items, ","), "data.txt,sub")
+        local root = love.filesystem.getDirectoryItems("")
+        local found = false
+        for _, n in ipairs(root) do if n == "mods" then found = true end end
+        T.ok(found, "the mount point shows in its parent")
+        lv1lua.fileio = saved
+    end)
+
+    T.it("getRealDirectory names the mounted folder", function()
+        local dir = love.filesystem.getRealDirectory("mods/data.txt")
+        T.eq(dir, TMPDIR .. "pack")
+    end)
+
+    T.it("unmount hides the files again", function()
+        T.ok(love.filesystem.unmount("pack"))
+        T.ok(love.filesystem.read("mods/data.txt") == nil)
+        T.nok(love.filesystem.unmount("pack"))
+    end)
+
+    T.it("mounting at / overlays the root; later mounts win unless appended", function()
+        T.ok(love.filesystem.mount("pack", "/"))
+        T.ok(love.filesystem.mount("pack2", "/"))
+        T.eq(love.filesystem.read("data.txt"), "from pack2")
+        T.eq(love.filesystem.read("only2.txt"), "only2")
+        T.ok(love.filesystem.unmount("pack2"))
+        T.ok(love.filesystem.mount("pack2", "/", true))
+        T.eq(love.filesystem.read("data.txt"), "from pack")
+        T.eq(love.filesystem.read("only2.txt"), "only2")
+        T.ok(love.filesystem.unmount("pack"))
+        T.ok(love.filesystem.unmount("pack2"))
+    end)
+
+    T.it("mounting the same archive twice keeps one entry", function()
+        T.ok(love.filesystem.mount("pack", "mods"))
+        T.ok(love.filesystem.mount("pack", "mods"))
+        T.ok(love.filesystem.unmount("pack"))
+        T.ok(love.filesystem.read("mods/data.txt") == nil)
+    end)
+
+    T.it("load runs a mounted chunk", function()
+        love.filesystem.write("pack/chunk.lua", "return 42")
+        T.ok(love.filesystem.mount("pack", "code"))
+        local chunk = love.filesystem.load("code/chunk.lua")
+        T.eq(chunk(), 42)
+        T.ok(love.filesystem.unmount("pack"))
     end)
 end)
 

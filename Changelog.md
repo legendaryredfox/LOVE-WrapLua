@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/filesystem-mount`
+
+- `love.filesystem.mount` and `unmount` work for directories: the folder is mounted at a mount point, and
+  `read`, `load`, `isFile`, `isDirectory`, `getInfo`, `getDirectoryItems` and `getRealDirectory` see it.
+  Later mounts win over earlier ones, `appendToPath` puts a mount after the game folder, and the mount point
+  shows in its parent's listing. A zip archive returns `false`, as before: no SDK here reads one.
+
 ### 2026-11-17, branch `feat/tracked-line-style-font-filter`
 
 - `love.graphics.setLineStyle`, `setLineJoin` and `setPointSize` store the value and the getters read it back

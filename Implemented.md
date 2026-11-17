@@ -204,7 +204,7 @@ One shared Source (`core/audio.lua`); each backend supplies only native hooks.
 | getIdentity / setIdentity | ✓ |
 | getSaveDirectory / getUserDirectory / getAppdataDirectory | ✓ |
 | getWorkingDirectory / getRealDirectory / getSourceBaseDirectory | ✓ |
-| mount / unmount | stub |
+| mount / unmount | ✓ directories only (looked up in the save folder, then the game folder); a zip archive returns `false` |
 | isFused | `true` |
 
 Lookups are cached: the game directory (read-only) for good, the save directory until this module writes,

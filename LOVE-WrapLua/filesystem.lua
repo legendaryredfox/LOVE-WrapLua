@@ -73,11 +73,39 @@ local function meta(path, inSave)
     return e
 end
 
+local mountsFront, mountsBack = {}, {}
+
+-- Path of `file` inside a mounted directory, or nil when the file is outside the mount point.
+local function mountedPath(m, file)
+    local point = m.point
+    if point == "" then
+        if file == "" then return m.root end
+        return m.root .. "/" .. file
+    end
+    if file == point then return m.root end
+    if file:sub(1, #point + 1) == point .. "/" then
+        return m.root .. "/" .. file:sub(#point + 2)
+    end
+    return nil
+end
+
+local function resolveMounted(list, file)
+    for i = 1, #list do
+        local m = list[i]
+        local path = mountedPath(m, file)
+        if path and meta(path, m.inSave).exists then return path, m.inSave, m end
+    end
+end
+
 local function resolve(file)
     local sp = savePath(file)
     if meta(sp, true).exists then return sp, true end
+    local path, inSave, m = resolveMounted(mountsFront, file)
+    if path then return path, inSave, m end
     local gp = gamePath(file)
     if meta(gp, false).exists then return gp, false end
+    path, inSave, m = resolveMounted(mountsBack, file)
+    if path then return path, inSave, m end
     return nil
 end
 
@@ -240,6 +268,31 @@ end
 -- then expects to find those files next to the ones it shipped. Duplicates
 -- collapse (the save copy shadows the shipped one, as in read), and the result
 -- is sorted so a game that renders a file list gets a stable order.
+local function listCached(path, inSave)
+    local lists = inSave and saveLists or gameLists
+    local key = "\0" .. path
+    local list = lists[key]
+    if not list then
+        list = listNative(path) or {}
+        lists[key] = list
+    end
+    return list
+end
+
+local function mountContribution(m, path, out)
+    local point = m.point
+    if point == "" or path == point or path:sub(1, #point + 1) == point .. "/" then
+        local sub = point == "" and path or path:sub(#point + 2)
+        local native = sub == "" and m.root or (m.root .. "/" .. sub)
+        if meta(native, m.inSave).exists then
+            out[#out + 1] = listCached(native, m.inSave)
+        end
+    elseif point ~= "" and (path == "" or point:sub(1, #path + 1) == path .. "/") then
+        local rest = path == "" and point or point:sub(#path + 2)
+        out[#out + 1] = { (rest:match("^[^/]+")) }
+    end
+end
+
 function love.filesystem.getDirectoryItems(path)
     local game, save = gameLists[path], saveLists[path]
     if not game then
@@ -250,8 +303,11 @@ function love.filesystem.getDirectoryItems(path)
         save = listNative(savePath(path)) or {}
         saveLists[path] = save
     end
+    local sources = { game, save }
+    for i = 1, #mountsFront do mountContribution(mountsFront[i], path, sources) end
+    for i = 1, #mountsBack do mountContribution(mountsBack[i], path, sources) end
     local seen, items = {}, {}
-    for _, dir in ipairs({ game, save }) do
+    for _, dir in ipairs(sources) do
         for _, name in ipairs(dir) do
             if name ~= "" and name ~= "." and name ~= ".." and not seen[name] then
                 seen[name] = true
@@ -335,12 +391,54 @@ function love.filesystem.newFileData(contents, name)
     }
 end
 
+local function normalisePoint(point)
+    point = (point or "/"):gsub("\\", "/")
+    point = point:gsub("^/+", ""):gsub("/+$", "")
+    return point
+end
+
+local function removeMount(list, archive)
+    local removed = false
+    for i = #list, 1, -1 do
+        if list[i].archive == archive then
+            table.remove(list, i)
+            removed = true
+        end
+    end
+    return removed
+end
+
+-- Only directories can be mounted: no SDK here ships an archive reader. The directory is looked up
+-- in the save folder, then in the game folder.
 function love.filesystem.mount(archive, mountpoint, appendToPath)
-    return false  -- not supported
+    if type(archive) ~= "string" then
+        error("Bad argument #1 to 'mount' (string expected)", 2)
+    end
+    local clean = archive:gsub("/+$", "")
+    local root, inSave
+    if meta(savePath(clean), true).exists then
+        root, inSave = savePath(clean), true
+    elseif meta(gamePath(clean), false).exists then
+        root, inSave = gamePath(clean), false
+    else
+        return false
+    end
+    if not isDirPath(root, inSave) then return false end
+    removeMount(mountsFront, archive)
+    removeMount(mountsBack, archive)
+    local entry = { archive = archive, root = root, inSave = inSave, point = normalisePoint(mountpoint) }
+    if appendToPath then
+        mountsBack[#mountsBack + 1] = entry
+    else
+        table.insert(mountsFront, 1, entry)
+    end
+    return true
 end
 
 function love.filesystem.unmount(archive)
-    return false
+    local a = removeMount(mountsFront, archive)
+    local b = removeMount(mountsBack, archive)
+    return a or b
 end
 
 function love.filesystem.getIdentity()
@@ -359,7 +457,8 @@ function love.filesystem.getWorkingDirectory()
 end
 
 function love.filesystem.getRealDirectory(file)
-    local _, inSave = resolve(file)
+    local _, inSave, m = resolve(file)
+    if m then return m.root end
     if inSave then return lv1lua.saveloc end
     return lv1lua.dataloc.."game/"
 end

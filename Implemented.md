@@ -65,7 +65,7 @@ defined, so calling it errors.
 | shear | ✓ shapes, lines and points; images and text move to the sheared origin | same | same | same | same |
 | applyTransform / replaceTransform | ✓ translation, rotation, scale and shear along x | ✓ | ✓ | ✓ | ✓ |
 | transformPoint / inverseTransformPoint | ✓ | ✓ | ✓ | ✓ | ✓ |
-| setScissor / getScissor / intersectScissor | tracked | ✓ GPU scissor | ✓ software reject | tracked | ✓ GPU scissor |
+| setScissor / getScissor / intersectScissor | ✓ software reject (images and quads wholly outside are skipped) | ✓ GPU scissor | ✓ software reject | ✓ software reject (images and quads) | ✓ GPU scissor |
 | stencil / setStencilTest / getStencilTest | stub | stub | stub | stub | stub |
 | setDefaultFilter / getDefaultFilter | ✓ applied to new images and scaled copies | tracked | ✓ applied to new images | tracked | tracked |
 | setTextureInset / getTextureInset *(wrapper extension)* | ✓ | ✓ | ✓ whole texels | none on the draw | ✓ whole texels |

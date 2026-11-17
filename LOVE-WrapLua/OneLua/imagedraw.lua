@@ -176,10 +176,21 @@ end
 -- draw(drawable, quad, x, y, r, sx, sy, ox, oy). Rotation turns the whole
 -- copy: the SDK has no per-region rotate.
 local insetViewport = lv1lua.core.insetViewport
+local drawBox = lv1lua.util.drawBox
+
+-- The Vita build has no clip call to stop a draw at the scissor; one that lies wholly outside it is skipped.
+local function offScissor(x, y, r, sx, sy, ox, oy, w, h)
+    local bx, by, bw, bh = drawBox(x, y, r, sx, sy, ox, oy, w, h)
+    return gfx.scissorRejects(bx, by, bw, bh)
+end
+
 local function quadDraw(tex, quad, x, y, r, sx, sy, ox, oy)
     x, y, r, sx, sy = fold(x, y, r, sx, sy)
     if quad._ig ~= gfx.insetGen then insetViewport(quad) end
     local qx, qy, qw, qh = quad._ix, quad._iy, quad._iw, quad._ih
+    if not gfx.applyScissor and stack.transform._usingScissor and offScissor(x, y, r, sx, sy, ox, oy, qw, qh) then
+        return
+    end
     if sx == 1 and sy == 1 then
         if ox then x = x - ox end
         if oy then y = y - oy end
@@ -243,6 +254,10 @@ function love.graphics.draw(drawable, a, b, c, d, e, f, g, h)
     local x, y, r, sx, sy, ox, oy = a, b, c, d, e, f, g
     x, y, r, sx, sy = fold(x, y, r, sx, sy)
     if not native.scaling and (sx ~= 1 or sy ~= 1) then warnUnscalable(); sx, sy = 1, 1 end
+    if not gfx.applyScissor and stack.transform._usingScissor
+       and offScissor(x, y, r, sx, sy, ox, oy, image.getrealw(tex), image.getrealh(tex)) then
+        return
+    end
     x = x - (ox or 0) * abs(sx)
     y = y - (oy or 0) * abs(sy)
     if sx < 0 then x = x + image.getrealw(tex) * sx end

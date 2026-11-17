@@ -90,5 +90,61 @@ T.describe("scissor [PSP] native clip", function()
     end)
 end)
 
+-- No GPU scissor on the Vita OneLua build or on the PS3: a draw that lies wholly outside the scissor is skipped.
+local REJECT = { ["OneLua"] = "image.blit", ["PS3"] = "gfx.End" }
+for _, mode in ipairs({ "OneLua", "PS3" }) do
+    __MODE = mode
+    dofile("tests/setup.lua")
+    dofile(GFX[mode])
+    local native = REJECT[mode]
+    local img = love.graphics.newImage("sheet.png")
+    local quad = love.graphics.newQuad(0, 0, 16, 16, img)
+
+    T.describe("scissor [" .. mode .. "] software reject", function()
+        T.it("a draw wholly outside the scissor is skipped, one inside is drawn", function()
+            love.graphics.origin()
+            love.graphics.setScissor(0, 0, 50, 50)
+            __rec.reset()
+            love.graphics.draw(img, 200, 200)
+            T.eq(__rec.count(native), 0)
+            love.graphics.draw(img, 10, 10)
+            T.eq(__rec.count(native), 1)
+            love.graphics.setScissor()
+        end)
+
+        T.it("a quad draw straddling the edge is still drawn", function()
+            love.graphics.origin()
+            love.graphics.setScissor(0, 0, 50, 50)
+            __rec.reset()
+            love.graphics.draw(img, quad, 45, 45)
+            T.eq(__rec.count(native), 1)
+            love.graphics.draw(img, quad, 60, 10)
+            T.eq(__rec.count(native), 1)
+            love.graphics.setScissor()
+        end)
+
+        T.it("the scissor ignores the transform stack and a rotated sprite uses its turned box", function()
+            love.graphics.origin()
+            love.graphics.setScissor(0, 0, 50, 50)
+            love.graphics.translate(100, 100)
+            __rec.reset()
+            love.graphics.draw(img, quad, 0, 0)
+            T.eq(__rec.count(native), 0)
+            love.graphics.origin()
+            love.graphics.draw(img, quad, 8, 8, 1, 1, 1, 8, 8)
+            T.eq(__rec.count(native), 1)
+            love.graphics.setScissor()
+        end)
+
+        T.it("with no scissor everything is drawn", function()
+            love.graphics.origin()
+            love.graphics.setScissor()
+            __rec.reset()
+            love.graphics.draw(img, 900, 900)
+            T.eq(__rec.count(native), 1)
+        end)
+    end)
+end
+
 io.write("\n=== scissor ===\n")
 return T.summary()

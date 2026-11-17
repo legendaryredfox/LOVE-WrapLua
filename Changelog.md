@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/scissor-software`
+
+- Vita OneLua and PS3: an image or quad draw that lies wholly outside the scissor is skipped, as on lpp-vita
+  (`util.drawBox` gives the sprite's box, turned sprites included). A draw straddling the edge is not cut, and
+  primitives and text are not rejected. Synthetic frame: about +1% VM instructions on OneLua.
+
 ### 2026-11-17, branch `docs/update-profile`
 
 - `docs/PERFORMANCE_FINDINGS.md`: sampling profile of Balatro's `love.update` in `SELECTING_HAND`. The cost is the

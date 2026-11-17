@@ -104,6 +104,14 @@ function love.graphics.draw(drawable, xOrQuad, y, r, sx, sy, ox, oy, kx)
     local oy_s    = _oy * absSy * gscale
 
     local rot  = (_r or 0) + t._rotation
+
+    -- No GPU scissor here: a sprite wholly outside it is skipped. Both are in game pixels, before the
+    -- display scale.
+    if t._usingScissor then
+        local bx, by, bw, bh = lv1lua.util.drawBox(anchorX / gscale, (anchorY - yo) / gscale, rot,
+                                                   absSx, absSy, _ox, _oy, w, h)
+        if lv1lua.gfx.scissorRejects(bx, by, bw, bh) then return end
+    end
     local rgba = lv1lua.current.colorRGBA
     local cr, cg, cb, ca = rgba[1], rgba[2], rgba[3], rgba[4]
 

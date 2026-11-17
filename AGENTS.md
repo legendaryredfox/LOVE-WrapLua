@@ -252,7 +252,7 @@ assertions run on PUC Lua only: LuaJIT counts trace memory in `collectgarbage("c
 | Rotation in the stack | Turns what is drawn, not later positions |
 | Shear | Exact for shapes, lines and points; images and text only move |
 | OneLua draws | Scaled / mirrored copy per sheet; a rotated quad turns the whole copy; quads tint alpha only |
-| Scissor | Software reject on lpp-vita, GPU on the 3DS, tracked elsewhere |
+| Scissor | GPU on the PSP and 3DS; software reject of whole images on the Vita backends and PS3 (a draw that straddles the edge is not cut, primitives are not rejected) |
 | PS3 | Draws through tiny3D; unverifiable in RPCS3; no timer (frame clock), one stream voice |
 | 3DS text | Printed after the GPU pass, always on top; lines starting off screen are skipped |
 | love.audio | Positions and pitch timed in software; `seek` moves the reported position only |

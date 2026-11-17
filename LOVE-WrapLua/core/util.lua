@@ -95,5 +95,20 @@ function util.spriteBox(cx, cy, rad, w, h)
     return cx - ew / 2, cy - eh / 2, ew, eh
 end
 
+-- Axis-aligned box (x, y, w, h) of a w x h sprite drawn with LOVE's draw arguments (anchor x, y, angle r,
+-- signed scale sx, sy, origin ox, oy). A mirrored sprite grows left or up from its anchor, as in LOVE.
+function util.drawBox(x, y, r, sx, sy, ox, oy, w, h)
+    ox, oy = ox or 0, oy or 0
+    if r == 0 then
+        local asx, asy = math.abs(sx), math.abs(sy)
+        local left, top = x - ox * asx, y - oy * asy
+        if sx < 0 then left = left + w * sx end
+        if sy < 0 then top = top + h * sy end
+        return left, top, w * asx, h * asy
+    end
+    local cx, cy = util.spriteCentre(x, y, r, sx, sy, ox, oy, w, h)
+    return util.spriteBox(cx, cy, r, w * sx, h * sy)
+end
+
 -- Kept as a global: game code and older platform modules call it directly.
 __mathRound = util.round

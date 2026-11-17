@@ -299,6 +299,7 @@ Define it before the wrapper boots, at the top of `game/main.lua`.
 | `updaterate` | number, or `"variable"` | `60` | Fixed updates per second. `love.update` gets exactly `1/updaterate` as `dt`, whatever the frame took. `"variable"` restores desktop LÖVE's one-update-per-frame with the measured `dt` |
 | `rotatesnap` | number (degrees) | `0` (off) | OneLua only (Vita and PSP): a draw turned by less than this angle is drawn upright, which skips the pivot and the clip of a rotated blit. Changes pixels slightly; for games that tilt idle sprites by a fraction of a degree |
 | `frameskip` | number | `0` (off) | Most `love.draw` calls the main loop may skip in a row while `love.update` is behind (a frame that ran two or more update slices). Off by default: every frame draws. Ignored with `updaterate = "variable"` |
+| `lowmemory` | number | off | Lua heap size in KB. `love.lowmemory` is called once when the heap grows past it, and again after it has fallen under 90% of it; a game with no handler gets a full garbage collection |
 | `maxframeskip` | number | `5` | Most update slices one frame may run, so a long stall (loading, sleep and resume) cannot queue hundreds of catch-up updates |
 
 **Timing.** Game logic runs on a fixed-timestep accumulator: the real frame time

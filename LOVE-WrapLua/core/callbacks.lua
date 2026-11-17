@@ -38,6 +38,6 @@ love.touchmoved    = love.touchmoved    or function() end
 love.focus         = love.focus         or function() end
 love.visible       = love.visible       or function() end
 love.resize        = love.resize        or function() end
-love.lowmemory     = love.lowmemory     or function() end
+love.lowmemory     = love.lowmemory     or function() collectgarbage("collect") end
 love.textinput     = love.textinput     or function() end
 love.threaderror   = love.threaderror   or function() end

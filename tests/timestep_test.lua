@@ -301,4 +301,71 @@ T.describe("love.timer over the accumulator", function()
     end)
 end)
 
+-- ── low memory guard ─────────────────────────────────────────────
+T.describe("core.step low memory guard", function()
+    local function setup(limit)
+        fresh("OneLua")
+        lv1luaconf.lowmemory = limit
+        local calls = 0
+        love.update = function() end
+        love.lowmemory = function() calls = calls + 1 end
+        return function() return calls end
+    end
+
+    local realCollect = collectgarbage
+
+    T.it("does nothing when no limit is configured", function()
+        local calls = setup(nil)
+        collectgarbage = function(what) if what == "count" then return 99999 end return realCollect(what) end
+        lv1lua.core.step(STEP)
+        collectgarbage = realCollect
+        T.eq(calls(), 0)
+    end)
+
+    T.it("fires love.lowmemory once when the heap crosses the limit", function()
+        local calls = setup(1000)
+        local kb = 500
+        collectgarbage = function(what) if what == "count" then return kb end return realCollect(what) end
+        lv1lua.core.step(STEP)
+        T.eq(calls(), 0)
+        kb = 1500
+        lv1lua.core.step(STEP)
+        lv1lua.core.step(STEP)
+        collectgarbage = realCollect
+        T.eq(calls(), 1)
+    end)
+
+    T.it("re-arms once the heap falls below nine tenths of the limit", function()
+        local calls = setup(1000)
+        local kb = 1500
+        collectgarbage = function(what) if what == "count" then return kb end return realCollect(what) end
+        lv1lua.core.step(STEP)
+        kb = 950
+        lv1lua.core.step(STEP)
+        kb = 1500
+        lv1lua.core.step(STEP)
+        T.eq(calls(), 1)
+        kb = 800
+        lv1lua.core.step(STEP)
+        kb = 1500
+        lv1lua.core.step(STEP)
+        collectgarbage = realCollect
+        T.eq(calls(), 2)
+    end)
+
+    T.it("a game without love.lowmemory still gets a collection", function()
+        setup(1000)
+        love.lowmemory = nil
+        local collected = 0
+        collectgarbage = function(what)
+            if what == "count" then return 1500 end
+            if what == nil or what == "collect" then collected = collected + 1 end
+            return realCollect(what)
+        end
+        lv1lua.core.step(STEP)
+        collectgarbage = realCollect
+        T.eq(collected, 1)
+    end)
+end)
+
 return T.summary()

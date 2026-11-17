@@ -27,7 +27,8 @@ defined, so calling it errors.
 | love.touchpressed / touchmoved / touchreleased | ✓ front panel | none | none | none | none |
 | love.quit | ✓ returning true cancels the quit | ✓ | ✓ | ✓ (an XMB exit or L3+R3 cannot be cancelled) | ✓ |
 | love.threaderror | ✓ | ✓ | ✓ | ✓ | ✓ |
-| love.focus / visible / resize / lowmemory / wheelmoved | stub | stub | stub | stub | stub |
+| love.lowmemory | ✓ when `lv1luaconf.lowmemory` (Lua heap in KB) is set; without a handler the wrapper collects garbage | same | same | same | same |
+| love.focus / visible / resize / wheelmoved | stub | stub | stub | stub | stub |
 
 ---
 

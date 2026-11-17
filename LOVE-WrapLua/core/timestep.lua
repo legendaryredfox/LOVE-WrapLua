@@ -134,9 +134,26 @@ lv1lua.timestep = lv1lua.core.newTimestep()
 lv1lua.dt = lv1lua.dt or 0
 lv1lua.frameDelta = lv1lua.frameDelta or 0
 
+-- With lv1luaconf.lowmemory = <kilobytes of Lua heap>, love.lowmemory is called once when the heap grows
+-- past that size, and again after it has dropped under nine tenths of it. A game with no handler gets a
+-- full collection instead.
+local lowFired = false
+local function checkMemory(limit)
+    local used = collectgarbage("count")
+    if lowFired then
+        if used < limit * 0.9 then lowFired = false end
+    elseif used > limit then
+        lowFired = true
+        if love.lowmemory then love.lowmemory() else collectgarbage("collect") end
+    end
+end
+
 -- What each backend's whileloop calls, once per frame.
 function lv1lua.core.step(elapsed)
     local ts = lv1lua.timestep
+    local conf = rawget(_G, "lv1luaconf")
+    local limit = conf and tonumber(conf.lowmemory)
+    if limit and limit > 0 then checkMemory(limit) end
     local steps = ts:advance(elapsed, love.update)
     lv1lua.frameDelta = ts.frameDelta
     return steps

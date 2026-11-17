@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/lowmemory`
+
+- `lv1luaconf.lowmemory` (Lua heap in KB) turns on a memory guard checked once per frame in `core.step`:
+  `love.lowmemory` is called when the heap passes the limit and again after it has dropped below 90% of it.
+  The default handler collects garbage. Off unless configured: `collectgarbage("count")` does not measure
+  the console's free memory, so no default limit is safe on every device.
+
 ### 2026-11-17, branch `feat/particle-curves`
 
 - `ParticleSystem:setSizes`, `getSizes`, `setColors`, `setSizeVariation`, `getSizeVariation`, `setRotation`

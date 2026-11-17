@@ -131,6 +131,11 @@ plays music on the PSP cannot afford that. Levers, cheapest first: stream music 
 `sceMp3` library, with the assets converted to MP3 by the packaging tool using ffmpeg) so the main core only mixes.
 The Balatro harness builds with audio off by default so its numbers stay comparable; `AUDIO=1` turns it on.
 
+Measured, no gain: a mixer fast path (tight per-chunk loops, no interpolation at pitch 1 and 44.1 kHz, bit-exact
+against the old loop on desktop) gave 12.0 fps (43.0 + 40.0 ms) against 11.9 (43.7 + 40.5), within noise, and was
+dropped. The mixing arithmetic is not the cost; software Ogg decoding (Tremor) is the likely one (not yet profiled alone). The levers that remain are the
+ones that remove decode work from the main core: MP3 on the Media Engine, or music pre-decoded at a lower rate.
+
 ## 5. Risks and open items
 
 - `balatro_psp` is not under version control. Its `git init` and `.gitignore` are open items in its own

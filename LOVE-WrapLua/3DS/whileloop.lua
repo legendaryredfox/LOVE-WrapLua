@@ -50,4 +50,6 @@ function lv1lua.updatecontrols()
     end
     keys:update(held, lv1lua.frameDelta or 0)
     lv1lua.core.syncJoystick(physical)
+    local pump = lv1lua.core.pumpTextInput
+    if pump then pump() end
 end

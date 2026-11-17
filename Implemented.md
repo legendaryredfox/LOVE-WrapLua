@@ -22,7 +22,7 @@ defined, so calling it errors.
 | love.keypressed(key, scancode, isrepeat), once per press | ✓ | ✓ | ✓ | ✓ | ✓ |
 | love.keyreleased(key, scancode), once per release | ✓ | ✓ | ✓ | ✓ | ✓ |
 | love.gamepadpressed / gamepadreleased | routed from the key callbacks when the game defines no keypressed / keyreleased; the d-pad arrives as `dpup` / `dpdown` / `dpleft` / `dpright` | same | same | same | same |
-| love.textinput | ✓ on-screen keyboard | ✓ on-screen keyboard | ✓ IME, fires when it closes | stub | stub |
+| love.textinput | ✓ on-screen keyboard | ✓ on-screen keyboard | ✓ IME, fires when it closes | stub | ✓ bottom-screen keyboard, fires when Enter is pressed |
 | love.mousepressed / mousereleased / mousemoved | ✓ first finger, `istouch` true | none | none | none | none |
 | love.touchpressed / touchmoved / touchreleased | ✓ front panel | none | none | none | none |
 | love.quit | ✓ returning true cancels the quit | ✓ | ✓ | ✓ (an XMB exit or L3+R3 cannot be cancelled) | ✓ |
@@ -155,7 +155,7 @@ assumes one slice per frame.
 | isDown(key, ...) / isScancodeDown | ✓ true when any of the keys is down |
 | hasKeyRepeat / setKeyRepeat | ✓ off by default; repeats after 0.4 s, then every 0.05 s |
 | getKeyFromScancode / getScancodeFromKey | identity (no scancodes on a pad) |
-| showTextInput / setTextInput | ✓ on OL, PSP and LPP; stub on PS3 and 3DS |
+| showTextInput / setTextInput | ✓ on OL, PSP, LPP and 3DS (the 3DS keyboard fills the bottom screen and takes `text` as its starting string, no header); stub on PS3 |
 | hasTextInput | `false` |
 
 ---

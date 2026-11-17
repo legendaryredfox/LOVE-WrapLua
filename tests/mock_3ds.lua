@@ -32,6 +32,11 @@
 --     volume, no seek, no pitch.
 --   Controls.read() -> held bitmask; Controls.check(pad, KEY_*);
 --     Controls.readCirclePad() -> dx, dy.
+--   Keyboard (source/luaKeyboard.cpp, a HBKB wrapper that owns the whole bottom screen): show() draws it and
+--     reads one touch sample, so it is called every frame while the keyboard is up; getState() answers the
+--     result of the last show: FINISHED 1 (Enter), PRESSED 2 (a key), CLEANED 3 (cancel), NOT_PRESSED 4.
+--     getInput() returns the typed string and, when the state is CLEANED, wipes it first. clear() empties the
+--     string and resets the state to 0. setText(s) preloads the string. Takes no arguments but setText.
 --   Timer.getTime(t) -> integer milliseconds. There is no Timer.delay.
 --   System.doesFileExist works for files only (it opens the path). There is no
 --     doesDirExist. System.exit() unwinds with a fake error.
@@ -280,6 +285,39 @@ Controls = {
 }
 
 -- ── Timer ────────────────────────────────────────────────────────
+FINISHED, PRESSED, CLEANED, NOT_PRESSED = 1, 2, 3, 4
+
+-- Tests queue the result of each show() in __3ds.keyboard.script as { state, typed }.
+__3ds.keyboard = { input = "", state = 0, script = {}, shows = 0 }
+Keyboard = {
+    setText = function(text)
+        if type(text) ~= "string" then error("bad argument #1 to 'setText' (string expected)", 2) end
+        __3ds.keyboard.input = text
+    end,
+    show = function(...)
+        if select("#", ...) ~= 0 then error("wrong number of arguments", 2) end
+        local k = __3ds.keyboard
+        k.shows = k.shows + 1
+        local step = table.remove(k.script, 1)
+        if step then
+            k.state = step[1]
+            if step[2] then k.input = step[2] end
+        else
+            k.state = NOT_PRESSED
+        end
+    end,
+    getState = function() return __3ds.keyboard.state end,
+    getInput = function()
+        local k = __3ds.keyboard
+        if k.state == CLEANED then k.input = "" end
+        return k.input
+    end,
+    clear = function()
+        local k = __3ds.keyboard
+        k.input, k.state = "", 0
+    end,
+}
+
 Timer = {
     new     = function() return { _start = __3ds.clock } end,
     getTime = function(t) return __3ds.clock - t._start end,

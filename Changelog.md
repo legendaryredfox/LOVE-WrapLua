@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/3ds-text-input`
+
+- 3DS: `love.keyboard.showTextInput` / `setTextInput` open lpp-3ds's bottom-screen `Keyboard`. It is shown on
+  every `updatecontrols` while open; Enter delivers the whole string to `love.textinput` and closes it, cancel
+  closes it with no text, `setTextInput(false)` closes it, and `hasTextInput` reports it. `tbl.text` is the
+  starting string. `tests/mock_3ds.lua` gained `Keyboard`, grounded in `source/luaKeyboard.cpp`. Not
+  verified on hardware or an emulator: the keyboard draws straight into the bottom screen framebuffer.
+
 ### 2026-11-17, branch `feat/scissor-software`
 
 - Vita OneLua and PS3: an image or quad draw that lies wholly outside the scissor is skipped, as on lpp-vita

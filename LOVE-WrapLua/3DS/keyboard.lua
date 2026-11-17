@@ -30,8 +30,47 @@ function love.keyboard.isDown(...)
 end
 
 function love.keyboard.isScancodeDown(sc) return love.keyboard.isDown(sc) end
-function love.keyboard.hasTextInput()     return false end
 function love.keyboard.getKeyFromScancode(sc)  return sc end
 function love.keyboard.getScancodeFromKey(key) return key end
-function love.keyboard.showTextInput(tbl) end
-function love.keyboard.setTextInput(tbl)  end
+
+-- Keyboard.show draws the keyboard on the bottom screen and reads one touch sample, so it is called on every
+-- frame while the keyboard is up (core.pumpTextInput, from updatecontrols). Its state is FINISHED (Enter) or
+-- CLEANED (cancel) when it is done; like the OneLua and Vita keyboards, the text reaches love.textinput once,
+-- when it closes.
+local FINISHED, CLEANED = 1, 3
+local open = false
+
+local function close()
+    open = false
+    Keyboard.clear()
+end
+
+function lv1lua.core.pumpTextInput()
+    if not open then return end
+    Keyboard.show()
+    local state = Keyboard.getState()
+    if state == FINISHED then
+        local text = Keyboard.getInput()
+        close()
+        if text ~= "" and love.textinput then love.textinput(text) end
+    elseif state == CLEANED then
+        Keyboard.getInput()
+        close()
+    end
+end
+
+function love.keyboard.hasTextInput() return open end
+
+function love.keyboard.showTextInput(tbl)
+    if not tbl then return end
+    open = true
+    if type(tbl) == "table" and type(tbl.text) == "string" then Keyboard.setText(tbl.text) end
+end
+
+function love.keyboard.setTextInput(tbl)
+    if tbl == false then
+        if open then close() end
+        return
+    end
+    love.keyboard.showTextInput(tbl)
+end

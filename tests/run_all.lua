@@ -19,6 +19,7 @@ local test_files = {
     "tests/draw_fast_test.lua",
     "tests/batch_compact_test.lua",
     "tests/particles_test.lua",
+    "tests/keyboard_3ds_test.lua",
     "tests/native_probe_test.lua",
     "tests/lppvita_draw_fast_test.lua",
     "tests/threeds_draw_fast_test.lua",

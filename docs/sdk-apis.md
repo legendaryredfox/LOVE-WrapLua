@@ -34,7 +34,7 @@ Native APIs each backend calls, grounded in the SDK sources. Read before touchin
 | Graphics | `fillRect / fillEmptyRect / drawLine (x1, x2, y1, y2, color)`, `drawCircle(x, y, r_int, color)`, `drawScaleImage(x, y, tex, sx, sy, color)`, `drawImageExtended(cx, cy, st_x, st_y, w, h, rad, sx, sy, tex, color)`, `setViewport` (scissor) |
 | Font | `Font.load / setPixelSizes / measureText / print(font, x, y, text, color, screen)` |
 | Sound | `Sound.openWav / openOgg / openAiff(path, streamed)`, `play(h, loop) / pause / resume / isPlaying / getTotalTime` |
-| Input | `Controls.read / check(pad, KEY_*) / readCirclePad` |
+| Input | `Controls.read / check(pad, KEY_*) / readCirclePad`, `Keyboard.show / getState / getInput / setText / clear` (`show` draws on the bottom screen and runs once per frame; states `FINISHED` 1, `PRESSED` 2, `CLEANED` 3, `NOT_PRESSED` 4) |
 | Files | `System.openFile(path, FREAD / FWRITE / FCREATE) / readFile / writeFile / getFileSize / closeFile`, `doesFileExist` (files only), `listDirectory` |
 
 > **lpp-3ds gotchas.** `TOP_SCREEN` is `0`. `Color.new` returns an integer.

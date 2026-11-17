@@ -13,7 +13,8 @@ Not started: 1.3, 2b.3, 3b.2 to 3b.6, 3b.1 particle curves (W45), 4.*, 5.*.
 
 Open at Gate 1: Balatro `SELECTING_HAND` runs at about 1.1 fps (draw 372 ms, update 105 ms per step) against
 15.6 fps for the native engine. Update alone caps the game near 9.5 steps/s. The 105 ms update cost is
-unmeasured (interpreter, soft float or wrapper calls); that profile is the next step before the decision.
+measured: a sampling profile puts it in the game's own Moveable, Node, Controller and Card updates, with no wrapper
+function among the top entries (`PERFORMANCE_FINDINGS.md` section 7). The Gate 1 decision is the maintainer's.
 
 ## Phase 0 — baseline and guard (1 day)
 | # | Task | Items | Done when |

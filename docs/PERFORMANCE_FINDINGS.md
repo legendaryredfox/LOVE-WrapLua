@@ -245,6 +245,29 @@ scene the native engine reports 15.6 fps for (seed `BENCH`, first hand, 53 cards
   Balatro is no, with a 14x gap that no single hotspot closes. The wrapper's target stays games that do far
   less per frame.
 
+### Where `love.update` spends its time in SELECTING_HAND, 2026-11-17
+
+A sampling profile of `love.update` (a debug hook every 10000 VM instructions, 30 updates in `SELECTING_HAND`, 53
+cards; PPSSPP through RetroArch; the hook makes each update about 60% slower, 171 ms against 105 ms). Reproduce
+with `AUTOPLAY=1 PROFILE=update tools/build.sh` in the Balatro harness. 390 samples, so 3.9M VM instructions for
+30 updates: about 130k instructions per update, which at 105 ms is about 1.2M instructions per second, well under
+the 3M the cost model assumes.
+
+| Function (game source) | Self | Inclusive |
+|---|---|---|
+| `Moveable:move` (`engine/moveable.lua:278`) | 17 to 21% | 56 to 59% |
+| `Node:update` (`engine/node.lua:143`) | 15% | 21 to 23% |
+| `Controller:update` (`engine/controller.lua:186` / `:954`) | 2% | 23% |
+| `Card:update` (`card.lua:4267`) | 5% | 14 to 15% |
+| `Moveable:move_xy` / `move_r` / `move_wh` / `move_scale` and the other `moveable.lua` helpers | 3 to 9% each | 4 to 10% each |
+
+- No function of the wrapper appears in the top 22 self entries: the only wrapper frames are the loop itself
+  (`timestep.lua`, `whileloop.lua`). `love.update` is the game's own logic, run by OneLua's interpreter.
+- Moveable physics (position, scale, rotation and size springs, per node, per update) is more than half of it. 53
+  cards plus the UI tree are about 500 moveables, so it is about 250 instructions per moveable per update.
+- Nothing in this profile gives the wrapper a lever. A cheaper `love.update` has to come from the game side
+  (updating fewer moveables per step, skipping settled ones) or from a faster VM, which is Gate 1.
+
 ## 8. Reproducing
 
 ```

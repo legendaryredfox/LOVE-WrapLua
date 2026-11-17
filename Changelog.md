@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `docs/update-profile`
+
+- `docs/PERFORMANCE_FINDINGS.md`: sampling profile of Balatro's `love.update` in `SELECTING_HAND`. The cost is the
+  game's own Moveable, Node, Controller and Card updates; no wrapper function is among the top entries.
+
 ### 2026-11-17, branch `feat/bench-wall-time`
 
 - `tests/bench/frame_cost.lua` prints the wall time of one synthetic frame (mean of 200) and the Lua runtime

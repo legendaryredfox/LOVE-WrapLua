@@ -10,6 +10,7 @@ end
 if loadfile("framelog.flag") then PSP_FRAMELOG = 120 end   -- framelog.flag: log every 120 presents
 dofile("love_psp.lua")
 dofile("shared.lua")
+dofile("extras.lua")
 -- ffi/jit/table.new shim for games written for LuaJIT (psp_ffi.lua is shipped with the backend)
 local ffi_shim = loadfile("psp_ffi.lua"); if ffi_shim then package.preload.ffi = ffi_shim; ffi_shim() end
 -- trace_require.flag next to the EBOOT: log every require (enter/leave) to find where a boot stops

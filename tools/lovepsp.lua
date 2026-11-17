@@ -104,7 +104,7 @@ end
 -- Shared wrapper modules the backend loads at boot (PSPNative/shared.lua). Hash libraries in vendor/ are read
 -- only when a game calls love.data.hash.
 local SHARED = {
-    "core/loader.lua", "core/util.lua", "math.lua", "math", "data.lua", "data", "vendor",
+    "core/loader.lua", "core/util.lua", "core/drawobject.lua", "core/spritebatch.lua", "core/particles.lua", "math.lua", "math", "data.lua", "data", "vendor",
 }
 
 -- Everything except the EBOOT: the game, the backend, the shared modules, the config and the manifest.
@@ -115,7 +115,7 @@ local function stage(game, out, identity, title)
         .. " " .. q(out .. "/LOVE-WrapLua/core"))
     must("cp -R " .. q(game .. "/.") .. " " .. q(out .. "/game/"), "copying the game")
     if not exists(out .. "/game/default.ttf") then must("cp " .. q(FONT) .. " " .. q(out .. "/game/default.ttf")) end
-    for _, f in ipairs({ "boot.lua", "love_psp.lua", "psp_ffi.lua", "shared.lua" }) do
+    for _, f in ipairs({ "boot.lua", "love_psp.lua", "psp_ffi.lua", "shared.lua", "extras.lua" }) do
         must("cp " .. q("LOVE-WrapLua/PSPNative/" .. f) .. " " .. q(out .. "/" .. f))
     end
     for _, f in ipairs(SHARED) do

@@ -421,6 +421,8 @@ function g.draw(obj, a, b, c, d, e, f, h, i)
         end
     elseif mt == Text then
         obj:_draw(a, b, c, d, e, f, h)
+    elseif obj ~= nil and lv1lua and lv1lua.util.isDrawObject(obj) then   -- SpriteBatch, ParticleSystem (shared)
+        obj:_draw(a, b, c, d, e, f, h)
     end
     -- Canvas / Video / Shader stubs draw nothing
 end
@@ -1006,9 +1008,8 @@ do
     end
     g.stencil, g.setStencilTest, g.getStencilTest = noop, noop, function() return "always", 0 end   -- no stencil buffer: everything draws
     g.flushBatch = noop
-    g.newParticleSystem = function() return setmetatable({ _stub = true }, { __index = function() return noop end }) end
     love._backend.features.stencil = false
-    love._backend.features.particles = "stub"
+    love._backend.features.particles = "basic"
     love.filesystem.getRealDirectory = function() return GAME end
     love.filesystem.newFileData = function(data, name)
         if name == nil then  -- newFileData(filepath)

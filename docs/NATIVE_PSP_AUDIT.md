@@ -52,8 +52,8 @@ documents itself as `tier 2`.
 | Text | TTF through stb_truetype, atlas pages | SDK font calls |
 | `love.math` | `random`, `setRandomSeed` only | noise, triangulate, bezier, Transform, RandomGenerator, colour helpers |
 | `love.data` | compress, decompress | hash, encode, pack, compress |
-| SpriteBatch, Transform | absent | present |
-| ParticleSystem, Text | present in `love_psp.lua`, no curves | basic emitter with curves; Text with replay |
+| SpriteBatch, Transform | **done 2026-11-17** (shared Lua over the C draw; `love.math` Transform from the shared module) | present |
+| ParticleSystem, Text | **ParticleSystem done 2026-11-17** (shared, with curves; it was an inert stub); Text present | basic emitter with curves; Text with replay |
 | Stencil | partial | stub |
 | Blend modes | alpha, add, multiply (subtract and screen fall back to alpha) | add and subtract on PSP |
 | Threads | cooperative coroutines | cooperative coroutines |

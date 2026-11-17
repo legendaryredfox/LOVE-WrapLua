@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/native-psp-api-gaps`
+
+- Native PSP backend, API gaps closed (104 `love.*` functions were missing against the LÖVE 11 definitions; about 40
+  fewer now, all of `love.physics` and Mesh/Shader/Video still open): `love.graphics.points` (was a no-op), `arc`,
+  `newSpriteBatch`, a real `newParticleSystem` (it was an inert stub), `intersectScissor`, `getStackDepth` (new C
+  `stack_depth`), `getStats`, the line style / join / point size / wireframe / colour mask / depth mode getters,
+  `love.filesystem.newFile` with the whole File object, the path getters, `love.event.wait`, `love.math.getRandomState`
+  / `setRandomState` (seed based), and harmless answers for the window, mouse, touch, audio-effect and system probes.
+  The code is `PSPNative/extras.lua`; `tests/games/extras` draws it on the EBOOT.
+- Shared: `core/objects.lua` split into `core/drawobject.lua` and `core/spritebatch.lua`, so the native backend can use
+  the SpriteBatch without the stub Canvas and Shader. A SpriteBatch now applies the colour `setColor` had when each
+  sprite was added (it stored the colour and never used it), multiplied with the current colour.
+
 ### 2026-11-17, branch `feat/native-psp-audio`
 
 - Native PSP backend: real audio. `native/src/audio.c` mixes up to 24 voices on a thread feeding one sceAudio

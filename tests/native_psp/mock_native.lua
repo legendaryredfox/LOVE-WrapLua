@@ -28,6 +28,7 @@ for _, n in ipairs({ "push", "pop", "origin", "reset_stack", "translate", "scale
     local real = M[n]
     M[n] = function(...) rec(n, ...); return real(...) end
 end
+function M.stack_depth() return #stk end
 function M.get_matrix() return unpack(m) end
 function M.set_matrix(a, b, c, d, e, f) m = { a, b, c, d, e, f } end
 function M.mul_matrix(a, b, c, d, e, f)

@@ -295,6 +295,7 @@ static int l_get_color(lua_State *L) {
 }
 static int l_push(lua_State *L) { (void)L; if (sp < 64) memcpy(stk[sp++], M, sizeof M); return 0; }
 static int l_pop(lua_State *L) { (void)L; if (sp > 0) memcpy(M, stk[--sp], sizeof M); return 0; }
+static int l_stack_depth(lua_State *L) { lua_pushinteger(L, sp); return 1; }
 static int l_origin(lua_State *L) { (void)L; M[0] = 1; M[1] = 0; M[2] = 0; M[3] = 1; M[4] = 0; M[5] = 0; return 0; }
 static int l_reset_stack(lua_State *L) { sp = 0; return l_origin(L); }
 static int l_translate(lua_State *L) {
@@ -806,7 +807,7 @@ static const luaL_Reg funcs[] = {
     {"image_load", l_image_load}, {"tex_filter", l_tex_filter}, {"draw", l_draw}, {"fill_poly", l_fill_poly},
     {"fill_rect", l_fill_rect}, {"line", l_line}, {"b64encode", l_b64encode}, {"b64decode", l_b64decode}, {"set_color", l_set_color}, {"get_color", l_get_color}, {"push", l_push}, {"pop", l_pop},
     {"prep_draw", l_prep_draw}, {"origin", l_origin}, {"reset_stack", l_reset_stack}, {"translate", l_translate}, {"scale", l_scale}, {"rotate", l_rotate},
-    {"shear", l_shear}, {"get_matrix", l_get_matrix}, {"set_matrix", l_set_matrix}, {"mul_matrix", l_mul_matrix},
+    {"stack_depth", l_stack_depth}, {"shear", l_shear}, {"get_matrix", l_get_matrix}, {"set_matrix", l_set_matrix}, {"mul_matrix", l_mul_matrix},
     {"begin_frame", l_begin}, {"clear", l_clear}, {"end_frame", l_end}, {"scissor", l_scissor}, {"blend", l_blend},
     {"font_load", l_font_load}, {"font_width", l_font_width}, {"font_has", l_font_has}, {"font_draw", l_font_draw},
     {"pad", l_pad}, {"time", l_time}, {"sleep", l_sleep}, {"mem", l_mem}, {"tex_mem", l_texmem}, {"canvas_new", l_canvas_new}, {"canvas_set", l_canvas_set}, {"suppress", l_suppress}, {"canvas_pixel", l_canvas_pixel}, {"palette", l_palette}, {"cpu", l_cpu}, {"exit", l_exit},

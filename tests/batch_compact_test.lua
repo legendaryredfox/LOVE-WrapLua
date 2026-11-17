@@ -166,6 +166,58 @@ T.describe("SpriteBatch", function()
     end)
 end)
 
+T.describe("SpriteBatch colour", function()
+    local img = lg.newImage("sheet.png")
+
+    -- Replays the batch with love.graphics.draw swapped for a recorder that keeps the colour of each call.
+    local function colours(sb)
+        local seen, real = {}, lg.draw
+        lg.draw = function() local r, g, b, a = lg.getColor(); seen[#seen + 1] = { r, g, b, a } end
+        local ok, err = pcall(sb._draw, sb, 0, 0, 0, 1, 1, 0, 0)
+        lg.draw = real
+        if not ok then error(err, 0) end
+        return seen
+    end
+
+    T.it("a sprite takes the colour the batch had when it was added, multiplied with the current colour", function()
+        lg.setColor(1, 0.5, 1, 1)
+        local sb = lg.newSpriteBatch(img, 10)
+        sb:add(1, 1)
+        sb:setColor(0.5, 1, 1, 0.5)
+        sb:add(2, 2)
+        sb:setColor()
+        sb:add(3, 3)
+        local c = colours(sb)
+        T.eq(#c, 3)
+        T.near(c[1][1], 1, 1e-9); T.near(c[1][2], 0.5, 1e-9)
+        T.near(c[2][1], 0.5, 1e-9); T.near(c[2][2], 0.5, 1e-9); T.near(c[2][4], 0.5, 1e-9)
+        T.near(c[3][1], 1, 1e-9); T.near(c[3][4], 1, 1e-9)
+        local r, g, b, a = lg.getColor()
+        T.eq(r, 1); T.eq(g, 0.5)
+        lg.setColor(1, 1, 1, 1)
+    end)
+
+    T.it("a batch with no colour leaves the current colour alone", function()
+        lg.setColor(0.2, 0.3, 0.4, 1)
+        local sb = lg.newSpriteBatch(img, 10)
+        sb:add(1, 1)
+        local c = colours(sb)
+        T.near(c[1][1], 0.2, 1e-9)
+        lg.setColor(1, 1, 1, 1)
+    end)
+
+    T.it("clear forgets the colours", function()
+        local sb = lg.newSpriteBatch(img, 10)
+        sb:setColor(0, 0, 0, 1)
+        sb:add(1, 1)
+        sb:setColor()
+        sb:clear()
+        lg.setColor(1, 1, 1, 1)
+        sb:add(5, 5)
+        T.eq(colours(sb)[1][1], 1)
+    end)
+end)
+
 T.describe("ParticleSystem", function()
     local img = lg.newImage("sheet.png")
 

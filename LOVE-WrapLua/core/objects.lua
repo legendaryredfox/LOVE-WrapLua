@@ -12,21 +12,7 @@ local unpack = unpack or table.unpack
 
 lv1lua.core = lv1lua.core or {}
 
--- draw(object, x, y, r, sx, sy, ox, oy) places a whole batch, text or particle
--- system the way it places one sprite. The object replays its own draws inside
--- that transform, pushed onto the stack every backend folds into its draws.
-function lv1lua.core.withDrawTransform(x, y, r, sx, sy, ox, oy, fn)
-    local lg = love.graphics
-    sx = sx or 1; sy = sy or sx
-    lg.push()
-    lg.translate(x or 0, y or 0)
-    if r and r ~= 0 then lg.rotate(r) end
-    if sx ~= 1 or sy ~= 1 then lg.scale(sx, sy) end
-    if (ox and ox ~= 0) or (oy and oy ~= 0) then lg.translate(-(ox or 0), -(oy or 0)) end
-    local ok, err = pcall(fn)
-    lg.pop()
-    if not ok then error(err, 0) end
-end
+lv1lua.loadOnce("LOVE-WrapLua/core/drawobject.lua")
 local withDrawTransform = lv1lua.core.withDrawTransform
 
 -- ── Canvas ───────────────────────────────────────────────────────
@@ -92,69 +78,7 @@ function love.graphics.getShader()
     return lv1lua.current.shader
 end
 
--- ── SpriteBatch ──────────────────────────────────────────────────
--- There is no GPU batching to hook into, so a batch is a list of queued draws
--- replayed on draw. It still buys the game the LÖVE API and one shared image.
--- Arguments a backend cannot honour (rotation on PSP, everything but position
--- on PS3) are dropped by that backend's own draw, not here.
---
--- Sprites live in parallel arrays (quad or false, x, y, r, sx, sy, ox, oy), so adding a sprite allocates no
--- table, a field the game left out costs no slot at all, and a replay is one numeric loop over plain
--- indexes. The replay function is built once per batch; clear only resets the count.
-function love.graphics.newSpriteBatch(image, maxsprites, usage)
-    local count = 0
-    local qs, xs, ys, rs, sxs, sys, oxs, oys = {}, {}, {}, {}, {}, {}, {}, {}
-    local sb = {
-        _image      = image,
-        _maxsprites = maxsprites or 1000,
-        _color      = nil,
-    }
-    -- Every slot is written, nil included, so a slot reused after clear holds nothing of the old sprite.
-    local function put(i, quad_or_x, x, y, r, sx, sy, ox, oy)
-        if type(quad_or_x) == "table" and quad_or_x.getViewport then
-            qs[i], xs[i], ys[i], rs[i], sxs[i], sys[i], oxs[i], oys[i] = quad_or_x, x, y, r, sx, sy, ox, oy
-        else
-            qs[i], xs[i], ys[i], rs[i], sxs[i], sys[i], oxs[i], oys[i] = false, quad_or_x, x, y, r, sx, sy, ox
-        end
-    end
-    function sb:add(quad_or_x, x, y, r, sx, sy, ox, oy, kx, ky)
-        local i = count + 1
-        count = i
-        if type(quad_or_x) == "table" and quad_or_x.getViewport then
-            qs[i], xs[i], ys[i], rs[i], sxs[i], sys[i], oxs[i], oys[i] = quad_or_x, x, y, r, sx, sy, ox, oy
-        else
-            qs[i], xs[i], ys[i], rs[i], sxs[i], sys[i], oxs[i], oys[i] = false, quad_or_x, x, y, r, sx, sy, ox
-        end
-        return i
-    end
-    function sb:set(id, quad_or_x, x, y, r, sx, sy, ox, oy, kx, ky)
-        if type(id) ~= "number" or id < 1 or id > count then return end
-        put(id, quad_or_x, x, y, r, sx, sy, ox, oy)
-    end
-    function sb:clear()    count = 0 end
-    function sb:flush()    end
-    function sb:getImage() return image end
-    function sb:getCount() return count end
-    function sb:setColor(r,g,b,a) self._color={r,g,b,a} end
-    function sb:getColor() if self._color then return unpack(self._color, 1, 4) end end
-    function sb:attachAttribute() end
-    local function replay()
-        local draw = love.graphics.draw
-        local qs, xs, ys, rs, sxs, sys, oxs, oys = qs, xs, ys, rs, sxs, sys, oxs, oys
-        for i = 1, count do
-            local quad = qs[i]
-            if quad then
-                draw(image, quad, xs[i] or 0, ys[i] or 0, rs[i], sxs[i], sys[i], oxs[i], oys[i])
-            else
-                draw(image, xs[i] or 0, ys[i] or 0, rs[i], sxs[i], sys[i], oxs[i], oys[i])
-            end
-        end
-    end
-    function sb:_draw(x, y, r, sx, sy, ox, oy)
-        withDrawTransform(x, y, r, sx, sy, ox, oy, replay)
-    end
-    return lv1lua.util.registerDrawObject(sb)
-end
+lv1lua.loadOnce("LOVE-WrapLua/core/spritebatch.lua")
 
 -- ── Text / TextBatch ─────────────────────────────────────────────
 -- Holds a list of strings and replays them through print/printf on draw, with

@@ -96,5 +96,52 @@ T.describe("updatecontrols reuses its tables", function()
     end)
 end)
 
+T.describe("Vita front touch", function()
+    local function vitaLoop()
+        loop_for("OneLua", "LOVE-WrapLua/OneLua/whileloop.lua", function()
+            lv1lua.load("LOVE-WrapLua/OneLua/graphics.lua")
+            lv1lua.load("LOVE-WrapLua/OneLua/touch.lua")
+            lv1lua.load("LOVE-WrapLua/OneLua/mouse.lua")
+        end)
+        buttons.held = {}
+    end
+
+    T.it("emits press, move and release edges per finger", function()
+        vitaLoop()
+        local log = {}
+        for _, n in ipairs({ "touchpressed", "touchmoved", "touchreleased", "mousepressed", "mousemoved", "mousereleased" }) do
+            love[n] = function(...) log[#log + 1] = { n, ... } end
+        end
+        touch.front = { count = 1, { x = 10, y = 20 } }
+        lv1lua.updatecontrols()
+        T.eq(log[1][1], "touchpressed"); T.eq(log[1][2], 1); T.eq(log[1][3], 10); T.eq(log[1][4], 20)
+        T.eq(log[2][1], "mousepressed")
+        log = {}
+        lv1lua.updatecontrols()
+        T.eq(#log, 0, "a finger that did not move is silent")
+        touch.front = { count = 1, { x = 13, y = 24 } }
+        lv1lua.updatecontrols()
+        T.eq(log[1][1], "touchmoved"); T.eq(log[1][5], 3); T.eq(log[1][6], 4)
+        log = {}
+        touch.front = { count = 0 }
+        lv1lua.updatecontrols()
+        T.eq(log[1][1], "touchreleased"); T.eq(log[1][3], 13); T.eq(log[1][4], 24)
+        T.eq(log[2][1], "mousereleased")
+    end)
+
+    T.it("a held finger costs no allocation per frame", function()
+        if jit then return end
+        vitaLoop()
+        touch.front = { count = 2, { x = 10, y = 20 }, { x = 30, y = 40 } }
+        for _ = 1, 50 do lv1lua.updatecontrols() end
+        collectgarbage(); collectgarbage("stop")
+        local before = collectgarbage("count")
+        for _ = 1, 50 do lv1lua.updatecontrols() end
+        local grew = (collectgarbage("count") - before) * 1024
+        collectgarbage("restart")
+        T.ok(grew < 50 * 100, "allocated " .. grew .. " bytes in 50 frames")
+    end)
+end)
+
 io.write("\n=== main loop ===\n")
 return T.summary()

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `perf/event-keyboard`
+
+Input audit (event, keyboard, the four `updatecontrols`):
+
+- Only the Vita front-touch poll allocated per frame (a table for the frame plus one per finger, about 384
+  bytes with two fingers down). It now swaps two id-keyed tables and reuses the finger point tables: 0 bytes
+  per frame with a held finger. The press, move and release edges are covered by `mainloop_test`.
+- `event` and `keyboard` allocate nothing per frame; the key tracker allocates only when a key goes stale.
+
 ### 2026-11-17, branch `perf/ps3-draw`
 
 PS3 draw path:

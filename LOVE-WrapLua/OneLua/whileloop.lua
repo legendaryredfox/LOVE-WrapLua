@@ -76,7 +76,11 @@ end
 
 -- Touches seen last frame, by id, so press / move / release are edges. The
 -- first finger is also the mouse (button 1, istouch true), as on a phone.
-local lastTouches = {}
+-- Two id-keyed tables swap each frame; a table's stale ids are dropped when it
+-- is next filled, and their point tables are reused, so a held finger
+-- allocates nothing.
+local lastTouches, nowTouches = {}, {}
+local spare = {}
 
 local function emit(name, ...)
     if love[name] then love[name](...) end
@@ -87,14 +91,29 @@ function lv1lua.updateFrontTouch()
     love.touch.__getFrontTouches(touch)
     love.mouse.__updateMouse()
 
-    local now = {}
+    local now, last = nowTouches, lastTouches
+    local touches = love.touch._touches
+    for id, p in pairs(now) do
+        if not touches[id] then
+            now[id] = nil
+            spare[#spare + 1] = p
+        end
+    end
     for id = 1, love.touch._count do
-        local t = love.touch._touches[id]
-        if t then now[id] = { x = t.x, y = t.y } end
+        local t = touches[id]
+        if t then
+            local p = now[id]
+            if not p then
+                p = spare[#spare]
+                if p then spare[#spare] = nil else p = {} end
+                now[id] = p
+            end
+            p.x, p.y = t.x, t.y
+        end
     end
 
     for id, p in pairs(now) do
-        local was = lastTouches[id]
+        local was = last[id]
         if not was then
             emit("touchpressed", id, p.x, p.y, 0, 0, 1)
             if id == 1 then emit("mousepressed", p.x, p.y, 1, true, 1) end
@@ -104,11 +123,11 @@ function lv1lua.updateFrontTouch()
             if id == 1 then emit("mousemoved", p.x, p.y, dx, dy, true) end
         end
     end
-    for id, p in pairs(lastTouches) do
+    for id, p in pairs(last) do
         if not now[id] then
             emit("touchreleased", id, p.x, p.y, 0, 0, 1)
             if id == 1 then emit("mousereleased", p.x, p.y, 1, true, 1) end
         end
     end
-    lastTouches = now
+    lastTouches, nowTouches = now, last
 end

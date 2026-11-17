@@ -35,8 +35,8 @@ function love.graphics.translate(offsetX, offsetY)
     if top then
         -- Compose in local (already-scaled) space, so repeated translates
         -- inside one push accumulate.
-        top._offsetX = top._offsetX + top._scaleX * offsetX
-        top._offsetY = top._offsetY + top._scaleY * offsetY
+        top._offsetX = top._offsetX + top._scaleX * offsetX + top._shearB * offsetY
+        top._offsetY = top._offsetY + top._shearC * offsetX + top._scaleY * offsetY
         stack:invalidate()
     end
 end
@@ -47,6 +47,8 @@ function love.graphics.scale(sx, sy)
     if top then
         top._scaleX = top._scaleX * sx
         top._scaleY = top._scaleY * sy
+        top._shearB = top._shearB * sy
+        top._shearC = top._shearC * sx
         stack:invalidate()
     end
 end
@@ -59,8 +61,17 @@ function love.graphics.rotate(angle)
     end
 end
 
--- No SDK here can shear an image; documented as unsupported in Implemented.md.
+-- Shapes and lines shear exactly. No SDK here can shear an image or a string, so those only move to
+-- the sheared position of their origin.
 function love.graphics.shear(kx, ky)
+    local top = stack:top()
+    if top then
+        kx, ky = kx or 0, ky or 0
+        local sx, sy, b, c = top._scaleX, top._scaleY, top._shearB, top._shearC
+        top._scaleX, top._shearB = sx + b * ky, sx * kx + b
+        top._shearC, top._scaleY = c + sy * ky, c * kx + sy
+        stack:invalidate()
+    end
 end
 
 function love.graphics.origin()
@@ -68,6 +79,7 @@ function love.graphics.origin()
     if top then
         top._offsetX, top._offsetY = 0, 0
         top._scaleX,  top._scaleY  = 1, 1
+        top._shearB,  top._shearC  = 0, 0
         top._rotation = 0
         stack:invalidate()
     end
@@ -82,8 +94,7 @@ function love.graphics.reset()
     applyScissor()
 end
 
--- A love.math Transform is decomposed into translate, rotate and scale, the
--- three things the stack can hold; shear has nowhere to go and is dropped.
+-- A love.math Transform is decomposed into translate, rotate, scale and shear along x.
 function love.graphics.applyTransform(transform)
     if not (transform and transform._m) then return end
     local m = transform._m
@@ -93,6 +104,8 @@ function love.graphics.applyTransform(transform)
     love.graphics.translate(m[7], m[8])
     if angle ~= 0 then love.graphics.rotate(angle) end
     love.graphics.scale(sx, sy)
+    local kx = (sx ~= 0) and (m[1] * m[4] + m[2] * m[5]) / (sx * sx) or 0
+    if kx ~= 0 then love.graphics.shear(kx, 0) end
 end
 
 function love.graphics.replaceTransform(transform)
@@ -107,8 +120,11 @@ end
 function love.graphics.inverseTransformPoint(x, y)
     stack:updateTransform()
     local t = stack.transform
-    if t._scaleX == 0 or t._scaleY == 0 then return x, y end
-    return (x - t._offsetX) / t._scaleX, (y - t._offsetY) / t._scaleY
+    local a, b, c, d = t._scaleX, t._shearB, t._shearC, t._scaleY
+    local det = a * d - b * c
+    if det == 0 then return x, y end
+    x, y = x - t._offsetX, y - t._offsetY
+    return (d * x - b * y) / det, (a * y - c * x) / det
 end
 
 function love.graphics.setScissor(x, y, w, h)

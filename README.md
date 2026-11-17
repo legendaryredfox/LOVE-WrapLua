@@ -144,7 +144,7 @@ that backend, so calling it errors.
 | love.graphics (images, quads, draw) | full | full | full | full | full | OneLua (Vita and PSP) blits a scaled, mirrored copy per sheet, and a rotated quad turns that whole copy; the others draw rotated, scaled, tinted quads natively |
 | love.graphics (primitives) | full | full | full | full | full | rectangle/circle/ellipse/arc/line/points/polygon fill; they follow the transform stack on every backend |
 | love.graphics (fonts, print, printf) | full | full | full | full | partial | real text metrics per backend; text follows the transform stack; 3DS text always lands on top of the frame |
-| love.graphics (transform stack) | partial | partial | partial | partial | partial | push/pop/translate/scale/rotate/applyTransform; rotation turns what is drawn but not positions, and `shear` is a stub |
+| love.graphics (transform stack) | partial | partial | partial | partial | partial | push/pop/translate/scale/rotate/applyTransform; rotation turns what is drawn but not positions; `shear` slants shapes and lines, images and text only move |
 | love.graphics (scissor) | tracked | full | partial | tracked | full | lpp-vita rejects out-of-scissor draws in software; 3DS and PSP clip on the GPU (PSP via `screen.clip`); elsewhere getScissor answers but nothing is clipped |
 | love.graphics (SpriteBatch, Text) | full | full | full | full | full | shared implementation (`core/objects.lua`); `draw(batch, x, y, r, sx, sy, ox, oy)` places the whole batch |
 | love.graphics (ParticleSystem) | partial | partial | partial | partial | partial | basic emitter (`core/particles.lua`): no size, colour or rotation curves |
@@ -390,9 +390,9 @@ Per-function detail is in [`Implemented.md`](Implemented.md).
   is an immediate push and `Channel:demand` is a non-blocking pop.
 - **Transforms** are one shared software stack on every backend
   (translate/scale/rotate/push/pop), folded into images, shapes and text alike.
-  The stack keeps an offset, a scale and an angle per level, so `rotate` turns
-  what is drawn but does not rotate the positions that follow it, and `shear` is
-  a stub. Scissor is enforced in software on lpp-vita and on the GPU on the 3DS,
+  The stack keeps an offset, a scale, a shear and an angle per level, so `rotate`
+  turns what is drawn but does not rotate the positions that follow it, and
+  `shear` slants shapes and lines but only moves images and text. Scissor is enforced in software on lpp-vita and on the GPU on the 3DS,
   and only tracked elsewhere.
 - **love.audio**: OneLua supports about 2 simultaneous channels; PS3 supports
   stream sources only, one at a time.

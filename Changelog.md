@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### 2026-11-17, branch `feat/shear`
+
+- `love.graphics.shear` works. Each stack level keeps a 2x2 matrix, `translate`, `scale` and `shear` compose
+  in the level's local space as in LÖVE, and `transformPoint`, `inverseTransformPoint` and `applyTransform`
+  (a Transform's shear along x) follow it. Lines, points, polygons, circles, ellipses, arcs and rectangles
+  slant exactly; images and text cannot, and only move to the sheared position of their origin. The polygon
+  cache key carries the shear. Synthetic frame without shear: +4.9% VM instructions on lua5.1 (one more
+  comparison per mapped point, one `mapShear` read per polygon fill).
+
 ### 2026-11-17, branch `feat/font-fallbacks`
 
 - `Font:setFallbacks` checks that every argument is a Font and keeps the list. No glyph is drawn from a

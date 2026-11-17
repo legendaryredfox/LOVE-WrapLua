@@ -14,4 +14,5 @@ lv1lua.gfx.prims = {
 
     mapPoint = function(x, y) return stack:mapPoint(x, y) end,
     mapScale = function(w, h) return stack:mapScale(w, h) end,
+    mapShear = function() return stack:mapShear() end,
 }

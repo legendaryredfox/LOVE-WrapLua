@@ -170,8 +170,10 @@ equal `translate(15,0)`. Levels flatten **outermost first**: a level's offset
 is scaled by every level outside it, so `scale(2) push() translate(-10)` maps x
 to `2(x - 10)`.
 
-The flattened form has no off-diagonal terms, so rotation turns what is drawn
-but does not rotate later positions, and `shear` is a stub.
+Each level also holds shear terms (`_shearB`, `_shearC`), so the flattened form maps a point to
+`x*sx + y*b + ox, y*sy + x*c + oy` (`stack:mapPoint`, `stack:mapShear`). Shapes, lines and points shear
+exactly; images and text only move to the sheared position of their origin. Rotation turns what is drawn
+but does not rotate later positions.
 
 Every backend folds the same stack into images, shapes and text: a point maps
 as `p×S + O` (`stack:mapPoint`), a size as `w×S` (`stack:mapScale`). Shapes
@@ -247,7 +249,8 @@ assertions run on PUC Lua only: LuaJIT counts trace memory in `collectgarbage("c
 |---|---|
 | Canvas | Stub: `renderTo(fn)` draws to the screen, drawing the Canvas does nothing (`canvas=false`) |
 | Shader / Mesh | Stubs: objects exist, nothing renders |
-| Rotation in the stack | Turns what is drawn, not later positions; `shear` is a stub |
+| Rotation in the stack | Turns what is drawn, not later positions |
+| Shear | Exact for shapes, lines and points; images and text only move |
 | OneLua draws | Scaled / mirrored copy per sheet; a rotated quad turns the whole copy; quads tint alpha only |
 | Scissor | Software reject on lpp-vita, GPU on the 3DS, tracked elsewhere |
 | PS3 | Draws through tiny3D; unverifiable in RPCS3; no timer (frame clock), one stream voice |

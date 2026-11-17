@@ -3,7 +3,9 @@
 -- None of the console SDKs exposes a matrix stack, so push/pop/translate/scale/
 -- rotate/scissor are tracked here and flattened into plain offsets, scales and a
 -- rotation that the native draw calls can consume. Rotation turns what is drawn
--- but does not rotate positions: the flattened form has no off-diagonal terms.
+-- but does not rotate positions. Shear is kept: every level holds a 2x2 matrix (`_scaleX`, `_scaleY` on
+-- the diagonal, `_shearB` above it and `_shearC` below it), and the flattened result maps a point to
+-- `x*sx + y*b + ox, y*sy + x*c + oy`.
 --
 -- Each stack level composes into its own transform (two translates inside one
 -- push must add up), and the flattened result is cached until something marks
@@ -18,6 +20,7 @@ function Level.new()
     return setmetatable({
         _offsetX = 0, _offsetY = 0,
         _scaleX  = 1, _scaleY  = 1,
+        _shearB  = 0, _shearC  = 0,
         _rotation = 0,
         _usingScissor = false,
         _scissorX = 0, _scissorY = 0,
@@ -35,13 +38,24 @@ Stack.__index = Stack
 function Stack:updateTransform()
     if not self._dirty then return end
     local x, y, sx, sy, rot = 0, 0, 1, 1, 0
+    local b, c = 0, 0
     local usingScissor, scX, scY, scW, scH = false, 0, 0, 0, 0
     for i = 1, #self.stack do
         local t = self.stack[i]
-        x   = x + sx * t._offsetX
-        y   = y + sy * t._offsetY
-        sx  = sx * t._scaleX
-        sy  = sy * t._scaleY
+        local tb, tc = t._shearB, t._shearC
+        if tb == 0 and tc == 0 and b == 0 and c == 0 then
+            x   = x + sx * t._offsetX
+            y   = y + sy * t._offsetY
+            sx  = sx * t._scaleX
+            sy  = sy * t._scaleY
+        else
+            local ox, oy = t._offsetX, t._offsetY
+            x = x + sx * ox + b * oy
+            y = y + c * ox + sy * oy
+            local l11, l22 = t._scaleX, t._scaleY
+            sx, b, c, sy = sx * l11 + b * tc, sx * tb + b * l22,
+                           c * l11 + sy * tc, c * tb + sy * l22
+        end
         rot = rot + t._rotation
         if t._usingScissor then
             usingScissor = true
@@ -51,6 +65,7 @@ function Stack:updateTransform()
     local tr = self.transform
     tr._offsetX, tr._offsetY = x, y
     tr._scaleX,  tr._scaleY  = sx, sy
+    tr._shearB,  tr._shearC  = b, c
     tr._rotation             = rot
     tr._usingScissor         = usingScissor
     tr._scissorX, tr._scissorY, tr._scissorWidth, tr._scissorHeight = scX, scY, scW, scH
@@ -68,6 +83,7 @@ function Stack:push()
     if n > 0 then
         lv = free[n]; free[n] = nil
         lv._offsetX, lv._offsetY, lv._scaleX, lv._scaleY, lv._rotation = 0, 0, 1, 1, 0
+        lv._shearB, lv._shearC = 0, 0
         lv._usingScissor = false
         lv._scissorX, lv._scissorY, lv._scissorWidth, lv._scissorHeight = 0, 0, 0, 0
     else
@@ -101,13 +117,25 @@ function Stack:invalidate() self._dirty = true end
 function Stack:mapPoint(x, y)
     self:updateTransform()
     local t = self.transform
-    return x * t._scaleX + t._offsetX, y * t._scaleY + t._offsetY
+    local b, c = t._shearB, t._shearC
+    if b == 0 and c == 0 then
+        return x * t._scaleX + t._offsetX, y * t._scaleY + t._offsetY
+    end
+    return x * t._scaleX + y * b + t._offsetX, y * t._scaleY + x * c + t._offsetY
 end
 
 function Stack:mapScale(w, h)
     self:updateTransform()
     local t = self.transform
     return w * t._scaleX, h * t._scaleY
+end
+
+-- The off-diagonal terms of the flattened matrix: a vertex at (x, y) lands `y*b` further along x and
+-- `x*c` further along y. Both are 0 unless something called shear.
+function Stack:mapShear()
+    self:updateTransform()
+    local t = self.transform
+    return t._shearB, t._shearC
 end
 
 function lv1lua.core.newTransformStack()

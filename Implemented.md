@@ -61,8 +61,8 @@ defined, so calling it errors.
 | polygon(mode, vertices) | ✓ even-odd scanline fill; the shape's origin snaps to the nearest pixel (cached runs) | ✓ | ✓ | ✓ | ✓ |
 | push / pop / origin / reset | ✓ | ✓ | ✓ | ✓ | ✓ |
 | translate / scale / rotate | ✓ images, shapes and text; `rotate` does not rotate later positions | ✓ | ✓ | ✓ | ✓ |
-| shear | stub | stub | stub | stub | stub |
-| applyTransform / replaceTransform | ✓ translation, rotation and scale (shear dropped) | ✓ | ✓ | ✓ | ✓ |
+| shear | ✓ shapes, lines and points; images and text move to the sheared origin | same | same | same | same |
+| applyTransform / replaceTransform | ✓ translation, rotation, scale and shear along x | ✓ | ✓ | ✓ | ✓ |
 | transformPoint / inverseTransformPoint | ✓ | ✓ | ✓ | ✓ | ✓ |
 | setScissor / getScissor / intersectScissor | tracked | ✓ GPU scissor | ✓ software reject | tracked | ✓ GPU scissor |
 | stencil / setStencilTest / getStencilTest | stub | stub | stub | stub | stub |
@@ -373,8 +373,8 @@ records its usual emulator and the areas it gets wrong in
 - **Shader and Mesh** are stubs: no SDK exposes a programmable pipeline or
   arbitrary vertex submission to Lua.
 - **Rotation** in the transform stack turns what is drawn but not the positions
-  that follow it: the stack keeps an offset, a scale and an angle per level.
-  `shear` is a stub.
+  that follow it: the stack keeps an offset, a 2x2 matrix (scale and shear) and an angle per level.
+  `shear` slants shapes, lines and points; images and text only move.
 - **OneLua** (Vita and PSP) draws a scaled or mirrored image from a copy built
   once per sheet and scale; a rotated quad turns that whole copy, and a quad's
   tint is alpha only.

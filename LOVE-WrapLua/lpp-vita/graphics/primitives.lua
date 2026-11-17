@@ -18,4 +18,5 @@ lv1lua.gfx.prims = {
     -- Primitives ride the same transform stack as images.
     mapPoint = function(x, y) return stack:mapPoint(x, y) end,
     mapScale = function(w, h) return stack:mapScale(w, h) end,
+    mapShear = function() return stack:mapShear() end,
 }

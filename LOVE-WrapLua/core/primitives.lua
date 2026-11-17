@@ -13,6 +13,7 @@
 --   fillCircle(x, y, r, color, segments) optional; falls back to a filled polygon
 --   mapPoint(x, y) -> x, y               optional: point through the transform
 --   mapScale(w, h) -> w, h               optional: size through the transform
+--   mapShear() -> b, c                   optional: the off-diagonal terms of the transform
 --
 -- The hooks take LOVE's argument order, so a backend whose native call wants a
 -- different one (lpp-vita passes both x values before both y values) adapts in
@@ -63,6 +64,13 @@ local function mapScale(w, h)
     return w * k, h * k
 end
 
+-- The off-diagonal terms of the transform; 0, 0 when nothing sheared or the backend has no hook.
+local function mapShear()
+    local m = prims().mapShear
+    if m then return m() end
+    return 0, 0
+end
+
 function love.graphics.line(...)
     local c, p = coords(...), prims()
     for i = 1, #c - 2, 2 do
@@ -102,18 +110,22 @@ local function polygonFill(p, src, ox, oy, fixed)
     ox, oy = ox or 0, oy or 0
     local x0, y0 = mapPoint(ox, oy)
     local sx, sy = mapScale(1, 1)
+    local sb, sc = mapShear()
     local ix, iy = floor(x0 + 0.5), floor(y0 + 0.5)
     local n, sum = #src, 0
     if not fixed then
         for i = 1, n do sum = sum + src[i] * ((i % 13) + 1) end
     end
     local c = polyCache[src]
-    if c and c.n == n and c.sum == sum and c.sx == sx and c.sy == sy then
+    if c and c.n == n and c.sum == sum and c.sx == sx and c.sy == sy and c.sb == sb and c.sc == sc then
         polyStats.hit = polyStats.hit + 1
     else
         local v = {}
-        for i = 1, n - 1, 2 do v[i], v[i+1] = src[i] * sx, src[i+1] * sy end
-        c = { n = n, sum = sum, sx = sx, sy = sy, runs = lv1lua.core.polygonRuns(v) }
+        for i = 1, n - 1, 2 do
+            local px, py = src[i], src[i+1]
+            v[i], v[i+1] = px * sx + py * sb, py * sy + px * sc
+        end
+        c = { n = n, sum = sum, sx = sx, sy = sy, sb = sb, sc = sc, runs = lv1lua.core.polygonRuns(v) }
         if #c.runs > MAX_CACHED_RECTS * 4 then
             polyStats.skipped = polyStats.skipped + 1
             polyCache[src] = nil
@@ -212,6 +224,10 @@ function love.graphics.rectangle(mode, x, y, w, h, rx, ry, segments)
         end
     end
     local p = prims()
+    local sb, sc = mapShear()
+    if sb ~= 0 or sc ~= 0 then
+        return polygon(mode, { 0, 0, w, 0, w, h, 0, h }, nil, x, y)
+    end
     x, y = mapPoint(x, y)
     w, h = mapScale(w, h)
     if mode == "fill" then
@@ -224,7 +240,8 @@ end
 function love.graphics.circle(mode, x, y, radius, segments)
     local p = prims()
     segments = segments or 32
-    if mode == "fill" and p.fillCircle then
+    local sb, sc = mapShear()
+    if mode == "fill" and p.fillCircle and sb == 0 and sc == 0 then
         local cx, cy = mapPoint(x, y)
         local r = mapScale(radius, radius)
         p.fillCircle(cx, cy, r, color(), segments)

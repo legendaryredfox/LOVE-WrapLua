@@ -38,6 +38,9 @@ function love.load()
     local ms = love.audio.newSource("jingle.mp3", "stream")
     check("mp3 stream loads", not ms._stub)
     check("mp3 stream duration about 1.0", math.abs(ms:getDuration() - 1.0) < 0.1)
+    local many, all_ok = {}, true
+    for n = 1, 5 do many[n] = love.audio.newSource("jingle.mp3", "stream"); all_ok = all_ok and not many[n]._stub end
+    check("five mp3 streams open at once (Balatro streams five)", all_ok)
     check("unsupported format is silent, not an error", love.audio.newSource("beep.flac")._stub == true)
 
     steps = {
@@ -54,6 +57,8 @@ function love.load()
         function() m:play(); ms:play(); return wait(0.3) end,
         function() check("mp3 static and stream playing and advancing", m:isPlaying() and m:tell() > 0.05 and ms:isPlaying() and ms:tell() > 0.05); ms:seek(0.6); return wait(0.1) end,
         function() check("mp3 stream seek moved forward", ms:tell() >= 0.55); m:stop(); ms:stop(); check("mp3 stop rewinds", m:tell() == 0 and ms:tell() == 0); return wait(0.05) end,
+        function() for n = 1, 5 do many[n]:play() end; return wait(0.3) end,
+        function() local ok = true; for n = 1, 5 do ok = ok and many[n]:isPlaying() and many[n]:tell() > 0.05 end; check("five mp3 streams play and advance together", ok); for n = 1, 5 do many[n]:stop() end; return wait(0.05) end,
     }
     i = 1
     local nxt = steps[1]()

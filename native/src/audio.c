@@ -1,6 +1,6 @@
 /* Audio for the native PSP backend: a software mixer on its own thread, feeding one sceAudio channel.
  *
- * Sources are MP3 (decoded on the Media Engine through sceMp3), WAV (PCM 8 or 16 bit) or Ogg Vorbis (Tremor, the
+ * Sources are MP3 (decoded on the Media Engine through sceAudiocodec), WAV (PCM 8 or 16 bit) or Ogg Vorbis (Tremor, the
  * integer decoder). A source is decoded whole when it is small ("static") and streamed from the file when it is
  * large or asked to be. Each source plays
  * as its own voice: pitch by linear resampling, volume, looping, pause, seek. Up to MAX_VOICES play at once.
@@ -18,7 +18,7 @@
 #include <stdint.h>
 #include <malloc.h>
 #include <psputility.h>
-#include <pspmp3.h>
+#include <pspaudiocodec.h>
 #include <tremor/ivorbisfile.h>
 #include "lua.h"
 #include "lauxlib.h"
@@ -28,9 +28,9 @@
 #define MAX_VOICES  24
 #define STATIC_MAX  (3 * 1024 * 1024)   /* bytes of decoded PCM above which an Ogg file streams */
 #define SBUF_FRAMES 2048
-#define MP3_BUF     16384         /* sceMp3 stream buffer (the library asks for 8192 or more) */
-#define MP3_HANDLES 2             /* sceMp3 handles open at once, on the firmware and in PPSSPP */
-#define MP3_PCM     9216          /* sceMp3 output buffer: 1152 stereo frames of 16 bits is 4608 bytes, the library asks for 9216 */
+#define MP3_FRAME_MAX 1472        /* the longest Layer III frame is 1441 bytes; a multiple of the 64-byte cache line */
+#define MP3_PCM     4608          /* one decoded frame: 1152 stereo frames of 16 bits */
+#define MP3_CTX     128           /* the codec context the Media Engine reads, 65 words, cache line aligned */
 
 enum { ST_STOPPED = 0, ST_PLAYING = 1, ST_PAUSED = 2 };
 
@@ -41,15 +41,18 @@ typedef struct Pcm {
     int rate, channels;
 } Pcm;
 
-/* One sceMp3 handle with its file and buffers. The decoder always returns 16-bit stereo, a mono file included. */
+/* One MP3 file with its sceAudiocodec context and buffers. The decoder always returns 16-bit stereo, a mono file
+ * included. */
 typedef struct Mp3 {
-    int h;
     FILE *fp;
-    unsigned char *buf;
-    int16_t *pcm;
+    unsigned long *ctx;            /* codec context, see PPSSPP's SceAudiocodecCodec for the layout */
+    unsigned char *in;             /* the frame being decoded */
+    int16_t *pcm;                  /* its output */
+    int ctx_ready;                 /* the Media Engine memory is held */
     int rate, channels;
     long maxout;                   /* frames per decoded block: 1152, or 576 for MPEG-2 rates */
-    long frames;                   /* decoded blocks in the file, from the frame table */
+    long frames;                   /* blocks in the file, from the Xing/Info tag or the bit rate */
+    long start, end, pos, fpos;    /* file offsets: first audio frame, end of audio, next frame, where fp is */
 } Mp3;
 
 typedef struct Src {
@@ -134,40 +137,6 @@ static int16_t *read_wav(const char *path, long *frames, int *rate, int *channel
     return NULL;
 }
 
-/* ---- MP3 on the Media Engine */
-static char mp3_why[96];           /* the step that failed last, for the message a source gives */
-static int mp3_state = 0;          /* 0 untried, 1 ready, -1 the modules did not load */
-
-static int mp3_boot(void) {
-    if (mp3_state) return mp3_state > 0;
-    mp3_state = -1;
-    int r = sceUtilityLoadAvModule(PSP_AV_MODULE_AVCODEC);
-    if (r < 0) { snprintf(mp3_why, sizeof mp3_why, "loading avcodec: %08x", (unsigned)r); return 0; }
-    r = sceUtilityLoadAvModule(PSP_AV_MODULE_MP3);
-    if (r < 0) { snprintf(mp3_why, sizeof mp3_why, "loading the mp3 module: %08x", (unsigned)r); return 0; }
-    r = sceMp3InitResource();
-    if (r < 0) { snprintf(mp3_why, sizeof mp3_why, "sceMp3InitResource: %08x", (unsigned)r); return 0; }
-    mp3_state = 1;
-    return 1;
-}
-
-static void mp3_close(Mp3 *m) {
-    if (m->h >= 0) sceMp3ReleaseMp3Handle(m->h);
-    if (m->fp) fclose(m->fp);
-    free(m->buf); free(m->pcm);
-    memset(m, 0, sizeof *m);
-    m->h = -1;
-}
-
-/* Hands the decoder the next part of the compressed stream it asked for. */
-static void mp3_fill(Mp3 *m) {
-    SceUChar8 *dst = NULL; SceInt32 want = 0, pos = 0;
-    if (sceMp3GetInfoToAddStreamData(m->h, &dst, &want, &pos) < 0 || want <= 0 || !dst) return;
-    int n = 0;
-    if (fseek(m->fp, pos, SEEK_SET) == 0) n = (int)fread(dst, 1, (size_t)want, m->fp);
-    sceMp3NotifyAddStreamData(m->h, n);
-}
-
 /* Bytes of an ID3v2 tag at the start of the file, 0 when there is none. */
 static long id3_size(FILE *f) {
     unsigned char h[10];
@@ -177,57 +146,159 @@ static long id3_size(FILE *f) {
     return 10 + n + ((h[5] & 0x10) ? 10 : 0);
 }
 
+/* ---- MP3 on the Media Engine, one frame per sceAudiocodecDecode call. sceMp3 would do the stream parsing but it
+ * has 2 handles; a codec context has no count limit, only the Media Engine memory each one holds. The file is cut into frames
+ * here and the decoder keeps its own state (bit reservoir, overlap) between calls. */
+static char mp3_why[96];           /* the step that failed last, for the message a source gives */
+static int mp3_state = 0;          /* 0 untried, 1 ready, -1 the module did not load */
+
+static int mp3_boot(void) {
+    if (mp3_state) return mp3_state > 0;
+    mp3_state = -1;
+    int r = sceUtilityLoadAvModule(PSP_AV_MODULE_AVCODEC);
+    if (r < 0) { snprintf(mp3_why, sizeof mp3_why, "loading avcodec: %08x", (unsigned)r); return 0; }
+    mp3_state = 1;
+    return 1;
+}
+
+static void mp3_close(Mp3 *m) {
+    if (m->ctx_ready) sceAudiocodecReleaseEDRAM(m->ctx);
+    if (m->fp) fclose(m->fp);
+    free(m->ctx); free(m->in); free(m->pcm);
+    memset(m, 0, sizeof *m);
+}
+
+/* Layer III frame header at h: returns the frame length in bytes (0 when it is not a usable header) and fills in the
+ * stream parameters. */
+static int mp3_header(const unsigned char *h, int *rate, int *channels, int *spf) {
+    static const int br1[16] = { 0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0 };
+    static const int br2[16] = { 0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0 };
+    static const int sr[3] = { 44100, 48000, 32000 };
+    if (h[0] != 0xFF || (h[1] & 0xE0) != 0xE0) return 0;
+    int ver = (h[1] >> 3) & 3, layer = (h[1] >> 1) & 3, bi = h[2] >> 4, si = (h[2] >> 2) & 3;
+    if (ver == 1 || layer != 1 || bi == 0 || bi == 15 || si == 3) return 0;
+    int r = sr[si] >> (ver == 3 ? 0 : ver == 2 ? 1 : 2);
+    int kbps = ver == 3 ? br1[bi] : br2[bi];
+    int len = (ver == 3 ? 144 : 72) * kbps * 1000 / r + ((h[2] >> 1) & 1);
+    if (rate) *rate = r;
+    if (channels) *channels = ((h[3] >> 6) & 3) == 3 ? 1 : 2;
+    if (spf) *spf = ver == 3 ? 1152 : 576;
+    return len;
+}
+
+/* Positions the file at the next frame and loads it into m->in; returns its length, 0 at the end of the stream. */
+static int mp3_read_frame(Mp3 *m) {
+    for (int skipped = 0; m->pos + 4 <= m->end && skipped < 8192; skipped++) {
+        unsigned char h[4];
+        int len;
+        if (m->fpos != m->pos) { if (fseek(m->fp, m->pos, SEEK_SET)) return 0; m->fpos = m->pos; }
+        if (fread(h, 1, 4, m->fp) != 4) return 0;
+        len = mp3_header(h, NULL, NULL, NULL);
+        if (len > 4 && len <= MP3_FRAME_MAX && m->pos + len <= m->end) {
+            memcpy(m->in, h, 4);
+            if (fread(m->in + 4, 1, (size_t)(len - 4), m->fp) != (size_t)(len - 4)) return 0;
+            m->pos += len; m->fpos = m->pos;
+            return len;
+        }
+        m->pos++; m->fpos = -1;                       /* not a frame here: look at the next byte */
+    }
+    return 0;
+}
+
+/* Skips the frames before `block` without decoding them. */
+static void mp3_skip_to(Mp3 *m, long block) {
+    m->pos = m->start; m->fpos = -1;
+    for (long i = 0; i < block; i++) {
+        unsigned char h[4];
+        if (fseek(m->fp, m->pos, SEEK_SET) || fread(h, 1, 4, m->fp) != 4) break;
+        int len = mp3_header(h, NULL, NULL, NULL);
+        if (len <= 4) break;
+        m->pos += len;
+    }
+    m->fpos = -1;
+}
+
+/* Decodes the next frame; returns its stereo frames (valid until the next call), 0 at the end of the file. */
+static long mp3_next(Mp3 *m, const int16_t **out) {
+    for (int tries = 0; tries < 16; tries++) {
+        int len = mp3_read_frame(m);
+        if (!len) return 0;
+        m->ctx[6] = (unsigned long)m->in;
+        m->ctx[7] = (unsigned long)len;               /* the input size: older emulators read it from here */
+        m->ctx[8] = (unsigned long)m->pcm;
+        m->ctx[9] = MP3_PCM;                          /* and the room for the output */
+        sceKernelDcacheWritebackInvalidateRange(m->in, MP3_FRAME_MAX);
+        sceKernelDcacheWritebackInvalidateRange(m->ctx, 0x80);
+        int r = sceAudiocodecDecode(m->ctx, PSP_CODEC_MP3);
+        sceKernelDcacheWritebackInvalidateRange(m->ctx, 0x80);
+        sceKernelDcacheWritebackInvalidateRange(m->pcm, MP3_PCM);
+        if (r < 0 || (int)m->ctx[9] <= 0) continue;     /* a frame that does not decode is skipped */
+        *out = m->pcm;
+        return (long)m->ctx[9] / 4;
+    }
+    return 0;
+}
+
+/* Makes the next mp3_next return block `block`. The two frames before it are decoded and dropped so the decoder's
+ * bit reservoir and overlap are warm. */
+static int mp3_seek_block(Mp3 *m, long block) {
+    long pre = block < 2 ? block : 2;
+    const int16_t *dump;
+    mp3_skip_to(m, block - pre);
+    for (long i = 0; i < pre; i++) if (!mp3_next(m, &dump)) break;
+    return 1;
+}
+
 static int mp3_open(Mp3 *m, const char *path) {
     memset(m, 0, sizeof *m);
-    m->h = -1;
     if (!mp3_boot()) return 0;
     m->fp = fopen(path, "rb");
     if (!m->fp) { snprintf(mp3_why, sizeof mp3_why, "cannot open the file"); return 0; }
     long start = id3_size(m->fp);
     fseek(m->fp, 0, SEEK_END);
     long end = ftell(m->fp);
-    m->buf = memalign(64, MP3_BUF);
+    if (end >= 128) {                                 /* an ID3v1 tag ends the file */
+        char tag[3];
+        fseek(m->fp, end - 128, SEEK_SET);
+        if (fread(tag, 1, 3, m->fp) == 3 && !memcmp(tag, "TAG", 3)) end -= 128;
+    }
+    m->ctx = memalign(64, MP3_CTX);
+    m->in = memalign(64, MP3_FRAME_MAX);
     m->pcm = memalign(64, MP3_PCM);
-    if (end <= start || !m->buf || !m->pcm) { snprintf(mp3_why, sizeof mp3_why, "empty file or out of memory"); mp3_close(m); return 0; }
-    SceMp3InitArg a;
-    memset(&a, 0, sizeof a);
-    a.mp3StreamStart = start; a.mp3StreamEnd = end;
-    a.mp3Buf = m->buf; a.mp3BufSize = MP3_BUF;
-    a.pcmBuf = (SceUChar8 *)m->pcm; a.pcmBufSize = MP3_PCM;
-    m->h = sceMp3ReserveMp3Handle(&a);
-    if (m->h < 0) {
-        snprintf(mp3_why, sizeof mp3_why, m->h == (int)0x80671201 ? "no free decoder, the Media Engine has %d" : "sceMp3ReserveMp3Handle: %08x",
-                 m->h == (int)0x80671201 ? MP3_HANDLES : (unsigned)m->h);
-        m->h = -1; mp3_close(m); return 0;
+    if (end <= start || !m->ctx || !m->in || !m->pcm) { snprintf(mp3_why, sizeof mp3_why, "empty file or out of memory"); mp3_close(m); return 0; }
+    m->start = start; m->end = end; m->pos = start; m->fpos = -1;
+
+    int len = mp3_read_frame(m);
+    int spf = 0;
+    if (!len || !mp3_header(m->in, &m->rate, &m->channels, &spf)) { snprintf(mp3_why, sizeof mp3_why, "no MP3 frame found"); mp3_close(m); return 0; }
+    m->maxout = spf;
+    m->frames = 0;
+    {   /* the first frame of an encoder's file is often a tag (Xing or Info) holding the frame count, not audio */
+        int n = len < 64 ? len : 64;
+        for (int i = 4; i + 12 <= n; i++) {
+            if (!memcmp(m->in + i, "Xing", 4) || !memcmp(m->in + i, "Info", 4)) {
+                unsigned long flags = ((unsigned long)m->in[i + 4] << 24) | (m->in[i + 5] << 16) | (m->in[i + 6] << 8) | m->in[i + 7];
+                if (flags & 1) m->frames = (long)(((unsigned long)m->in[i + 8] << 24) | (m->in[i + 9] << 16) | (m->in[i + 10] << 8) | m->in[i + 11]);
+                m->start = m->pos;                    /* audio starts after the tag frame */
+                break;
+            }
+        }
+        if (m->start == start) m->pos = start;        /* the first frame is audio: decode it too */
     }
-    mp3_fill(m);
-    int r = sceMp3Init(m->h);
-    if (r < 0) { snprintf(mp3_why, sizeof mp3_why, "sceMp3Init: %08x", (unsigned)r); mp3_close(m); return 0; }
-    m->rate = sceMp3GetSamplingRate(m->h);
-    m->channels = sceMp3GetMp3ChannelNum(m->h);
-    m->maxout = sceMp3GetMaxOutputSample(m->h);
-    m->frames = sceMp3GetFrameNum(m->h);
-    if (m->rate <= 0 || m->maxout <= 0 || m->maxout * 4 > MP3_PCM || (m->channels != 1 && m->channels != 2)) {
-        snprintf(mp3_why, sizeof mp3_why, "unusable stream: rate %d, block %ld, channels %d", m->rate, m->maxout, m->channels);
-        mp3_close(m);
-        return 0;
-    }
-    if (m->frames < 0) m->frames = 0;
+    if (m->frames <= 0) m->frames = (m->end - m->start) / len;   /* constant bit rate estimate */
+
+    memset(m->ctx, 0, MP3_CTX);
+    m->ctx[5] = 1;                                    /* inited */
+    int r = sceAudiocodecCheckNeedMem(m->ctx, PSP_CODEC_MP3);
+    if (r < 0) { snprintf(mp3_why, sizeof mp3_why, "sceAudiocodecCheckNeedMem: %08x", (unsigned)r); mp3_close(m); return 0; }
+    r = sceAudiocodecGetEDRAM(m->ctx, PSP_CODEC_MP3);
+    if (r < 0) { snprintf(mp3_why, sizeof mp3_why, "sceAudiocodecGetEDRAM: %08x", (unsigned)r); mp3_close(m); return 0; }
+    m->ctx_ready = 1;
+    m->ctx[10] = 0x5A1;                               /* largest frame, the decoder's upper bound for the input */
+    r = sceAudiocodecInit(m->ctx, PSP_CODEC_MP3);
+    if (r < 0) { snprintf(mp3_why, sizeof mp3_why, "sceAudiocodecInit: %08x", (unsigned)r); mp3_close(m); return 0; }
+    m->pos = m->start; m->fpos = -1;
     return 1;
-}
-
-/* Decodes the next block; returns its stereo frames (valid until the next call), 0 at the end of the file. */
-static long mp3_next(Mp3 *m, const int16_t **out) {
-    if (sceMp3CheckStreamDataNeeded(m->h) > 0) mp3_fill(m);
-    SceShort16 *p = NULL;
-    int bytes = sceMp3Decode(m->h, &p);
-    if (bytes <= 0 || !p) return 0;
-    *out = p;
-    return bytes / 4;
-}
-
-static int mp3_seek_block(Mp3 *m, long block) {
-    return sceMp3ResetPlayPositionByFrame(m->h, (SceUInt32)block) >= 0;
 }
 
 /* Decodes a whole MP3 file; returns NULL when it is too large (the caller then streams it). The output is stereo. */

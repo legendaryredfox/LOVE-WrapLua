@@ -1,7 +1,7 @@
 # ADR-002: MP3 decoded on the Media Engine is the only audio format of the native PSP backend
 
 **Date:** 2026-11-17
-**Status:** Decided; `sceMp3` path implemented (2026-11-21), Ogg and WAV not removed yet, concurrent streams open (see Result)
+**Status:** Decided; implemented on `sceAudiocodec` (2026-11-21); Ogg and WAV stay until the gate is met (3.3 ms over it, see Result)
 
 ---
 
@@ -64,12 +64,28 @@ in PPSSPP for static and streamed MP3.
   advance) and the ambient loops too. Five or more streams against two handles.
 - **Not measured yet:** the Balatro A/B against `noaudio.flag`. It needs the stream question settled first.
 
-### Options for the stream limit
+### Decision on the stream limit
 
-| Option | Cost | Note |
+Decoding goes through `sceAudiocodecDecode` (`PSP_CODEC_MP3`), one frame per call, with a codec context per stream. The
+file is cut into frames in `native/src/audio.c` (header parse, Xing/Info tag for the frame count, ID3 skipped, seek by
+walking frame headers and warming the decoder with two dropped frames). There is no handle count limit; a context holds
+Media Engine memory (`neededMem` 0x3b68 bytes each), which bounds the count on real hardware and is not measured.
+`sceMp3` is no longer used.
+
+## Measurement (2026-11-21, PPSSPP 1.18 core under RetroArch, Balatro `SELECTING_HAND`, `tools/bench.sh 20000`)
+
+| Run | update + draw | fps |
 |---|---|---|
-| `sceAudiocodec` (`PSP_CODEC_MP3`), one frame per call | parse frame headers in C, one codec buffer per stream | no handle limit of the `sceMp3` kind; `libpspaudiocodec` is already linked; the Media Engine still decodes |
-| Pool 2 handles over N streams | reopen and `ResetPlayPositionByFrame` on every swap | decoder warm-up per swap, wrong for tracks that all advance |
-| Keep music silent at volume 0 (no decode) | needs a position model for skipped tracks | resumes need a seek; changes nothing for tracks that play |
+| `noaudio.flag` (silent) | 61.4 ms | 16.3 |
+| audio on, Ogg through Tremor | 84.7 ms | 11.8 |
+| audio on, MP3 through `sceAudiocodec` | 64.7 ms | 15.4 |
 
-Next: `sceAudiocodec` per stream, then the Balatro gate. Ogg and WAV stay until then.
+MP3 removes 20 of the 23 ms the audio added. The gate (within 1 ms of silent) is **not met**: 3.3 ms remain. What is left
+is the main core's share that is not decoding: the mixer over five or more streams, the file reads per frame, thread
+switches, and the `love.audio` calls Balatro makes each frame. Not split yet. The 128 kbit/s MP3 files are 18 MB against
+17 MB of Ogg. `tests/games/audio` passes in PPSSPP with five MP3 streams open and playing at once; the decoded peak of a
+test tone equals ffmpeg's. Not run on hardware: PPSSPP decodes on the host, so the main-core number is the one that
+carries over, the decode time itself is not.
+
+Next: split the 3.3 ms (mixer, I/O, API calls) before deciding between a mixer change, reading larger chunks, and
+IMA ADPCM. Ogg and WAV stay until the gate passes.

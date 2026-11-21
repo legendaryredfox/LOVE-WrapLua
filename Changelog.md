@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### 2026-11-21, branch `feat/native-psp-mp3`
+
+- Native PSP backend: `.mp3` sources decoded on the Media Engine through `sceMp3` (`native/src/audio.c`), static
+  (decoded whole at load) or streamed; seek works by block. A name ending in `.ogg` or `.wav` plays its `.mp3`
+  sibling when the package has one, so a game does not change. `lua tools/lovepsp.lua package` now converts every
+  `.ogg` and `.wav` of the game to stereo 128 kbit/s MP3 with ffmpeg (`--keep-audio` skips it, `convert <dir>` runs the
+  step alone). Ogg and WAV decoding stay until the Balatro gate of `docs/adr/002-psp-native-audio-format.md` is met.
+- Finding: `sceMp3` allows 2 open handles at once (firmware and PPSSPP), and Balatro streams music1 to music5 and the
+  ambient loops together, so streamed MP3 through `sceMp3` alone does not cover it. The ADR records the next step.
+  Verified in PPSSPP with `tests/games/audio` (load, duration, play, seek, stop for static and streamed MP3); not on
+  hardware.
+
 ### 2026-11-17, branch `fix/native-psp-particle-fallback`
 
 - Native PSP backend: `noaudio.flag` next to the EBOOT makes every source silent (A/B runs). Measured with it: real

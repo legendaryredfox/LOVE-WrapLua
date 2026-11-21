@@ -1,7 +1,7 @@
 # ADR-002: MP3 decoded on the Media Engine is the only audio format of the native PSP backend
 
 **Date:** 2026-11-17
-**Status:** Decided; implementation open
+**Status:** Decided; `sceMp3` path implemented (2026-11-21), Ogg and WAV not removed yet, concurrent streams open (see Result)
 
 ---
 
@@ -51,3 +51,25 @@ only mixes already-decoded blocks. It is the lightest option for the main core a
 - The mixer keeps its job (volume, pitch, looping, 24 voices) over PCM sources.
 - Gate: Balatro `SELECTING_HAND` with audio on within 1 ms of the `noaudio.flag` run in the harness, or the decision
   is revisited (IMA ADPCM is the fallback).
+
+## Result of the first implementation (2026-11-21)
+
+`native/src/audio.c` decodes `.mp3` through `sceMp3` (static decode at load, streaming with a handle per source,
+seek by block) and `lovepsp.lua package` converts a game's `.ogg` and `.wav` to stereo MP3. `tests/games/audio` passes
+in PPSSPP for static and streamed MP3.
+
+- **Handle limit confirmed:** `sceMp3` has 2 handles (`MP3_MAX_HANDLES` in PPSSPP, the same on the firmware). A static
+  decode holds one only while it loads. Streams hold one each for their life.
+- **Balatro does not fit:** its sound manager streams `music1` to `music5` together (volumes cross-fade, so all five
+  advance) and the ambient loops too. Five or more streams against two handles.
+- **Not measured yet:** the Balatro A/B against `noaudio.flag`. It needs the stream question settled first.
+
+### Options for the stream limit
+
+| Option | Cost | Note |
+|---|---|---|
+| `sceAudiocodec` (`PSP_CODEC_MP3`), one frame per call | parse frame headers in C, one codec buffer per stream | no handle limit of the `sceMp3` kind; `libpspaudiocodec` is already linked; the Media Engine still decodes |
+| Pool 2 handles over N streams | reopen and `ResetPlayPositionByFrame` on every swap | decoder warm-up per swap, wrong for tracks that all advance |
+| Keep music silent at volume 0 (no decode) | needs a position model for skipped tracks | resumes need a seek; changes nothing for tracks that play |
+
+Next: `sceAudiocodec` per stream, then the Balatro gate. Ogg and WAV stay until then.

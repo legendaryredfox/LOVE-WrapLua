@@ -136,6 +136,8 @@ against the old loop on desktop) gave 12.0 fps (43.0 + 40.0 ms) against 11.9 (43
 dropped. The mixing arithmetic is not the cost; software Ogg decoding (Tremor) is the likely one (not yet profiled alone). The levers that remain are the
 ones that remove decode work from the main core: MP3 on the Media Engine, or music pre-decoded at a lower rate.
 Decision (2026-11-17): MP3 on the Media Engine as the only format, see `docs/adr/002-psp-native-audio-format.md`.
+First implementation 2026-11-21 (`sceMp3`): works, but the firmware allows 2 handles and Balatro streams 5 or more tracks
+at once; the ADR lists the options (`sceAudiocodec` next).
 
 ### UI layer cache in a canvas (2026-11-17, in progress, not merged anywhere)
 

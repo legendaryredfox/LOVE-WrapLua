@@ -45,7 +45,7 @@ documents itself as `tier 2`.
 
 | Area | Native backend | LOVE-WrapLua |
 |---|---|---|
-| Audio | **done 2026-11-17**: C mixer thread, 24 voices, `.ogg` (Tremor) and `.wav`, static or streamed, pitch, volume, loop, seek, clone | OneLua 2 channels, lpp-vita, 3DS, PS3 stream |
+| Audio | **done 2026-11-17, MP3 only since 2026-11-21**: C mixer thread, 24 voices, `.mp3` on the Media Engine, static or streamed, pitch, volume, loop, seek, clone | OneLua 2 channels, lpp-vita, 3DS, PS3 stream |
 | Canvas | real render-to-texture, 2 targets in VRAM, 512 max | stub on every backend |
 | Shader / Mesh | stubs | stubs |
 | Rotation and scale | on the GPU | OneLua copies the image per scale or turn |
@@ -137,7 +137,8 @@ dropped. The mixing arithmetic is not the cost; software Ogg decoding (Tremor) i
 ones that remove decode work from the main core: MP3 on the Media Engine, or music pre-decoded at a lower rate.
 Decision (2026-11-17): MP3 on the Media Engine as the only format, see `docs/adr/002-psp-native-audio-format.md`.
 Implemented 2026-11-21 on `sceAudiocodec` (`sceMp3` has 2 handles, Balatro streams 5 or more tracks), plus a tighter mixer
-loop: Balatro SELECTING_HAND 16.2 fps with audio against 16.3 silent and 11.8 with Ogg; the gate of the ADR is met.
+loop: Balatro SELECTING_HAND 16.2 fps with audio against 16.3 silent and 11.8 with Ogg; the gate of the ADR is met. Ogg, WAV
+and Tremor were then removed (ADR 002).
 
 ### UI layer cache in a canvas (2026-11-17, in progress, not merged anywhere)
 

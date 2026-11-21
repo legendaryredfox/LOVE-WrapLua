@@ -8,10 +8,15 @@
   frame per call with a codec context per stream, static (decoded whole at load) or streamed; seek works by block. A
   name ending in `.ogg` or `.wav` plays its `.mp3` sibling when the package has one, so a game does not change.
   `lua tools/lovepsp.lua package` now converts every `.ogg` and `.wav` of the game to stereo 128 kbit/s MP3 with ffmpeg
-  (`--keep-audio` skips it, `convert <dir>` runs the step alone). Ogg and WAV decoding stay: the Balatro gate of
-  `docs/adr/002-psp-native-audio-format.md` is not met yet.
+  (`convert <dir>` runs the step alone).
 - Why not `sceMp3`: it allows 2 handles at once and Balatro streams five music tracks together. A first version on
   `sceMp3` was written and replaced.
+- Native PSP backend now plays `.mp3` only: the Ogg and WAV decoders and Tremor are removed from `native/src/audio.c` and
+  the link. Code section 96 KB smaller, and only streams hold a decode window (8 KB each, about 0.8 MB less heap for
+  Balatro's 80 sources). An `.ogg` or `.wav` that was not converted is a silent source with a log line;
+  `lovepsp.lua package` always converts, so `--keep-audio` is gone. The `love.audio` API is unchanged; the capabilities row
+  `audio.formats` is `"mp3"`. Balatro with converted audio: 15.8 fps in one run after the removal (16.2 before),
+  not repeated.
 - Native PSP mixer: the stretch of a source that needs no decoding and no end-of-source care is mixed by `mix_run`
   (`native/src/mix.c`, 32-bit positions, straight copy at pitch 1 and 44.1 kHz) instead of one function-heavy pass per
   frame. The cost of audio in Balatro was all in the mixer (decode, file reads and API calls measured at about zero).

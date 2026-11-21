@@ -1,7 +1,7 @@
 # ADR-002: MP3 decoded on the Media Engine is the only audio format of the native PSP backend
 
 **Date:** 2026-11-17
-**Status:** Decided; implemented on `sceAudiocodec` and the gate is met (2026-11-21); removing Ogg and WAV from the engine is open
+**Status:** Decided and implemented (2026-11-21): `sceAudiocodec`, gate met, Ogg and WAV decoders removed from the engine
 
 ---
 
@@ -108,5 +108,15 @@ of a source, a loop and a window refill. `tests/mix_test.lua` checks the loop ag
 Result, same harness: **16.2 fps with audio on (61.5 ms) against 16.3 silent (61.4 ms)**, so the gate (within 1 ms) is
 met. Not run on hardware.
 
-Next: remove the Ogg and WAV decoders and Tremor from `native/` as decided above, and keep `--keep-audio` only if a
-reason appears.
+### Ogg, WAV and Tremor removed
+
+They did not cost speed (the code only runs for a file that has no `.mp3` sibling), but each source carried the Ogg
+decoder state and a stream window of 8 KB, about 0.8 MB of heap for Balatro's 80 sources, and Tremor with the Ogg code
+was about 55 KB of the program. The engine now plays `.mp3` only: the code section is 96 KB smaller (662114 to 565872
+bytes), only streams hold a window, and `-lvorbisidec -logg` are gone from the link. An `.ogg` or `.wav` that the package
+did not convert is a silent source with a line in `psp_log.txt`; `lovepsp.lua package` always converts, so `--keep-audio`
+is gone. Balatro with real conversion after the removal: 15.8 fps in one run (16.2 in two runs before it); one run is
+inside the noise I saw between runs but I did not repeat it, so treat 15.8 as unconfirmed. Not run on hardware.
+
+Left open: a hardware test (each codec context holds 0x3b68 bytes of Media Engine memory, which bounds the stream count),
+gapless loop points from the LAME tag, and the 0.9 ms between the last two Balatro runs if it turns out not to be noise.

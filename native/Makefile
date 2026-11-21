@@ -10,7 +10,7 @@ CFLAGS = $(OPT) -G0 -Wall -DLUA_ANSI $(LUAFLOAT)
 CXXFLAGS = $(CFLAGS)
 ASFLAGS = $(CFLAGS)
 LIBDIR =
-LIBS = -lvorbisidec -logg -lpspgu -lpspge -lpspdisplay -lpspctrl -lpsppower -lpspaudio -lpsprtc -lpspvram -lpspmath -lz -lm
+LIBS = -lvorbisidec -logg -lpspgu -lpspge -lpspdisplay -lpspctrl -lpsppower -lpspmp3 -lpspaudiocodec -lpspaudio -lpsprtc -lpspvram -lpspmath -lz -lm
 LDFLAGS =
 
 BUILD_PRX = 1

@@ -46,7 +46,7 @@ love._backend = {
     emulator  = "PPSSPP",
     rendersensitive = { blendmode = false, framebufferread = true, texturefilter = true, savepersistence = true },
     system    = { cores = 1, battery = false, vibrate = false, openurl = false, clipboard = "memory" },
-    audio     = { voices = 24, seek = true, pitch = true, formats = "ogg wav" },   -- C mixer thread, see native/src/audio.c
+    audio     = { voices = 24, seek = true, pitch = true, formats = "mp3 ogg wav" },   -- C mixer thread, see native/src/audio.c
     blend     = { native = true, modes = { alpha = true, add = true, multiply = true } },
 }
 
@@ -609,8 +609,9 @@ end
 love._begin = function() N.begin_frame() end
 
 -- ------------------------------------------------------------------------ audio / sound
--- Sources are C voices mixed by the engine's audio thread (native/src/audio.c): .ogg and .wav, pitch, volume,
--- looping, seek. A file that cannot be played (other formats, missing, unreadable) gives a silent source and a
+-- Sources are C voices mixed by the engine's audio thread (native/src/audio.c): .mp3 (decoded on the Media Engine),
+-- .ogg and .wav, pitch, volume, looping, seek. A name ending in .ogg or .wav plays its packaged .mp3 sibling when
+-- there is one. A file that cannot be played (other formats, missing, unreadable) gives a silent source and a
 -- line in psp_log.txt, so a game that loads its sounds at start keeps running.
 local Source = {}; Source.__index = Source
 local all_sources = setmetatable({}, { __mode = "k" })
@@ -629,7 +630,9 @@ function love.audio.newSource(path, kind)
         PSP_LOG("audio: newSource needs a file name, got " .. type(path) .. "; silent source")
         return setmetatable({ _stub = true }, Stub)
     end
-    local p = resolve(path)
+    local sibling = path:gsub("%.[oO][gG][gG]$", ".mp3")
+    sibling = sibling:gsub("%.[wW][aA][vV]$", ".mp3")
+    local p = resolve(sibling) or resolve(path)
     if not p then
         PSP_LOG("audio: " .. path .. " not found; silent source")
         return setmetatable({ _stub = true }, Stub)

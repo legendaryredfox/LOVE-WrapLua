@@ -1,7 +1,8 @@
 -- Development steps for the native PSP backend, all in Lua. Run from the project root:
 --   lua tools/lovepsp.lua build [--double] [--opt="-O2"]      compile native/EBOOT.PBP (docker pspdev)
---   lua tools/lovepsp.lua package <game_dir> <out_dir> [identity] [title]
+--   lua tools/lovepsp.lua package <game_dir> <out_dir> [identity] [title] [--keep-audio]
 --   lua tools/lovepsp.lua stage <game_dir> <out_dir>           package without the EBOOT (tests)
+--   lua tools/lovepsp.lua convert <dir>                       turn every .ogg and .wav under dir into a stereo .mp3
 --   lua tools/lovepsp.lua manifest <dir>                      print the directory manifest the EBOOT reads
 -- The C engine is the only part that needs a toolchain; everything else here is Lua over the shell.
 
@@ -77,6 +78,22 @@ local function manifest(root)
     return table.concat(entries, "\n") .. "\n"
 end
 
+-- ── audio ────────────────────────────────────────────────────────
+-- The Media Engine decodes MP3 only (docs/adr/002-psp-native-audio-format.md). The names a game passes to
+-- love.audio.newSource stay as they are: the backend plays the .mp3 sibling of a .ogg or .wav name. The decoder
+-- always returns stereo, so mono files are widened here.
+local function convertAudio(dir)
+    local out = capture("find " .. q(dir) .. " -type f \\( -iname '*.ogg' -o -iname '*.wav' \\)")
+    local n = 0
+    for path in out:gmatch("[^\n]+") do
+        local mp3 = path:gsub("%.%w+$", ".mp3")
+        must("ffmpeg -y -v error -i " .. q(path) .. " -vn -ac 2 -codec:a libmp3lame -b:a 128k " .. q(mp3), "converting " .. path)
+        os.remove(path)
+        n = n + 1
+    end
+    return n
+end
+
 -- ── build ────────────────────────────────────────────────────────
 local function build(opts)
     local lua = "native/third_party/lua-5.1.5"
@@ -108,7 +125,7 @@ local SHARED = {
 }
 
 -- Everything except the EBOOT: the game, the backend, the shared modules, the config and the manifest.
-local function stage(game, out, identity, title)
+local function stage(game, out, identity, title, mp3)
     identity = identity or game:gsub("/+$", ""):match("([^/]+)$")
     title = title or identity
     must("rm -rf " .. q(out) .. " && mkdir -p " .. q(out .. "/game") .. " " .. q(out .. "/save")
@@ -121,13 +138,17 @@ local function stage(game, out, identity, title)
     for _, f in ipairs(SHARED) do
         must("cp -R " .. q("LOVE-WrapLua/" .. f) .. " " .. q(out .. "/LOVE-WrapLua/" .. f:gsub("[^/]*$", "")), "copying " .. f)
     end
+    if mp3 then
+        local n = convertAudio(out .. "/game")
+        if n > 0 then print("converted " .. n .. " audio files to mp3") end
+    end
     write(out .. "/psp_config.lua", string.format("return { identity = %q, title = %q, font = \"default.ttf\" }\n", identity, title))
     write(out .. "/manifest.lua", manifest(out .. "/game"))
 end
 
-local function package(game, out, identity, title)
+local function package(game, out, identity, title, keepAudio)
     if not exists("native/EBOOT.PBP") then error("build the EBOOT first: lua tools/lovepsp.lua build", 0) end
-    stage(game, out, identity, title)
+    stage(game, out, identity, title, not keepAudio)
     must("cp native/EBOOT.PBP " .. q(out .. "/EBOOT.PBP"))
     print("packaged " .. out)
 end
@@ -145,8 +166,15 @@ local ok, err = pcall(function()
         end
         build(opts)
     elseif cmd == "package" then
-        if #rest < 2 then error("usage: package <game_dir> <out_dir> [identity] [title]", 0) end
-        package(rest[1], rest[2], rest[3], rest[4])
+        local keep, args = false, {}
+        for _, a in ipairs(rest) do
+            if a == "--keep-audio" then keep = true else args[#args + 1] = a end
+        end
+        if #args < 2 then error("usage: package <game_dir> <out_dir> [identity] [title] [--keep-audio]", 0) end
+        package(args[1], args[2], args[3], args[4], keep)
+    elseif cmd == "convert" then
+        if not rest[1] then error("usage: convert <dir>", 0) end
+        print("converted " .. convertAudio(rest[1]) .. " audio files to mp3")
     elseif cmd == "stage" then
         if #rest < 2 then error("usage: stage <game_dir> <out_dir> [identity] [title]", 0) end
         stage(rest[1], rest[2], rest[3], rest[4])
@@ -154,7 +182,7 @@ local ok, err = pcall(function()
         if not rest[1] then error("usage: manifest <dir>", 0) end
         io.write(manifest(rest[1]))
     else
-        error("usage: lua tools/lovepsp.lua build | package | stage | manifest", 0)
+        error("usage: lua tools/lovepsp.lua build | package | stage | convert | manifest", 0)
     end
 end)
 if not ok then io.stderr:write(tostring(err), "\n"); os.exit(1) end

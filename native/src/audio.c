@@ -20,6 +20,7 @@
 #include <psputility.h>
 #include <pspaudiocodec.h>
 #include <tremor/ivorbisfile.h>
+#include "mix.h"
 #include "lua.h"
 #include "lauxlib.h"
 
@@ -450,6 +451,15 @@ static void mix_voice(Src *s, int32_t *acc, int n) {
         s->pos = (uint64_t)t << 16;
     }
     for (int i = 0; i < n; i++) {
+        {   /* the stretch that needs no decoding and no end-of-source care is mixed in one tight loop */
+            const int16_t *d; int ch; long i0, limit;
+            if (s->is_stream) { d = s->sbuf; ch = 2; i0 = (long)(s->pos >> 16) - s->sbase; limit = s->sfill; }
+            else { d = s->pcm->data; ch = s->pcm->channels; i0 = (long)(s->pos >> 16); limit = s->pcm->frames; }
+            if (i0 >= 0 && i0 < limit) {
+                long cnt = mix_run(d, ch, i0, (uint32_t)(s->pos & 0xFFFF), (uint32_t)s->step, limit - 1 - i0, vol, acc + i * 2, n - i);
+                if (cnt > 0) { s->pos += (uint64_t)cnt * (uint32_t)s->step; i += (int)cnt - 1; continue; }
+            }
+        }
         long idx; int frac = (int)((s->pos >> 0) & 0xFFFF);
         int l0, r0, l1, r1;
         if (s->is_stream) {

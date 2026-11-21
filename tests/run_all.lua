@@ -57,6 +57,7 @@ local test_files = {
     "tests/image_test.lua",
     "tests/native_psp_test.lua",
     "tests/lovepsp_audio_test.lua",
+    "tests/mix_test.lua",
 }
 
 local total_fail = 0

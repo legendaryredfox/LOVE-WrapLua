@@ -12,8 +12,12 @@
   `docs/adr/002-psp-native-audio-format.md` is not met yet.
 - Why not `sceMp3`: it allows 2 handles at once and Balatro streams five music tracks together. A first version on
   `sceMp3` was written and replaced.
-- Measured in PPSSPP, Balatro `SELECTING_HAND`: silent 16.3 fps, Ogg 11.8 fps, MP3 15.4 fps (3.3 ms per frame over
-  silent). `tests/games/audio` checks five MP3 streams at once. Not run on hardware.
+- Native PSP mixer: the stretch of a source that needs no decoding and no end-of-source care is mixed by `mix_run`
+  (`native/src/mix.c`, 32-bit positions, straight copy at pitch 1 and 44.1 kHz) instead of one function-heavy pass per
+  frame. The cost of audio in Balatro was all in the mixer (decode, file reads and API calls measured at about zero).
+  Measured in PPSSPP, Balatro `SELECTING_HAND`: silent 16.3 fps, Ogg 11.8, MP3 with the old mixer 15.4, MP3 with this
+  mixer 16.2, which meets the gate of ADR 002. `tests/mix_test.lua` compiles `mix.c` on the host and checks it against a
+  reference; `tests/games/audio` checks five MP3 streams at once. Not run on hardware.
 
 ### 2026-11-17, branch `fix/native-psp-particle-fallback`
 

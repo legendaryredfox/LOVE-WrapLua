@@ -1,7 +1,7 @@
 # ADR-002: MP3 decoded on the Media Engine is the only audio format of the native PSP backend
 
 **Date:** 2026-11-17
-**Status:** Decided; implemented on `sceAudiocodec` (2026-11-21); Ogg and WAV stay until the gate is met (3.3 ms over it, see Result)
+**Status:** Decided; implemented on `sceAudiocodec` and the gate is met (2026-11-21); removing Ogg and WAV from the engine is open
 
 ---
 
@@ -87,5 +87,26 @@ switches, and the `love.audio` calls Balatro makes each frame. Not split yet. Th
 test tone equals ffmpeg's. Not run on hardware: PPSSPP decodes on the host, so the main-core number is the one that
 carries over, the decode time itself is not.
 
-Next: split the 3.3 ms (mixer, I/O, API calls) before deciding between a mixer change, reading larger chunks, and
-IMA ADPCM. Ogg and WAV stay until the gate passes.
+### Where the 3.3 ms were, and the fix
+
+A/B with the mixer switched off, and with the mixer on but the streams returning zeros (no decode, no file reads):
+
+| Run | fps |
+|---|---|
+| silent | 16.3 |
+| sources and API calls, mixer thread off | 16.4 |
+| mixer on, streams give zeros | 15.2 |
+| mixer on, MP3 decoding | 15.4 |
+
+Decoding, file reads and the `love.audio` calls cost nothing measurable; all of it was the software mixer on the main
+core. The Media Engine is a second core, but running the mixer there needs custom ME code in a kernel-mode PRX, which a
+user-mode EBOOT cannot load and PPSSPP cannot run, so the mixer stays on the main core and got cheaper: the per-frame
+loop with 64-bit positions and a function call per frame is now a tight loop over the stretch that needs no decoding
+(`native/src/mix.c`, 32-bit fractions, a straight copy at pitch 1 and 44.1 kHz). The per-frame path stays for the end
+of a source, a loop and a window refill. `tests/mix_test.lua` checks the loop against a one-frame reference on the host.
+
+Result, same harness: **16.2 fps with audio on (61.5 ms) against 16.3 silent (61.4 ms)**, so the gate (within 1 ms) is
+met. Not run on hardware.
+
+Next: remove the Ogg and WAV decoders and Tremor from `native/` as decided above, and keep `--keep-audio` only if a
+reason appears.

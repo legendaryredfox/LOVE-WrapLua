@@ -27,7 +27,7 @@ end
 put("hello.txt", "hi\n")
 put("chunk.lua", "return 42\n")
 put("pic.png", "x")
-put("tone.wav", "x")
+put("tone.mp3", "x")
 put("song.mp3", "x")
 put("both.mp3", "x")
 put("both.ogg", "x")

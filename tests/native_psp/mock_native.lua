@@ -103,7 +103,7 @@ local voices, master = {}, 1
 local function audio_check(h) assert(h and h.audio, "not an audio source") return h end
 function M.audio_new(path, stream)
     rec("audio_new", path, stream)
-    if not (path:find("%.mp3$") or path:find("%.ogg$") or path:find("%.wav$")) then return nil, "unsupported audio format (use .mp3, .ogg or .wav)" end
+    if not path:find("%.mp3$") then return nil, "unsupported audio format (the native PSP backend plays .mp3)" end
     local h = { audio = true, path = path, stream = stream and true or false, rate = 44100, channels = 2, dur = 2,
                 state = "stopped", vol = 1, pitch = 1, loop = false, pos = 0 }
     voices[#voices + 1] = h

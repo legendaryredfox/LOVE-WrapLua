@@ -1,6 +1,6 @@
 -- Development steps for the native PSP backend, all in Lua. Run from the project root:
 --   lua tools/lovepsp.lua build [--double] [--opt="-O2"]      compile native/EBOOT.PBP (docker pspdev)
---   lua tools/lovepsp.lua package <game_dir> <out_dir> [identity] [title] [--keep-audio]
+--   lua tools/lovepsp.lua package <game_dir> <out_dir> [identity] [title]
 --   lua tools/lovepsp.lua stage <game_dir> <out_dir>           package without the EBOOT (tests)
 --   lua tools/lovepsp.lua convert <dir>                       turn every .ogg and .wav under dir into a stereo .mp3
 --   lua tools/lovepsp.lua manifest <dir>                      print the directory manifest the EBOOT reads
@@ -146,9 +146,9 @@ local function stage(game, out, identity, title, mp3)
     write(out .. "/manifest.lua", manifest(out .. "/game"))
 end
 
-local function package(game, out, identity, title, keepAudio)
+local function package(game, out, identity, title)
     if not exists("native/EBOOT.PBP") then error("build the EBOOT first: lua tools/lovepsp.lua build", 0) end
-    stage(game, out, identity, title, not keepAudio)
+    stage(game, out, identity, title, true)
     must("cp native/EBOOT.PBP " .. q(out .. "/EBOOT.PBP"))
     print("packaged " .. out)
 end
@@ -166,12 +166,8 @@ local ok, err = pcall(function()
         end
         build(opts)
     elseif cmd == "package" then
-        local keep, args = false, {}
-        for _, a in ipairs(rest) do
-            if a == "--keep-audio" then keep = true else args[#args + 1] = a end
-        end
-        if #args < 2 then error("usage: package <game_dir> <out_dir> [identity] [title] [--keep-audio]", 0) end
-        package(args[1], args[2], args[3], args[4], keep)
+        if #rest < 2 then error("usage: package <game_dir> <out_dir> [identity] [title]", 0) end
+        package(rest[1], rest[2], rest[3], rest[4])
     elseif cmd == "convert" then
         if not rest[1] then error("usage: convert <dir>", 0) end
         print("converted " .. convertAudio(rest[1]) .. " audio files to mp3")

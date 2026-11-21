@@ -46,7 +46,7 @@ love._backend = {
     emulator  = "PPSSPP",
     rendersensitive = { blendmode = false, framebufferread = true, texturefilter = true, savepersistence = true },
     system    = { cores = 1, battery = false, vibrate = false, openurl = false, clipboard = "memory" },
-    audio     = { voices = 24, seek = true, pitch = true, formats = "mp3 ogg wav" },   -- C mixer thread, see native/src/audio.c
+    audio     = { voices = 24, seek = true, pitch = true, formats = "mp3" },   -- C mixer thread, see native/src/audio.c
     blend     = { native = true, modes = { alpha = true, add = true, multiply = true } },
 }
 
@@ -609,9 +609,10 @@ end
 love._begin = function() N.begin_frame() end
 
 -- ------------------------------------------------------------------------ audio / sound
--- Sources are C voices mixed by the engine's audio thread (native/src/audio.c): .mp3 (decoded on the Media Engine),
--- .ogg and .wav, pitch, volume, looping, seek. A name ending in .ogg or .wav plays its packaged .mp3 sibling when
--- there is one. A file that cannot be played (other formats, missing, unreadable) gives a silent source and a
+-- Sources are C voices mixed by the engine's audio thread (native/src/audio.c): .mp3 only, decoded on the Media Engine,
+-- with pitch, volume, looping and seek. `lovepsp package` converts a game's .ogg and .wav files to .mp3, and a name
+-- ending in .ogg or .wav plays its .mp3 sibling. A file that cannot be played (other formats, missing, unreadable, an
+-- .ogg or .wav that was not converted) gives a silent source and a
 -- line in psp_log.txt, so a game that loads its sounds at start keeps running.
 local Source = {}; Source.__index = Source
 local all_sources = setmetatable({}, { __mode = "k" })

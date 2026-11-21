@@ -1,9 +1,8 @@
 /* Audio for the native PSP backend: a software mixer on its own thread, feeding one sceAudio channel.
  *
- * Sources are MP3 (decoded on the Media Engine through sceAudiocodec), WAV (PCM 8 or 16 bit) or Ogg Vorbis (Tremor, the
- * integer decoder). A source is decoded whole when it is small ("static") and streamed from the file when it is
- * large or asked to be. Each source plays
- * as its own voice: pitch by linear resampling, volume, looping, pause, seek. Up to MAX_VOICES play at once.
+ * Sources are MP3 only, decoded on the Media Engine through sceAudiocodec (docs/adr/002-psp-native-audio-format.md).
+ * A source is decoded whole when it is small ("static") and streamed from the file when it is large or asked to be.
+ * Each source plays as its own voice: pitch by linear resampling, volume, looping, pause, seek. Up to MAX_VOICES play at once.
  *
  * Thread model: Lua calls change plain 32-bit fields of a source (atomic on the PSP) and the voice list under
  * a short interrupt-suspend section. The mixer thread owns playback positions and the decoders, and is the only
@@ -19,7 +18,6 @@
 #include <malloc.h>
 #include <psputility.h>
 #include <pspaudiocodec.h>
-#include <tremor/ivorbisfile.h>
 #include "mix.h"
 #include "lua.h"
 #include "lauxlib.h"
@@ -59,9 +57,6 @@ typedef struct Mp3 {
 typedef struct Src {
     Pcm *pcm;                      /* static: whole decoded file */
     int is_stream;
-    FILE *fp;                      /* stream: Tremor reads from this */
-    OggVorbis_File vf;
-    int vf_open;
     Mp3 m;
     int m_open;
     char path[256];
@@ -78,7 +73,7 @@ typedef struct Src {
     /* playback position, owned by the mixer */
     uint64_t pos;                  /* 16.16 frame index into the whole source, for static and streamed alike */
 
-    int16_t sbuf[SBUF_FRAMES * 2]; /* stream window */
+    int16_t *sbuf;                 /* stream window, SBUF_FRAMES stereo frames; only streams have one */
     long sbase;                    /* absolute frame index of sbuf[0] */
     int sfill;                     /* valid frames in sbuf */
     int eof;
@@ -93,60 +88,6 @@ static volatile int started = 0;
 static SceUID mixer_thread = -1;
 
 /* ------------------------------------------------------------------ decoding */
-static int16_t *read_wav(const char *path, long *frames, int *rate, int *channels) {
-    FILE *f = fopen(path, "rb");
-    if (!f) return NULL;
-    unsigned char h[12];
-    if (fread(h, 1, 12, f) != 12 || memcmp(h, "RIFF", 4) || memcmp(h + 8, "WAVE", 4)) { fclose(f); return NULL; }
-    int fmt_ok = 0, bits = 0, ch = 0, rt = 0;
-    for (;;) {
-        unsigned char c[8];
-        if (fread(c, 1, 8, f) != 8) break;
-        unsigned long sz = c[4] | (c[5] << 8) | (c[6] << 16) | ((unsigned long)c[7] << 24);
-        if (!memcmp(c, "fmt ", 4)) {
-            unsigned char b[16];
-            if (sz < 16 || fread(b, 1, 16, f) != 16) break;
-            int tag = b[0] | (b[1] << 8);
-            ch = b[2] | (b[3] << 8);
-            rt = b[4] | (b[5] << 8) | (b[6] << 16) | (b[7] << 24);
-            bits = b[14] | (b[15] << 8);
-            fmt_ok = (tag == 1 || tag == 0xFFFE) && (ch == 1 || ch == 2) && (bits == 8 || bits == 16);
-            if (sz > 16) fseek(f, (long)(sz - 16), SEEK_CUR);
-        } else if (!memcmp(c, "data", 4)) {
-            if (!fmt_ok) break;
-            long bytes = (long)sz, bps = bits / 8 * ch;
-            long fr = bytes / bps;
-            int16_t *out = malloc((size_t)fr * ch * sizeof(int16_t));
-            if (!out) break;
-            if (bits == 16) {
-                if (fread(out, 2, (size_t)fr * ch, f) != (size_t)fr * ch) { /* truncated file: keep what was read */ }
-            } else {
-                unsigned char *tmp = malloc((size_t)fr * ch);
-                if (!tmp) { free(out); break; }
-                size_t got = fread(tmp, 1, (size_t)fr * ch, f);
-                for (size_t i = 0; i < (size_t)fr * ch; i++) out[i] = i < got ? (int16_t)((tmp[i] - 128) << 8) : 0;
-                free(tmp);
-            }
-            fclose(f);
-            *frames = fr; *rate = rt; *channels = ch;
-            return out;
-        } else {
-            fseek(f, (long)sz + (long)(sz & 1), SEEK_CUR);
-        }
-    }
-    fclose(f);
-    return NULL;
-}
-
-/* Bytes of an ID3v2 tag at the start of the file, 0 when there is none. */
-static long id3_size(FILE *f) {
-    unsigned char h[10];
-    fseek(f, 0, SEEK_SET);
-    if (fread(h, 1, 10, f) != 10 || memcmp(h, "ID3", 3)) return 0;
-    long n = ((long)(h[6] & 0x7F) << 21) | ((long)(h[7] & 0x7F) << 14) | ((long)(h[8] & 0x7F) << 7) | (h[9] & 0x7F);
-    return 10 + n + ((h[5] & 0x10) ? 10 : 0);
-}
-
 /* ---- MP3 on the Media Engine, one frame per sceAudiocodecDecode call. sceMp3 would do the stream parsing but it
  * has 2 handles; a codec context has no count limit, only the Media Engine memory each one holds. The file is cut into frames
  * here and the decoder keeps its own state (bit reservoir, overlap) between calls. */
@@ -250,6 +191,15 @@ static int mp3_seek_block(Mp3 *m, long block) {
     return 1;
 }
 
+/* Bytes of an ID3v2 tag at the start of the file, 0 when there is none. */
+static long id3_size(FILE *f) {
+    unsigned char h[10];
+    fseek(f, 0, SEEK_SET);
+    if (fread(h, 1, 10, f) != 10 || memcmp(h, "ID3", 3)) return 0;
+    long n = ((long)(h[6] & 0x7F) << 21) | ((long)(h[7] & 0x7F) << 14) | ((long)(h[8] & 0x7F) << 7) | (h[9] & 0x7F);
+    return 10 + n + ((h[5] & 0x10) ? 10 : 0);
+}
+
 static int mp3_open(Mp3 *m, const char *path) {
     memset(m, 0, sizeof *m);
     if (!mp3_boot()) return 0;
@@ -334,57 +284,20 @@ static int16_t *read_mp3_static(const char *path, long *frames, int *rate, int *
     return out;
 }
 
-/* Decodes a whole Ogg file; returns NULL when it is too large (the caller then streams it). */
-static int16_t *read_ogg_static(const char *path, long *frames, int *rate, int *channels, int *too_big) {
-    FILE *f = fopen(path, "rb");
-    *too_big = 0;
-    if (!f) return NULL;
-    OggVorbis_File vf;
-    if (ov_open(f, &vf, NULL, 0) < 0) { fclose(f); return NULL; }
-    vorbis_info *vi = ov_info(&vf, -1);
-    long total = (long)ov_pcm_total(&vf, -1);
-    if (!vi || total <= 0 || (vi->channels != 1 && vi->channels != 2)) { ov_clear(&vf); return NULL; }
-    long bytes = total * vi->channels * 2;
-    if (bytes > STATIC_MAX) { *too_big = 1; ov_clear(&vf); return NULL; }
-    int16_t *out = malloc((size_t)bytes);
-    if (!out) { ov_clear(&vf); return NULL; }
-    long got = 0;
-    while (got < bytes) {
-        int bs;
-        long r = ov_read(&vf, (char *)out + got, (int)(bytes - got > 4096 ? 4096 : bytes - got), &bs);
-        if (r <= 0) break;
-        got += r;
-    }
-    *frames = got / (vi->channels * 2); *rate = (int)vi->rate; *channels = vi->channels;
-    ov_clear(&vf);
-    return out;
-}
-
-static int ends_with(const char *s, const char *ext);
-
 static int stream_open(Src *s) {
-    if (ends_with(s->path, ".mp3")) {
-        if (!mp3_open(&s->m, s->path)) return 0;
-        s->m_open = 1;
-        s->rate = s->m.rate; s->channels = s->m.channels;
-        s->total_frames = s->m.frames * s->m.maxout;
-        return 1;
-    }
-    s->fp = fopen(s->path, "rb");
-    if (!s->fp) return 0;
-    if (ov_open(s->fp, &s->vf, NULL, 0) < 0) { fclose(s->fp); s->fp = NULL; return 0; }
-    s->vf_open = 1;
-    vorbis_info *vi = ov_info(&s->vf, -1);
-    if (!vi || (vi->channels != 1 && vi->channels != 2)) { ov_clear(&s->vf); s->vf_open = 0; s->fp = NULL; return 0; }
-    s->rate = (int)vi->rate; s->channels = vi->channels;
-    s->total_frames = (long)ov_pcm_total(&s->vf, -1);
+    s->sbuf = malloc(SBUF_FRAMES * 4);
+    if (!s->sbuf) { snprintf(mp3_why, sizeof mp3_why, "out of memory"); return 0; }
+    if (!mp3_open(&s->m, s->path)) { free(s->sbuf); s->sbuf = NULL; return 0; }
+    s->m_open = 1;
+    s->rate = s->m.rate; s->channels = s->m.channels;
+    s->total_frames = s->m.frames * s->m.maxout;
     return 1;
 }
 
 static void src_free(Src *s) {
     if (s->pcm && --s->pcm->refs == 0) { free(s->pcm->data); free(s->pcm); }
-    if (s->vf_open) ov_clear(&s->vf);      /* closes the FILE it was given */
     if (s->m_open) mp3_close(&s->m);
+    free(s->sbuf);
     free(s);
 }
 
@@ -392,7 +305,6 @@ static void src_free(Src *s) {
 static void rewind_src(Src *s) {
     s->pos = 0;
     if (s->is_stream) {
-        if (s->vf_open) ov_pcm_seek(&s->vf, 0);
         if (s->m_open) mp3_seek_block(&s->m, 0);
         s->sbase = 0; s->sfill = 0; s->eof = 0;
     }
@@ -400,19 +312,9 @@ static void rewind_src(Src *s) {
 
 /* Decodes the next stretch of a streamed source as stereo frames at dst; returns the frames, 0 at the end. */
 static long stream_read(Src *s, int16_t *dst) {
-    if (s->m_open) {
-        const int16_t *blk = NULL;
-        long fr = mp3_next(&s->m, &blk);
-        if (fr > 0) memcpy(dst, blk, (size_t)fr * 4);
-        return fr;
-    }
-    int bs;
-    long bytes = ov_read(&s->vf, (char *)dst, 1024 * s->channels * 2, &bs);
-    if (bytes <= 0) return 0;
-    long fr = bytes / (s->channels * 2);
-    if (s->channels == 1) {                          /* expand mono in place, last frame first */
-        for (long i = fr - 1; i >= 0; i--) { int16_t v = dst[i]; dst[i * 2] = v; dst[i * 2 + 1] = v; }
-    }
+    const int16_t *blk = NULL;
+    long fr = mp3_next(&s->m, &blk);
+    if (fr > 0) memcpy(dst, blk, (size_t)fr * 4);
     return fr;
 }
 
@@ -444,8 +346,8 @@ static void mix_voice(Src *s, int32_t *acc, int n) {
         if (t >= total) t = total > 0 ? total - 1 : 0;
         if (s->is_stream) {
             long base = t;
-            if (s->vf_open) ov_pcm_seek(&s->vf, t);
-            if (s->m_open) { base = t / s->m.maxout * s->m.maxout; mp3_seek_block(&s->m, t / s->m.maxout); }
+            base = t / s->m.maxout * s->m.maxout;
+            mp3_seek_block(&s->m, t / s->m.maxout);
             s->sbase = base; s->sfill = 0; s->eof = 0;
         }
         s->pos = (uint64_t)t << 16;
@@ -593,35 +495,24 @@ static int l_audio_new(lua_State *L) {
     Src *s = new_src();
     if (!s) { lua_pushnil(L); lua_pushstring(L, "out of memory"); return 2; }
     strncpy(s->path, path, sizeof s->path - 1);
-    int ogg = ends_with(path, ".ogg"), wav = ends_with(path, ".wav"), mp3 = ends_with(path, ".mp3");
-    if (!ogg && !wav && !mp3) { free(s); lua_pushnil(L); lua_pushstring(L, "unsupported audio format (use .mp3, .ogg or .wav)"); return 2; }
-    if (wav) {
+    if (!ends_with(path, ".mp3")) { free(s); lua_pushnil(L); lua_pushstring(L, "unsupported audio format (the native PSP backend plays .mp3; lovepsp package converts .ogg and .wav)"); return 2; }
+    int too_big = 0;
+    if (!want_stream) {
         Pcm *pcm = calloc(1, sizeof(Pcm));
         long fr; int rt, ch;
-        int16_t *d = pcm ? read_wav(path, &fr, &rt, &ch) : NULL;
-        if (!d) { free(pcm); free(s); lua_pushnil(L); lua_pushstring(L, "could not read the WAV file"); return 2; }
-        pcm->data = d; pcm->frames = fr; pcm->rate = rt; pcm->channels = ch; pcm->refs = 1;
-        s->pcm = pcm; s->rate = rt; s->channels = ch; s->total_frames = fr;
-    } else {
-        int too_big = 0;
-        const char *what = mp3 ? "MP3" : "Ogg";
-        if (!want_stream) {
-            Pcm *pcm = calloc(1, sizeof(Pcm));
-            long fr; int rt, ch;
-            int16_t *d = !pcm ? NULL : mp3 ? read_mp3_static(path, &fr, &rt, &ch, &too_big) : read_ogg_static(path, &fr, &rt, &ch, &too_big);
-            if (d) {
-                pcm->data = d; pcm->frames = fr; pcm->rate = rt; pcm->channels = mp3 ? 2 : ch; pcm->refs = 1;
-                s->pcm = pcm; s->rate = rt; s->channels = ch; s->total_frames = fr;
-            } else {
-                free(pcm);
-                if (!too_big) { free(s); lua_pushnil(L); lua_pushfstring(L, "could not decode the %s file%s%s", what, mp3 ? ": " : "", mp3 ? mp3_why : ""); return 2; }
-                want_stream = 1;
-            }
+        int16_t *d = pcm ? read_mp3_static(path, &fr, &rt, &ch, &too_big) : NULL;
+        if (d) {
+            pcm->data = d; pcm->frames = fr; pcm->rate = rt; pcm->channels = 2; pcm->refs = 1;
+            s->pcm = pcm; s->rate = rt; s->channels = ch; s->total_frames = fr;
+        } else {
+            free(pcm);
+            if (!too_big) { free(s); lua_pushnil(L); lua_pushfstring(L, "could not decode the MP3 file: %s", mp3_why); return 2; }
+            want_stream = 1;
         }
-        if (want_stream) {
-            s->is_stream = 1;
-            if (!stream_open(s)) { free(s); lua_pushnil(L); lua_pushfstring(L, "could not open the %s file%s%s", what, mp3 ? ": " : "", mp3 ? mp3_why : ""); return 2; }
-        }
+    }
+    if (want_stream) {
+        s->is_stream = 1;
+        if (!stream_open(s)) { free(s); lua_pushnil(L); lua_pushfstring(L, "could not open the MP3 file: %s", mp3_why); return 2; }
     }
     set_step(s, 1.0);
     return push_src(L, s);

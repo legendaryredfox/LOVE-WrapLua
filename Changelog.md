@@ -10,6 +10,9 @@
   and `hasGlyphs` work on it.
 - `native.tex_pixel(tex, x, y)` (C) reads a pixel of a file-loaded texture, and `ImageData:getPixel` uses it.
   `tests/games/imagefont` draws every case; checked in PPSSPP.
+- `docs/NATIVE_PSP_AUDIT.md`: the gap table lists Mesh and ImageFont as done. Still open on the native backend:
+  `captureScreenshot`, `love.font.*`, `newArrayImage`/`newCubeImage`/`newVolumeImage`, `love.image.newCompressedData`,
+  `love.sound.newDecoder`, blank `newImageData`.
 
 ### 2026-11-22, branch `feat/data-packed-size`
 

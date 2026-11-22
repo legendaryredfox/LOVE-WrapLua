@@ -173,6 +173,12 @@ function love.data.pack(container, fmt, ...)
     return s
 end
 
+-- love.data.getPackedSize(format): the byte size of a format of fixed-size items; 's' and 'z' have none.
+function love.data.getPackedSize(fmt)
+    if string.packsize then return string.packsize(fmt) end
+    return packlib().size(fmt)
+end
+
 -- love.data.unpack(format, data [, pos]) -> v1, v2, ..., next position (pos is 1-based).
 function love.data.unpack(fmt, data, pos)
     local s = type(data) == 'string' and data or data:getString()

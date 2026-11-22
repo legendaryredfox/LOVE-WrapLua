@@ -270,7 +270,7 @@ One virtual gamepad, filled every frame by the backend.
 | hash | ✓ md5, sha1, sha224, sha256, sha384, sha512 (vendored sha2.lua), raw digest |
 | compress / decompress | ✓ deflate and zlib (vendored LibDeflate), byte-compatible with desktop LÖVE; `gzip` and `lz4` fall back to deflate |
 | newByteData / newDataView / getSize | ✓ |
-| pack / unpack | ✓ on Lua 5.3+ only |
+| pack / unpack / getPackedSize | ✓ on every runtime: `string.pack` where it exists, `data/pack.lua` on Lua 5.1 and LuaJIT; `getPackedSize` refuses `s` and `z` |
 
 ---
 

@@ -203,6 +203,21 @@ function M.pack(fmt, ...)
     return concat(out)
 end
 
+function M.size(fmt)
+    local total, i = 0, 1
+    while i <= #fmt do
+        local c = sub(fmt, i, i)
+        if c == "<" or c == "=" or c == ">" or c == " " or c == "!" then i = i + 1
+        else
+            local kind, size, _, nxt = item(fmt, i)
+            if kind == "string" or kind == "zstring" then error("variable-size format in packsize", 2) end
+            total = total + size
+            i = nxt
+        end
+    end
+    return total
+end
+
 function M.unpack(fmt, data, pos)
     pos = pos or 1
     local res, little, i = {}, true, 1

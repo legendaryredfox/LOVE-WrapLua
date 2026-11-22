@@ -326,8 +326,12 @@ end
 function ImageData:getWidth() return self.w end
 function ImageData:getHeight() return self.h end
 function ImageData:getDimensions() return self.w, self.h end
-function ImageData:getPixel() return 0, 0, 0, 0 end   -- CPU pixel access: E3
-function ImageData:setPixel() end
+function ImageData:getPixel(x, y)
+    if not self._tex then return 0, 0, 0, 0 end
+    local r, gr, b, a = N.tex_pixel(self._tex, x, y)
+    return r / 255, gr / 255, b / 255, a / 255
+end
+function ImageData:setPixel() end   -- CPU writes: E3
 function ImageData:release() return true end            -- handles are shared by reference; the texture lives with the Image
 function ImageData:type() return "ImageData" end
 function ImageData:typeOf(t) return t == "ImageData" or t == "Data" or t == "Object" end
@@ -453,19 +457,101 @@ local function plain(text)
     end
     return tostring(text)
 end
-function Font:getWidth(text) return N.font_width(self._f, plain(text)) end
+local CHAR = "[%z\1-\127\194-\244][\128-\191]*"
+-- An image font keeps `_g` (character -> {x, width} in the image) and draws quads of `_img`; a TTF font keeps `_f`.
+local function imgwidth(font, text)
+    local gl, extra, best = font._g, font.extra, 0
+    for line in (text .. "\n"):gmatch("([^\n]*)\n") do
+        local w = 0
+        for ch in line:gmatch(CHAR) do local q = gl[ch]; if q then w = w + q[2] + extra end end
+        if w > best then best = w end
+    end
+    return best
+end
+local function fwidth(font, text)
+    if font._g then return imgwidth(font, text) end
+    return N.font_width(font._f, text)
+end
+local function imgdraw(font, text, x, y, r, sx, sy, ox, oy, penx, peny, cr, cg, cb, ca)
+    r = r or 0; sx = sx or 1; sy = sy or sx; ox = ox or 0; oy = oy or 0
+    local gl, tex, h, extra = font._g, font._img._tex, font.h, font.extra
+    local lh = h * font.lineheight
+    local cs, sn = 1, 0
+    if r ~= 0 then cs, sn = cos(r), sin(r) end
+    local r0, g0, b0, a0
+    if cr then
+        r0, g0, b0, a0 = N.get_color()
+        N.set_color(r0 * cr, g0 * cg, b0 * cb, a0 * (ca or 1))
+    end
+    local py = peny
+    for line in (text .. "\n"):gmatch("([^\n]*)\n") do
+        local px = penx
+        for ch in line:gmatch(CHAR) do
+            local q = gl[ch]
+            if q then
+                local lx, ly = (px - ox) * sx, (py - oy) * sy
+                nativedraw(tex, q[1], 0, q[2], h, x + lx * cs - ly * sn, y + lx * sn + ly * cs, r, sx, sy, 0, 0)
+                px = px + q[2] + extra
+            end
+        end
+        py = py + lh
+    end
+    if cr then N.set_color(r0, g0, b0, a0) end
+end
+function g.newImageFont(src, glyphs, extra)
+    local img
+    if type(src) == "string" or getmetatable(src) == ImageData then img = g.newImage(src)
+    elseif getmetatable(src) == Image then img = src
+    else error("newImageFont: expected a filename, an Image or an ImageData", 2) end
+    local tex, w, h = img._tex, img.w, img.h
+    local sr, sg, sb, sa = N.tex_pixel(tex, 0, 0)
+    local function spacer(x)
+        local r, gr, b, a = N.tex_pixel(tex, x, 0)
+        return r == sr and gr == sg and b == sb and a == sa
+    end
+    local ranges, x = {}, 0
+    while x < w do
+        while x < w and spacer(x) do x = x + 1 end
+        if x >= w then break end
+        local start = x
+        while x < w and not spacer(x) do x = x + 1 end
+        ranges[#ranges + 1] = { start, x - start }
+    end
+    local gl, n = {}, 0
+    for ch in glyphs:gmatch(CHAR) do
+        n = n + 1
+        if not ranges[n] then break end
+        gl[ch] = ranges[n]
+    end
+    local total = select(2, glyphs:gsub(CHAR, ""))
+    if total ~= #ranges then
+        error(("Number of glyphs in the ImageFont image (%d) does not match the glyph string (%d)"):format(#ranges, total), 2)
+    end
+    return setmetatable({ _g = gl, _img = img, h = h, size = h, asc = h, desc = 0, lh = h, extra = extra or 0, lineheight = 1 }, Font)
+end
+function Font:getWidth(text)
+    if self._g then return imgwidth(self, plain(text)) end
+    return N.font_width(self._f, plain(text))
+end
 function Font:getHeight() return floor(self.asc - self.desc + 0.5) end
 function Font:getAscent() return self.asc end
 function Font:getDescent() return self.desc end
 function Font:getBaseline() return self.asc end
 function Font:getLineHeight() return self.lineheight end
 function Font:setLineHeight(h) self.lineheight = h end
-function Font:hasGlyphs(text) return N.font_has(self._f, plain(text)) end
+function Font:hasGlyphs(text)
+    if self._g then
+        for ch in plain(text):gmatch(CHAR) do if ch ~= "\n" and not self._g[ch] then return false end end
+        return true
+    end
+    return N.font_has(self._f, plain(text))
+end
 function Font:setFilter() end
 function Font:getFilter() return "linear", "linear" end
 function Font:getDPIScale() return 1 end
 function Font:setFallbacks() end
 function Font:type() return "Font" end
+function Font:typeOf(t) return t == "Font" or t == "Object" end
 function Font:getWrap(text, limit)
     text = plain(text)
     local lines, maxw = {}, 0
@@ -502,7 +588,7 @@ end
 function Text:set(text)
     self.segs = segments(text)
     local w = 0
-    for _, s in ipairs(self.segs) do local sw = N.font_width(self.font._f, s[2]); s[3] = sw; w = w + sw end
+    for _, s in ipairs(self.segs) do local sw = fwidth(self.font, s[2]); s[3] = sw; w = w + sw end
     self.w = w
     local _, n = plain(text):gsub("\n", "")
     self.h = self.font:getHeight() * (n + 1)
@@ -516,18 +602,21 @@ function Text:getFont() return self.font end
 function Text:type() return "Text" end
 function Text:_draw(x, y, r, sx, sy, ox, oy)
     local penx = 0
-    local fn = self.font._f
+    local font = self.font
+    local fn = font._f
+    local draw = fn and fontdraw or imgdraw
+    if not fn then fn = font end
     local segs = self.segs
     local n = #segs
     for i = 1, n do
         local s = segs[i]
         local col = s[1]
-        if col then fontdraw(fn, s[2], x, y, r, sx, sy, ox, oy, penx, 0, col[1], col[2], col[3], col[4] or 1)
-        else fontdraw(fn, s[2], x, y, r, sx, sy, ox, oy, penx, 0) end
+        if col then draw(fn, s[2], x, y, r, sx, sy, ox, oy, penx, 0, col[1], col[2], col[3], col[4] or 1)
+        else draw(fn, s[2], x, y, r, sx, sy, ox, oy, penx, 0) end
         -- the pen only moves for a following segment; widths are cached per segment
         if i < n then
             local w = s[3]
-            if not w then w = N.font_width(fn, s[2]); s[3] = w end
+            if not w then w = fwidth(font, s[2]); s[3] = w end
             penx = penx + w
         end
     end
@@ -535,6 +624,7 @@ end
 function g.print(text, x, y, r, sx, sy, ox, oy)
     local font = g.getFont()
     if type(text) == "table" then g.newText(font, text):_draw(x, y, r, sx, sy, ox, oy)
+    elseif font._g then imgdraw(font, tostring(text), x, y, r, sx, sy, ox, oy, 0, 0)
     else fontdraw(font._f, tostring(text), x, y, r, sx, sy, ox, oy, 0, 0) end
 end
 function g.printf(text, x, y, limit, align, r, sx, sy, ox, oy)
@@ -545,7 +635,8 @@ function g.printf(text, x, y, limit, align, r, sx, sy, ox, oy)
         local w = font:getWidth(line)
         local dx = 0
         if align == "center" then dx = (limit - w) / 2 elseif align == "right" then dx = limit - w end
-        fontdraw(font._f, line, x, y, r, sx, sy, ox, oy, dx, (i - 1) * lh)
+        if font._g then imgdraw(font, line, x, y, r, sx, sy, ox, oy, dx, (i - 1) * lh)
+        else fontdraw(font._f, line, x, y, r, sx, sy, ox, oy, dx, (i - 1) * lh) end
     end
 end
 

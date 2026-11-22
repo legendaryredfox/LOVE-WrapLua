@@ -72,7 +72,21 @@ function M.canvas_new(w, h)
     if w > 512 or h > 512 or ncanvas >= 2 then return nil, "out of VRAM" end   -- like the 2 x 512x240 VRAM pool
     ncanvas = ncanvas + 1; return { canvas = true }
 end
-function M.image_load(p) rec("image_load", p); return { tex = p }, 32, 16 end
+-- Per-file CPU pixels: M.pixels[basename] = { w, h, fn(x, y) -> r, g, b, a (0-255) }; any other file is 32x16 and transparent.
+M.pixels = {}
+local function base(p) return p:match("[^/]+$") end
+function M.image_load(p)
+    rec("image_load", p)
+    local px = M.pixels[base(p)]
+    if px then return { tex = p }, px[1], px[2] end
+    return { tex = p }, 32, 16
+end
+function M.tex_pixel(t, x, y)
+    local px = M.pixels[base(t.tex)]
+    if not px then return 0, 0, 0, 0 end
+    assert(x >= 0 and y >= 0 and x < px[1] and y < px[2], "tex_pixel out of range")
+    return px[3](x, y)
+end
 function M.font_load(p, size) rec("font_load", p, size); return { font = p }, size * 0.8, -size * 0.2, size end
 function M.font_width(f, s) return #s * 6 end
 function M.font_has(f, s) return true end

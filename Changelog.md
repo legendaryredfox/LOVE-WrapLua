@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### 2026-11-22, branch `feat/native-psp-imagefont`
+
+- Native PSP backend: `love.graphics.newImageFont(filename | Image | ImageData, glyphs, extraspacing)`. The glyph columns
+  come from the top pixel row (spacer colour = the first pixel); `print`, `printf` and `Text` (coloured segments too)
+  draw one quad per glyph, with scale, rotation, origin, newlines and alignment. `getWidth`, `getHeight`, `getWrap`
+  and `hasGlyphs` work on it.
+- `native.tex_pixel(tex, x, y)` (C) reads a pixel of a file-loaded texture, and `ImageData:getPixel` uses it.
+  `tests/games/imagefont` draws every case; checked in PPSSPP.
+
 ### 2026-11-22, branch `feat/data-packed-size`
 
 - `love.data.getPackedSize(format)` on every backend (`string.packsize` or `data/pack.lua`); `Implemented.md` no longer says

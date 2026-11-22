@@ -176,6 +176,19 @@ static int l_image_load(lua_State *L) { trace("imgload");
     lua_pushinteger(L, w); lua_pushinteger(L, h);
     return 3;
 }
+static int l_tex_pixel(lua_State *L) {
+    Tex *t = luaL_checkudata(L, 1, "balatro.tex");
+    int x = (int)luaL_checknumber(L, 2), y = (int)luaL_checknumber(L, 3);
+    if (!t->tiles || t->vram_off || x < 0 || y < 0 || x >= t->w || y >= t->h) return luaL_error(L, "tex_pixel: out of range or not CPU readable");
+    const Tile *k = &t->tiles[(y / TILE_MAX) * t->ntx + (x / TILE_MAX)];
+    int lx = x - k->x0, ly = y - k->y0;
+    uint32_t c;
+    if (k->fmt == 0) c = k->px[(size_t)ly * k->pw + lx];
+    else if (k->fmt == 1) c = k->clut[((const unsigned char *)k->px)[(size_t)ly * k->pw + lx]];
+    else { unsigned char b = ((const unsigned char *)k->px)[(size_t)ly * (k->pw / 2) + lx / 2]; c = k->clut[(lx & 1) ? (b >> 4) : (b & 15)]; }
+    lua_pushinteger(L, c & 255); lua_pushinteger(L, (c >> 8) & 255); lua_pushinteger(L, (c >> 16) & 255); lua_pushinteger(L, c >> 24);
+    return 4;
+}
 static int l_tex_filter(lua_State *L) {
     Tex *t = luaL_checkudata(L, 1, "balatro.tex"); t->linear = lua_toboolean(L, 2); return 0;
 }
@@ -862,7 +875,7 @@ void engine_gu_init(void) {
 }
 
 static const luaL_Reg funcs[] = {
-    {"image_load", l_image_load}, {"tex_filter", l_tex_filter}, {"draw", l_draw}, {"fill_poly", l_fill_poly},
+    {"image_load", l_image_load}, {"tex_filter", l_tex_filter}, {"tex_pixel", l_tex_pixel}, {"draw", l_draw}, {"fill_poly", l_fill_poly},
     {"fill_rect", l_fill_rect}, {"draw_mesh", l_draw_mesh}, {"line", l_line}, {"b64encode", l_b64encode}, {"b64decode", l_b64decode}, {"set_color", l_set_color}, {"get_color", l_get_color}, {"push", l_push}, {"pop", l_pop},
     {"prep_draw", l_prep_draw}, {"origin", l_origin}, {"reset_stack", l_reset_stack}, {"translate", l_translate}, {"scale", l_scale}, {"rotate", l_rotate},
     {"stack_depth", l_stack_depth}, {"shear", l_shear}, {"get_matrix", l_get_matrix}, {"set_matrix", l_set_matrix}, {"mul_matrix", l_mul_matrix},

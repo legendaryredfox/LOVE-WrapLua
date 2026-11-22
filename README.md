@@ -549,6 +549,21 @@ contribute a native feature:
 | PS3 2D/3D | [tiny3D](https://github.com/cloned67/tiny3d) + [Mini2D](https://github.com/Dnawrkshp/mini2d) | What the PS3 backend draws through. Scene-to-texture **surfaces** make a PS3 Canvas feasible, and there is a pixel-shader pipeline. |
 | Whole-framework | [raylib4PlayStation](https://github.com/raylib4PlayStation/raylib4PlayStation) / [raylib-ps3](https://github.com/nbe1233/raylib-ps3) | raylib runs on Vita/PS4/PS3. A clean, zlib-licensed reference for module boundaries and a possible alternative native layer (no PSP target, though). |
 
+### Companion project: SuperLua
+
+SuperLua (a sibling project at `../superlua`, not published yet) is a statically typed,
+Lua-like language whose compiler is planned to emit plain Lua 5.1 that this wrapper can
+run. The two are independent: WrapLua needs nothing from SuperLua, and SuperLua does not
+need WrapLua. WrapLua is the `love.*` runtime, SuperLua is a source language and compiler.
+
+- What overlaps: the Lua 5.1 subset (no `//`, `&`, `|`, `<<`, `>>`, `<const>`, no `ffi`),
+  the VM instruction cost model (`tests/bench/`), and the `love.*` API surface listed in
+  [`Implemented.md`](Implemented.md).
+- What does not: SuperLua targets game logic and data layout. The wrapper's own draw path,
+  which dominates a heavy frame (see `docs/PERFORMANCE_FINDINGS.md`), is not changed by it.
+- Status: SuperLua has only a front end (lexer, parser, type checker). It emits no code
+  yet, so no speedup is claimed. See `../superlua/docs/love-integration.md` and its ADR 0003.
+
 If you want to help push past the current limits (Canvas, blend modes on the
 Vita, shaders), the projects above are where the native calls to build on live;
 [`docs/adr/`](docs/adr/) records the decisions already taken.

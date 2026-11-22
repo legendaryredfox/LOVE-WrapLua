@@ -6,7 +6,8 @@
 
 - Docs: the Balatro UI canvas cache (`balatro_psp/psp/opt.lua`, not in this repository) now caches a region taller than
   256 rows in strips and uses a 512x256 plus a 512x128 atlas; `shadowoff,uicache` 17.7 to 18.0 fps against 17.1 for
-  `shadowoff` alone in PPSSPP. See `docs/NATIVE_PSP_AUDIT.md`, section 4.
+  `shadowoff` alone in PPSSPP; `walk2` (skip the signature walk on alternate frames) reaches 18.6 fps. See
+  `docs/NATIVE_PSP_AUDIT.md`, section 4.
 
 ### 2026-11-21, branch `feat/native-psp-mp3`
 

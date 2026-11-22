@@ -179,12 +179,18 @@ and must not start a nested cache build of a child box; and the objects inside a
 were neither collected nor drawn into the atlas, so `info` now walks the child's `UIRoot` too. Pips only appear
 after the controller flag turns on, so compare screenshots at 70000 frames, not 20000.
 
+Signature walk (2026-11-22): the per-node walk costs about 8.7 us, close to what drawing a node costs, so a hit saved
+little. `OPT_ON=walk2` skips the walk on every other frame for a box that has been stable for 8 frames and blits the
+cache: `shadowoff,uicache,walk2` 18.6 fps (draw 21.6 ms) against 17.8 for `shadowoff,uicache` (draw 23.9 ms) at 70000
+frames. A change shows up one frame late. The remaining changing boxes are real motion (position of the hand and
+joker areas) or a wobbling rotation (`VT.r` about -0.1 on the 25-node box), so quantising the signature field gains
+nothing. A full-blind autoplay (`AUTOPLAY=hand`) reaches the shop with the same layout cached and uncached.
+
 Open, in order:
 1. (done, see above) The 797-node box, cached in strips.
-2. Boxes of 25 nodes keep changing in field 6 of the signature (`VT.r + VT.scale * 1000`, converging scale): quantise it.
-3. Check the cost of the signature walk (about 170k values per 200 updates) against what a hit saves; skip the walk
-   on alternate frames if it matters.
-4. Visual diff of cached against uncached screenshots in other states (shop, blind select, overlays), and a test
+2. (done) The 25-node box changes because it rotates, not because of scale: nothing to quantise.
+3. (done) The walk costs as much as a draw; `walk2` skips it on alternate frames.
+4. Shop checked; blind select and overlays still to diff, and a test
    game in `tests/games/` that exercises canvas plus quad blits so the engine side stays covered.
 5. If it pays, move the code from `opt.lua` into a reusable place and decide whether the PSP default is shadows off
    (also worth about `-2.7 ms` by itself).

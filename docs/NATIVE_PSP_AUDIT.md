@@ -21,7 +21,7 @@ candidate first-class PSP backend for LOVE-WrapLua. Nothing here was changed in 
 `native` exports 46 functions: `image_load tex_filter draw fill_poly fill_rect line set_color get_color push pop
 prep_draw origin reset_stack translate scale rotate begin_frame clear end_frame scissor blend font_load font_width
 font_has font_draw canvas_new canvas_set canvas_pixel palette pad time sleep mem tex_mem suppress cpu exit listdir
-stat mkdir remove deflate inflate b64encode b64decode`.
+stat mkdir remove deflate inflate b64encode b64decode`, plus `draw_mesh` and `tex_pixel` added since.
 
 ## 2. Measured today
 
@@ -47,9 +47,9 @@ documents itself as `tier 2`.
 |---|---|---|
 | Audio | **done 2026-11-17, MP3 only since 2026-11-21**: C mixer thread, 24 voices, `.mp3` on the Media Engine, static or streamed, pitch, volume, loop, seek, clone | OneLua 2 channels, lpp-vita, 3DS, PS3 stream |
 | Canvas | real render-to-texture, 2 targets in VRAM, 512 max | stub on every backend |
-| Shader / Mesh | stubs | stubs |
+| Shader / Mesh | Shader stub; **Mesh done 2026-11-22** (`native.draw_mesh`, default vertex format, single-tile textures) | stubs |
 | Rotation and scale | on the GPU | OneLua copies the image per scale or turn |
-| Text | TTF through stb_truetype, atlas pages | SDK font calls |
+| Text | TTF through stb_truetype, atlas pages; **ImageFont done 2026-11-22** (`native.tex_pixel` finds the glyph columns, Lua draws one quad per glyph) | SDK font calls |
 | `love.math` | `random`, `setRandomSeed` only | noise, triangulate, bezier, Transform, RandomGenerator, colour helpers |
 | `love.data` | compress, decompress | hash, encode, pack, compress |
 | SpriteBatch, Transform | **done 2026-11-17** (shared Lua over the C draw; `love.math` Transform from the shared module) | present |

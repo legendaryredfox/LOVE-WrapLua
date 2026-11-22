@@ -132,6 +132,18 @@ end)
 local P = dofile("LOVE-WrapLua/data/pack.lua")
 
 T.describe("love.data.pack/unpack", function()
+    T.it("getPackedSize adds up fixed-size items and agrees with the packed length", function()
+        T.eq(love.data.getPackedSize("<i2 B f"), 7)
+        T.eq(love.data.getPackedSize(">I4 d x c3"), 4 + 8 + 1 + 3)
+        T.eq(love.data.getPackedSize(""), 0)
+        T.eq(#love.data.pack("string", "<i2 B f", 1, 2, 3), love.data.getPackedSize("<i2 B f"))
+    end)
+
+    T.it("getPackedSize refuses a variable-size item", function()
+        T.nok(pcall(love.data.getPackedSize, "<i2 z"))
+        T.nok(pcall(love.data.getPackedSize, "s4"))
+    end)
+
     T.it("pack and unpack round-trip through the LOVE signature", function()
         local packed = love.data.pack("string", ">I4", 12345)
         T.eq(#packed, 4)

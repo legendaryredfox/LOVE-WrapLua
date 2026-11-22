@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### 2026-11-22, branch `feat/data-packed-size`
+
+- `love.data.getPackedSize(format)` on every backend (`string.packsize` or `data/pack.lua`); `Implemented.md` no longer says
+  pack and unpack need Lua 5.3.
+
 ### 2026-11-22, branch `docs/native-uicache-strips`
 
 - Docs: the Balatro UI canvas cache (`balatro_psp/psp/opt.lua`, not in this repository) now caches a region taller than

@@ -169,10 +169,18 @@ Results (PPSSPP, deterministic): `shadowoff` alone 17.1 fps (update 31.4, draw 2
 17.0 fps (draw 26.5 to 28.3): about 8 boxes per frame are cached and hit, and the output matches the uncached
 screenshot except slightly softer text edges. No net gain yet, because the box that matters is not cached.
 
+Strips (2026-11-22, PPSSPP, same bench): a region taller than 256 rows is cut into strips of at most 256 rows, one
+atlas rect, scissor and quad each. A canvas takes `512 * pow2(height) * 4` bytes of the 0xF0000-byte VRAM pool, so
+one 512x448 atlas does not fit (it rounds to 512x512). The cache uses a 512x256 atlas plus a 512x128 overflow atlas,
+and the 797-node box (123x322, 2 strips) is now cached with no atlas failures. `shadowoff,uicache` runs at 17.7 to
+18.0 fps (draw 23.3 to 23.9 ms) against 17.1 for `shadowoff` alone (draw 27.1 ms). Two traps found on the way:
+`UIBox:draw` returns early when the box already drew this frame, so the second strip pass must bypass that guard
+and must not start a nested cache build of a child box; and the objects inside a child UIBox (a controller button pip)
+were neither collected nor drawn into the atlas, so `info` now walks the child's `UIRoot` too. Pips only appear
+after the controller flag turns on, so compare screenshots at 70000 frames, not 20000.
+
 Open, in order:
-1. The 797-node box costs 8.5 ms per frame and stays uncached: its clipped region is 123x322, taller than the 256
-   rows of the atlas. Split a region into vertical strips of at most 256 rows (one rect, scissor and quad each), or
-   add a second atlas. This is the lever; the rest of the cached boxes total about 5 ms uncached.
+1. (done, see above) The 797-node box, cached in strips.
 2. Boxes of 25 nodes keep changing in field 6 of the signature (`VT.r + VT.scale * 1000`, converging scale): quantise it.
 3. Check the cost of the signature walk (about 170k values per 200 updates) against what a hit saves; skip the walk
    on alternate frames if it matters.

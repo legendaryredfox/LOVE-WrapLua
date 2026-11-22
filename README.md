@@ -148,7 +148,7 @@ that backend, so calling it errors.
 | love.graphics (scissor) | partial | full | partial | partial | full | 3DS and PSP clip on the GPU (PSP via `screen.clip`); the Vita backends and PS3 skip images and quads wholly outside the scissor, without cutting one that straddles the edge |
 | love.graphics (SpriteBatch, Text) | full | full | full | full | full | shared implementation (`core/objects.lua`); `draw(batch, x, y, r, sx, sy, ox, oy)` places the whole batch |
 | love.graphics (ParticleSystem) | partial | partial | partial | partial | partial | basic emitter (`core/particles.lua`): no size, colour or rotation curves |
-| love.graphics (Canvas, Shader, Mesh) | stub | stub | stub | stub | stub | `getSupported().canvas` and `.shader` are `false`; drawing a Canvas does nothing |
+| love.graphics (Canvas, Shader, Mesh) | stub | stub | stub | stub | stub | `getSupported().canvas` and `.shader` are `false`; drawing a Canvas does nothing. The native PSP backend draws Mesh (see `Implemented.md`) |
 | love.graphics (blend mode) | tracked | partial | tracked | full | tracked | PSP: `add`/`subtract` on whole images. PS3: all eight modes. Both Vita backends expose no blend call, so the mode is tracked and alpha renders. Ask `love.graphics.isBlendModeSupported(mode)` |
 | love.audio | partial | partial | partial | partial | partial | shared Source (`core/audio.lua`, LÖVE 11 play/pause semantics); 2 simultaneous voices on OneLua/PSP, 1 background voice on PS3 (the last stream played holds it), WAV/OGG/AIFF without volume on 3DS; position and pitch are timed in software, `seek` moves the reported position only |
 | love.keyboard | full | full | full | full | full | edge-triggered press/release, optional key repeat, `isDown(k1, k2, ...)` |

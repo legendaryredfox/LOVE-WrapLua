@@ -24,9 +24,10 @@ wrapper re-implements the LÖVE 11.5 API on each platform's native Lua SDK.
 **The goal** is to write PSP games with LÖVE, and a game the size of Balatro has to run smoothly on the
 console. Performance is part of the objective, not a side effect: the native PSP backend exists because
 OneLua's interpreter and per-call overhead cap Balatro near 1 fps against 16 fps on the native engine (see
-`docs/NATIVE_PSP_AUDIT.md`). The split is fixed: **C only for the engine** (rendering, input, audio, files,
-zlib), **Lua for everything above it**: the `love.*` layer, the game, and every development step (build,
-package, test, profile). Tools are Lua scripts run with `lua`, not bash or Python.
+`docs/NATIVE_PSP_AUDIT.md`). The split: the native PSP backend may be written in C (rendering, input, audio, files,
+zlib, and any `love.*` object that is cheaper there, such as Mesh), while **games are Lua** and every development
+step (build, package, test, profile) is a Lua script run with `lua`, not bash or Python. Cross-backend modules
+stay Lua.
 
 **Platform priority: PSP > PS3 > Vita > 3DS.** When work could go to more than
 one target, or a fix cannot be finished everywhere at once, the earlier
@@ -262,7 +263,7 @@ assertions run on PUC Lua only: LuaJIT counts trace memory in `collectgarbage("c
 | Feature | Status |
 |---|---|
 | Canvas | Stub: `renderTo(fn)` draws to the screen, drawing the Canvas does nothing (`canvas=false`) |
-| Shader / Mesh | Stubs: objects exist, nothing renders |
+| Shader / Mesh | Shader is a stub everywhere. Mesh is a stub except on the native PSP backend, where `native.draw_mesh` draws it (default vertex format, single-tile textures) |
 | Rotation in the stack | Turns what is drawn, not later positions |
 | Shear | Exact for shapes, lines and points; images and text only move |
 | OneLua draws | Scaled / mirrored copy per sheet; a rotated quad turns the whole copy; quads tint alpha only |

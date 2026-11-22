@@ -420,6 +420,64 @@ static int l_fill_rect(lua_State *L) {
     float px[4] = {x, x + w, x + w, x}, py[4] = {y, y, y + h, y + h};
     quad4(px, py); return 0;
 }
+/* native.draw_mesh(tex|nil, flat, mode, map|nil, first, last): LOVE's Mesh. `flat` holds 8 numbers per vertex
+   (x, y, u, v, r, g, b, a; u and v in 0..1, colour in 0..1), `mode` is 1 fan, 2 strip, 3 triangles. `map` is an
+   optional 1-based vertex map; first..last (1-based) picks the entries drawn. The vertex colour is multiplied by the
+   current colour. A texture drawn here must be a single tile (up to 512x512); a larger one is not drawn. */
+static int l_draw_mesh(lua_State *L) {
+    if (suppress_draw) return 0;
+    Tex *t = lua_isnil(L, 1) ? NULL : luaL_checkudata(L, 1, "balatro.tex");
+    luaL_checktype(L, 2, LUA_TTABLE);
+    int mode = (int)luaL_checkinteger(L, 3);
+    int has_map = lua_istable(L, 4);
+    int nverts = (int)(lua_objlen(L, 2) / 8);
+    int first = (int)luaL_optinteger(L, 5, 1), last = (int)luaL_optinteger(L, 6, has_map ? (int)lua_objlen(L, 4) : nverts);
+    int n = last - first + 1;
+    if (n < 3 || (t && (!t->tiles || t->ntx != 1 || t->nty != 1))) return 0;
+    if (n > 65535) n = 65535;
+    VertT *pv = malloc((size_t)n * sizeof(VertT));
+    if (!pv) return 0;
+    float cr = cur_r, cg = cur_g, cb = cur_b, ca = cur_a;
+    float tw = t ? (float)t->w : 1, th = t ? (float)t->h : 1;
+    int used = 0;
+    for (int i = 0; i < n; i++) {
+        int vi = first + i;
+        if (has_map) { lua_rawgeti(L, 4, vi); vi = (int)lua_tointeger(L, -1); lua_pop(L, 1); }
+        if (vi < 1 || vi > nverts) continue;
+        int base = (vi - 1) * 8;
+        float f[8];
+        for (int k = 0; k < 8; k++) { lua_rawgeti(L, 2, base + k + 1); f[k] = (float)lua_tonumber(L, -1); lua_pop(L, 1); }
+        VertT *q = &pv[used++];
+        q->x = M[0] * f[0] + M[2] * f[1] + M[4]; q->y = M[1] * f[0] + M[3] * f[1] + M[5]; q->z = 0;
+        q->u = f[2] * tw; q->v = f[3] * th;
+        q->color = pack4(f[4] * cr, f[5] * cg, f[6] * cb, f[7] * ca);
+    }
+    int ntri = 0;
+    if (used >= 3) ntri = (mode == 3) ? used / 3 : used - 2;
+    if (ntri > 0) {
+        if (t) {
+            VertT *v = tex_reserve(&t->tiles[0], t->linear, ntri * 3);
+            for (int i = 0; i < ntri; i++) {
+                if (mode == 3) { v[3 * i] = pv[3 * i]; v[3 * i + 1] = pv[3 * i + 1]; v[3 * i + 2] = pv[3 * i + 2]; }
+                else if (mode == 2) { v[3 * i] = pv[i]; v[3 * i + 1] = pv[i + 1]; v[3 * i + 2] = pv[i + 2]; }
+                else { v[3 * i] = pv[0]; v[3 * i + 1] = pv[i + 1]; v[3 * i + 2] = pv[i + 2]; }
+            }
+            nbt += ntri * 3;
+        } else {
+            VertC *v = col_reserve(ntri * 3);
+            for (int i = 0; i < ntri; i++) {
+                int a, b, c;
+                if (mode == 3) { a = 3 * i; b = 3 * i + 1; c = 3 * i + 2; } else if (mode == 2) { a = i; b = i + 1; c = i + 2; } else { a = 0; b = i + 1; c = i + 2; }
+                v[3 * i].x = pv[a].x; v[3 * i].y = pv[a].y; v[3 * i].z = 0; v[3 * i].color = pv[a].color;
+                v[3 * i + 1].x = pv[b].x; v[3 * i + 1].y = pv[b].y; v[3 * i + 1].z = 0; v[3 * i + 1].color = pv[b].color;
+                v[3 * i + 2].x = pv[c].x; v[3 * i + 2].y = pv[c].y; v[3 * i + 2].z = 0; v[3 * i + 2].color = pv[c].color;
+            }
+            nbc += ntri * 3;
+        }
+    }
+    free(pv);
+    return 0;
+}
 static int l_line(lua_State *L) {
     float x1 = luaL_checknumber(L, 1), y1 = luaL_checknumber(L, 2), x2 = luaL_checknumber(L, 3), y2 = luaL_checknumber(L, 4), lw = luaL_checknumber(L, 5);
     float dx = x2 - x1, dy = y2 - y1, len = sqrtf(dx * dx + dy * dy);
@@ -805,7 +863,7 @@ void engine_gu_init(void) {
 
 static const luaL_Reg funcs[] = {
     {"image_load", l_image_load}, {"tex_filter", l_tex_filter}, {"draw", l_draw}, {"fill_poly", l_fill_poly},
-    {"fill_rect", l_fill_rect}, {"line", l_line}, {"b64encode", l_b64encode}, {"b64decode", l_b64decode}, {"set_color", l_set_color}, {"get_color", l_get_color}, {"push", l_push}, {"pop", l_pop},
+    {"fill_rect", l_fill_rect}, {"draw_mesh", l_draw_mesh}, {"line", l_line}, {"b64encode", l_b64encode}, {"b64decode", l_b64decode}, {"set_color", l_set_color}, {"get_color", l_get_color}, {"push", l_push}, {"pop", l_pop},
     {"prep_draw", l_prep_draw}, {"origin", l_origin}, {"reset_stack", l_reset_stack}, {"translate", l_translate}, {"scale", l_scale}, {"rotate", l_rotate},
     {"stack_depth", l_stack_depth}, {"shear", l_shear}, {"get_matrix", l_get_matrix}, {"set_matrix", l_set_matrix}, {"mul_matrix", l_mul_matrix},
     {"begin_frame", l_begin}, {"clear", l_clear}, {"end_frame", l_end}, {"scissor", l_scissor}, {"blend", l_blend},

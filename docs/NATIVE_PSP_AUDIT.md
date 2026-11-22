@@ -142,8 +142,8 @@ and Tremor were then removed (ADR 002).
 
 ### UI layer cache in a canvas (2026-11-17, in progress, not merged anywhere)
 
-Code: section 7 of `~/development/games/balatro_psp/psp/opt.lua` (that repository is not under version control, so
-the file on disk is the only copy). Switch on with `OPT_ON=shadowoff,uicache` in `tools/build_native.sh`; add
+Code: section 7 of `~/development/games/balatro_psp/psp/opt.lua` (that repository is a local git repository since
+2026-11-22, with no remote). Switch on with `OPT_ON=shadowoff,uicache[,walk2]` in `tools/build_native.sh`; add
 `uidiag2` for per-box timing and the reason a box is not cached (`UICACHE box ...` lines in `psp_log.txt`).
 Section 6 (`uidiag`) is the measurement that justified it, section 8 (`shadowoff`) forces Balatro's shadows option off.
 
@@ -197,8 +197,8 @@ Open, in order:
 
 ## 5. Risks and open items
 
-- `balatro_psp` is not under version control. Its `git init` and `.gitignore` are open items in its own
-  HANDOFF (section 5, item 11).
+- `balatro_psp` is a local git repository (2026-11-22) with no remote; `build/` and `native/` are ignored because
+  they hold Steam assets and stale engine copies.
 - Lua 5.1.5 sources sit in `native/third_party` and would be fetched or vendored, not committed as-is. The docker
   build needs a pinned image tag; `pspdev/pspdev:latest` is what runs today.
 - The repository rule "no build step, plain `.lua`" (AGENTS.md) would have to change: the native backend needs a

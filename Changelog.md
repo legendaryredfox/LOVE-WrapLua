@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### 2026-11-22, branch `feat/native-psp-mesh`
+
+- Native PSP backend: a real `Mesh`. `native.draw_mesh` (C, `native/src/engine.c`) batches the vertices as GPU triangles,
+  textured or coloured (vertex colour times the current colour); `love.graphics.newMesh` in `PSPNative/extras.lua`
+  supports vertex lists and counts, fan, strip and triangles, `setVertex`/`setVertices`/`getVertices`, vertex map, draw
+  range and `setTexture`. Only the default vertex format is accepted, and a texture must be one tile (up to 512x512).
+  `tests/games/mesh` draws every case; checked in PPSSPP.
+- `AGENTS.md`: the native PSP backend may be written in C; games stay Lua.
+
 ### 2026-11-22, branch `docs/native-uicache-strips`
 
 - Docs: the Balatro UI canvas cache (`balatro_psp/psp/opt.lua`, not in this repository) now caches a region taller than

@@ -36,7 +36,7 @@ function M.mul_matrix(a, b, c, d, e, f)
     local E, F = m[1] * e + m[3] * f + m[5], m[2] * e + m[4] * f + m[6]
     m = { A * a + C * b, B * a + D * b, A * c + C * d, B * c + D * d, E, F }
 end
-for _, n in ipairs({ "tex_filter", "draw", "fill_poly", "fill_rect", "line", "prep_draw", "begin_frame", "clear", "end_frame", "scissor", "blend", "font_draw", "cpu", "exit", "tex_mem", "palette", "canvas_set", "suppress" }) do
+for _, n in ipairs({ "tex_filter", "draw", "fill_poly", "fill_rect", "draw_mesh", "line", "prep_draw", "begin_frame", "clear", "end_frame", "scissor", "blend", "font_draw", "cpu", "exit", "tex_mem", "palette", "canvas_set", "suppress" }) do
     M[n] = function(...) return rec(n, ...) end
 end
 local cr, cg, cb, ca = 1, 1, 1, 1

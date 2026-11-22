@@ -374,8 +374,8 @@ records its usual emulator and the areas it gets wrong in
   draws to the screen and drawing the Canvas does nothing. Native paths exist:
   vita2d has rendertarget textures with no Lua binding in lpp-vita (a small
   upstream patch), tiny3D has scene-to-texture surfaces; OneLua exposes none.
-- **Shader and Mesh** are stubs: no SDK exposes a programmable pipeline or
-  arbitrary vertex submission to Lua.
+- **Shader** is a stub, and so is **Mesh** except on the native PSP backend (`love.graphics.newMesh` over `native.draw_mesh`: default vertex format, fan, strip and triangles, vertex map and draw range, single-tile textures up to 512x512). Elsewhere no SDK exposes a programmable pipeline or
+  arbitrary vertex submission to Lua, so Shader and Mesh are stubs.
 - **Rotation** in the transform stack turns what is drawn but not the positions
   that follow it: the stack keeps an offset, a 2x2 matrix (scale and shear) and an angle per level.
   `shear` slants shapes, lines and points; images and text only move.

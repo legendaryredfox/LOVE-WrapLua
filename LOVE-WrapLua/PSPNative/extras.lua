@@ -16,6 +16,124 @@ lv1lua.load("LOVE-WrapLua/core/drawobject.lua")
 lv1lua.load("LOVE-WrapLua/core/spritebatch.lua")
 lv1lua.load("LOVE-WrapLua/core/particles.lua")
 
+-- ── Mesh ─────────────────────────────────────────────────────────
+-- Vertices live in one flat table (x, y, u, v, r, g, b, a per vertex) that native.draw_mesh reads directly. Only the
+-- default vertex format is supported; a texture must be a single tile (up to 512x512).
+local MESH_MODES = { fan = 1, strip = 2, triangles = 3 }
+local Mesh = {}; Mesh.__index = Mesh
+local MESH_DEFAULT = { 0, 0, 0, 0, 1, 1, 1, 1 }
+
+local function isDefaultFormat(f)
+    return type(f[1]) == "table" and f[1][1] == "VertexPosition" and f[1][3] == 2 and f[2] and f[2][1] == "VertexTexCoord"
+        and f[2][3] == 2 and f[3] and f[3][1] == "VertexColor" and f[3][3] == 4 and f[4] == nil
+end
+
+local function writeVertex(flat, i, v)
+    local base = (i - 1) * 8
+    for k = 1, 8 do
+        local x = v[k]
+        if x == nil then x = MESH_DEFAULT[k] end
+        flat[base + k] = x
+    end
+end
+
+function g.newMesh(a, b, c, d)
+    local vertices, mode = a, b
+    if type(a) == "table" and type(a[1]) == "table" and type(a[1][1]) == "string" then
+        if not isDefaultFormat(a) then
+            error("love.graphics.newMesh: only the default vertex format (VertexPosition, VertexTexCoord, VertexColor) is supported", 2)
+        end
+        vertices, mode = b, c
+    end
+    mode = mode or "fan"
+    if not MESH_MODES[mode] then error("Invalid mesh draw mode: " .. tostring(mode), 2) end
+    local flat, count = {}, 0
+    if type(vertices) == "number" then
+        count = vertices
+        for i = 1, count do writeVertex(flat, i, MESH_DEFAULT) end
+    elseif type(vertices) == "table" then
+        count = #vertices
+        for i = 1, count do writeVertex(flat, i, vertices[i]) end
+    else
+        error("love.graphics.newMesh: expected a vertex table or a vertex count", 2)
+    end
+    return lv1lua.util.registerDrawObject(setmetatable({ _flat = flat, _n = count, _mode = mode }, Mesh))
+end
+
+function Mesh:type() return "Mesh" end
+function Mesh:typeOf(t) return t == "Mesh" or t == "Drawable" or t == "Object" end
+function Mesh:getVertexCount() return self._n end
+function Mesh:setDrawMode(m)
+    if not MESH_MODES[m] then error("Invalid mesh draw mode: " .. tostring(m), 2) end
+    self._mode = m
+end
+function Mesh:getDrawMode() return self._mode end
+function Mesh:setTexture(t) self._tex = t end
+function Mesh:getTexture() return self._tex end
+function Mesh:setVertex(i, ...)
+    if i < 1 or i > self._n then error("Invalid vertex index: " .. tostring(i), 2) end
+    local v = ...
+    if type(v) ~= "table" then v = { ... } end
+    writeVertex(self._flat, i, v)
+end
+function Mesh:getVertex(i)
+    if i < 1 or i > self._n then error("Invalid vertex index: " .. tostring(i), 2) end
+    local f, base = self._flat, (i - 1) * 8
+    return f[base + 1], f[base + 2], f[base + 3], f[base + 4], f[base + 5], f[base + 6], f[base + 7], f[base + 8]
+end
+function Mesh:setVertices(list, start)
+    start = start or 1
+    if start < 1 or start + #list - 1 > self._n then error("Too many vertices for this Mesh", 2) end
+    for i = 1, #list do writeVertex(self._flat, start + i - 1, list[i]) end
+end
+function Mesh:getVertices()
+    local out = {}
+    for i = 1, self._n do out[i] = { self:getVertex(i) } end
+    return out
+end
+function Mesh:setVertexMap(map, ...)
+    if map == nil then self._map = nil; return end
+    if type(map) ~= "table" then map = { map, ... } end
+    local copy = {}
+    for i = 1, #map do
+        local vi = map[i]
+        if vi < 1 or vi > self._n then error("Invalid vertex map value: " .. tostring(vi), 2) end
+        copy[i] = vi
+    end
+    self._map = copy
+end
+function Mesh:getVertexMap()
+    if not self._map then return nil end
+    local out = {}
+    for i = 1, #self._map do out[i] = self._map[i] end
+    return out
+end
+function Mesh:setDrawRange(min, count)
+    if min == nil then self._min, self._count = nil, nil; return end
+    self._min, self._count = min, count
+end
+function Mesh:getDrawRange() return self._min, self._count end
+function Mesh:setAttributeEnabled() end
+function Mesh:isAttributeEnabled() return true end
+function Mesh:attachAttribute() end
+function Mesh:detachAttribute() end
+function Mesh:flush() end
+function Mesh:release() self._flat = {}; self._n = 0; return true end
+function Mesh:_draw(x, y, r, sx, sy, ox, oy)
+    local tex = self._tex
+    if tex ~= nil then
+        if tex._null then return end
+        tex = tex._tex
+    end
+    local map = self._map
+    local total = map and #map or self._n
+    local first, last = 1, total
+    if self._min then first = self._min; last = math.min(total, first + (self._count or total) - 1) end
+    lv1lua.core.withDrawTransform(x, y, r, sx, sy, ox, oy, function()
+        N.draw_mesh(tex, self._flat, MESH_MODES[self._mode], map, first, last)
+    end)
+end
+
 -- ── graphics state kept for the getters ──────────────────────────
 local st = {
     lineStyle = "smooth", lineJoin = "miter", pointSize = 1, wireframe = false, depthMode = "always",

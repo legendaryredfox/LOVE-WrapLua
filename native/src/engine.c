@@ -957,11 +957,13 @@ static const luaL_Reg funcs[] = {
 };
 void audio_register(lua_State *L);
 int mv_open(lua_State *L);
+int uw_open(lua_State *L);
 int luaopen_native(lua_State *L) {
     luaL_newmetatable(L, "balatro.tex"); lua_pushcfunction(L, tex_gc); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
     luaL_newmetatable(L, "balatro.font"); lua_pushcfunction(L, font_gc); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
     luaL_register(L, "native", funcs);
     audio_register(L);
     mv_open(L);
+    uw_open(L);
     return 1;
 }

@@ -406,7 +406,8 @@ function ImageData:paste(src, dx, dy, sx, sy, sw, sh)
     end
 end
 function ImageData:getFormat() return "rgba8" end
-function ImageData:_upload()
+function ImageData:getString()
+    materialize(self)
     local rg, ba, parts, n = self._rg, self._ba, {}, self.w * self.h
     -- unpack and string.char take at most about 8000 values per call (LUAI_MAXCSTACK), so 1024 pixels at a time
     local char, floor = string.char, math.floor
@@ -419,7 +420,17 @@ function ImageData:_upload()
         end
         parts[#parts + 1] = char(unpack(bytes, 1, k))
     end
-    return (N.image_from_rgba(self.w, self.h, table.concat(parts)))
+    return table.concat(parts)
+end
+function ImageData:_upload()
+    return (N.image_from_rgba(self.w, self.h, self:getString()))
+end
+function ImageData:encode(format, filename)
+    if format ~= "png" then error("Unsupported image format: " .. tostring(format) .. " (png only)", 2) end
+    local png = N.png_encode(self.w, self.h, self:getString())
+    if not png then error("Could not encode the image", 2) end
+    if filename then love.filesystem.write(filename, png) end
+    return love.filesystem.newFileData(png, filename or "image.png")
 end
 function ImageData:release() return true end            -- an unmodified file ImageData shares its texture with the Image
 function ImageData:type() return "ImageData" end

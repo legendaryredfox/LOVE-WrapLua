@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### 2026-11-23, branch `feat/native-psp-imagedata-paste`
+
+- Native PSP backend: `ImageData:clone`, `ImageData:paste(source, dx, dy, sx, sy, sw, sh)` (clipped to both images) and
+  `ImageData:getFormat`. Still missing: `encode`, `getString`.
+
 ### 2026-11-23, branch `feat/native-psp-blank-imagedata`
 
 - Native PSP backend: blank `love.image.newImageData(w, h)`, `ImageData:setPixel` and `mapPixel`, and `newImage(imageData)`

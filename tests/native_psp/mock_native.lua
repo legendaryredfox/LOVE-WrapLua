@@ -87,6 +87,11 @@ function M.image_from_rgba(w, h, str)
     M.last_rgba = str
     return { tex = "rgba", data = str, w = w }
 end
+function M.png_encode(w, h, str)
+    rec("png_encode", w, h, #str)
+    if #str ~= w * h * 4 then return nil, "bad size" end
+    return "PNG" .. w .. "x" .. h .. ":" .. str
+end
 function M.tex_pixel(t, x, y)
     if t.data then
         local i = (y * (t.w or 0) + x) * 4

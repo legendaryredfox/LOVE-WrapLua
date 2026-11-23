@@ -842,6 +842,42 @@ static int l_remove(lua_State *L) {
     lua_pushboolean(L, remove(p) == 0 || rmdir(p) == 0); return 1;
 }
 
+static void png_chunk(unsigned char **out, const char *type, const unsigned char *data, uint32_t len) {
+    unsigned char *p = *out;
+    p[0] = len >> 24; p[1] = len >> 16; p[2] = len >> 8; p[3] = len; memcpy(p + 4, type, 4);
+    if (len) memcpy(p + 8, data, len);
+    uLong c = crc32(crc32(0L, Z_NULL, 0), p + 4, len + 4);
+    p[8 + len] = c >> 24; p[9 + len] = c >> 16; p[10 + len] = c >> 8; p[11 + len] = c;
+    *out = p + 12 + len;
+}
+/* png_encode(w, h, rgba) -> PNG file bytes: 8-bit RGBA, filter 0 on every row, one IDAT */
+static int l_png_encode(lua_State *L) {
+    int w = (int)luaL_checknumber(L, 1), h = (int)luaL_checknumber(L, 2);
+    size_t len; const char *px = luaL_checklstring(L, 3, &len);
+    if (w < 1 || h < 1 || len != (size_t)w * h * 4) { lua_pushnil(L); lua_pushstring(L, "bad size"); return 2; }
+    size_t rowb = (size_t)w * 4 + 1, rawn = rowb * h;
+    unsigned char *raw = malloc(rawn);
+    uLongf cap = compressBound(rawn);
+    unsigned char *out = raw ? malloc(8 + 25 + 12 + cap + 12) : NULL;
+    if (!raw || !out) { free(raw); free(out); lua_pushnil(L); lua_pushstring(L, "out of memory"); return 2; }
+    for (int y = 0; y < h; y++) { raw[y * rowb] = 0; memcpy(raw + y * rowb + 1, px + (size_t)y * w * 4, (size_t)w * 4); }
+    if (compress2(out + 8 + 25 + 8, &cap, raw, rawn, 6) != Z_OK) { free(raw); free(out); lua_pushnil(L); lua_pushstring(L, "deflate failed"); return 2; }
+    free(raw);
+    static const unsigned char sig[8] = { 137, 80, 78, 71, 13, 10, 26, 10 };
+    memcpy(out, sig, 8);
+    unsigned char ihdr[13] = { w >> 24, w >> 16, w >> 8, w, h >> 24, h >> 16, h >> 8, h, 8, 6, 0, 0, 0 };
+    unsigned char *p = out + 8;
+    png_chunk(&p, "IHDR", ihdr, 13);
+    unsigned char *idat = p;
+    uint32_t dn = (uint32_t)cap;
+    idat[0] = dn >> 24; idat[1] = dn >> 16; idat[2] = dn >> 8; idat[3] = dn; memcpy(idat + 4, "IDAT", 4);
+    uLong c = crc32(crc32(0L, Z_NULL, 0), idat + 4, dn + 4);
+    idat[8 + dn] = c >> 24; idat[9 + dn] = c >> 16; idat[10 + dn] = c >> 8; idat[11 + dn] = c;
+    p = idat + 12 + dn;
+    png_chunk(&p, "IEND", NULL, 0);
+    lua_pushlstring(L, (char *)out, p - out); free(out);
+    return 1;
+}
 static int l_deflate(lua_State *L) { trace("deflate");
     size_t n; const char *s = luaL_checklstring(L, 1, &n);
     uLongf cap = compressBound(n); unsigned char *out = malloc(cap);
@@ -902,7 +938,7 @@ static const luaL_Reg funcs[] = {
     {"font_load", l_font_load}, {"font_width", l_font_width}, {"font_has", l_font_has}, {"font_draw", l_font_draw},
     {"pad", l_pad}, {"time", l_time}, {"sleep", l_sleep}, {"mem", l_mem}, {"tex_mem", l_texmem}, {"canvas_new", l_canvas_new}, {"canvas_set", l_canvas_set}, {"suppress", l_suppress}, {"canvas_pixel", l_canvas_pixel}, {"palette", l_palette}, {"cpu", l_cpu}, {"exit", l_exit},
     {"listdir", l_listdir}, {"stat", l_stat}, {"mkdir", l_mkdir}, {"remove", l_remove},
-    {"deflate", l_deflate}, {"inflate", l_inflate}, {NULL, NULL}
+    {"png_encode", l_png_encode}, {"deflate", l_deflate}, {"inflate", l_inflate}, {NULL, NULL}
 };
 void audio_register(lua_State *L);
 int luaopen_native(lua_State *L) {

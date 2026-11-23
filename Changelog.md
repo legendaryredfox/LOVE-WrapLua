@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### 2026-11-23, branch `feat/native-psp-imagedata-encode`
+
+- Native PSP backend: `ImageData:getString` and `ImageData:encode("png", filename)`. `native.png_encode(w, h, rgba)` (C,
+  zlib `compress2` and `crc32`) writes an 8-bit RGBA PNG; `encode` returns a FileData and saves it to the save directory
+  when given a filename. `tests/games/imagedata` writes a PNG, reads it back and draws it, and pastes two regions;
+  checked in PPSSPP. Still missing: `captureScreenshot`, `love.font.*`, `newArrayImage`.
+
 ### 2026-11-23, branch `feat/native-psp-imagedata-paste`
 
 - Native PSP backend: `ImageData:clone`, `ImageData:paste(source, dx, dy, sx, sy, sw, sh)` (clipped to both images) and

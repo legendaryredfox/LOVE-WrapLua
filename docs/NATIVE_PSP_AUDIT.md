@@ -127,6 +127,8 @@ unprofiled baseline from that build is the same 16.4 fps (update 31.4 ms, draw 2
   The UI cache signature walk (`native/src/uiwalk.c`) took draw from 21.5 to 19.4 ms (27.1 fps), and the round-robin update gate
   (`native/src/reduce.c`) update from 17.6 to 16.1 ms (28.2 fps). The two `MOVEABLES` loops of `Game:update` in C (`mv_loop`, `mv_update_loop`)
   took update to 14.6 ms (29.4 fps).
+  `prep_draw` and `Node:translate_container` in C (`prep_method`, `tc_method`) took draw from 19.4 to 17.1 ms: 31.8 fps in PPSSPP,
+  past the 30 fps target of this phase (emulator figure, not hardware).
 
 ### Cost of audio in Balatro (2026-11-17)
 

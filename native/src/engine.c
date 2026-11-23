@@ -367,9 +367,7 @@ static int l_mul_matrix(lua_State *L) {
 }
 /* native.prep_draw(S, tx, ty, r, ox, oy, sc): push; scale(S); translate(tx,ty); rotate(r) if r~=0; translate(ox,oy); scale(sc).
    Balatro's prep_draw in one call. */
-static int l_prep_draw(lua_State *L) {
-    float S = (float)lua_tonumber(L, 1), tx = (float)lua_tonumber(L, 2), ty = (float)lua_tonumber(L, 3), r = (float)lua_tonumber(L, 4);
-    float ox = (float)lua_tonumber(L, 5), oy = (float)lua_tonumber(L, 6), sc = (float)lua_tonumber(L, 7);
+void eng_prep_draw(float S, float tx, float ty, float r, float ox, float oy, float sc) {
     if (sp < 64) memcpy(stk[sp++], M, sizeof M);
     M[0] *= S; M[1] *= S; M[2] *= S; M[3] *= S;
     M[4] += M[0] * tx + M[2] * ty; M[5] += M[1] * tx + M[3] * ty;
@@ -379,7 +377,19 @@ static int l_prep_draw(lua_State *L) {
     }
     M[4] += M[0] * ox + M[2] * oy; M[5] += M[1] * ox + M[3] * oy;
     M[0] *= sc; M[1] *= sc; M[2] *= sc; M[3] *= sc;
+}
+static int l_prep_draw(lua_State *L) {
+    eng_prep_draw((float)lua_tonumber(L, 1), (float)lua_tonumber(L, 2), (float)lua_tonumber(L, 3), (float)lua_tonumber(L, 4),
+                  (float)lua_tonumber(L, 5), (float)lua_tonumber(L, 6), (float)lua_tonumber(L, 7));
     return 0;
+}
+/* Node:translate_container's three calls: translate(a, b); rotate(r); translate(c, d). */
+void eng_translate_container(float a, float b, float r, float c, float d) {
+    M[4] += M[0] * a + M[2] * b; M[5] += M[1] * a + M[3] * b;
+    float cr = vfpu_cosf(r), sr = vfpu_sinf(r);
+    float m0 = M[0], m1 = M[1], m2 = M[2], m3 = M[3];
+    M[0] = m0 * cr + m2 * sr; M[1] = m1 * cr + m3 * sr; M[2] = -m0 * sr + m2 * cr; M[3] = -m1 * sr + m3 * cr;
+    M[4] += M[0] * c + M[2] * d; M[5] += M[1] * c + M[3] * d;
 }
 /* o = M * T(x,y) R(r) S(sx,sy) T(-ox,-oy) */
 static void compose(float x, float y, float r, float sx, float sy, float ox, float oy, float *o) {

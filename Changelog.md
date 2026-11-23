@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### 2026-11-23, branch `perf/native-psp-prep-c`
+
+- Native PSP engine: `native.prep_method` and `native.tc_method` (`native/src/moveable.c`) are Balatro's `prep_draw` and
+  `Node:translate_container` reading their fields through `luaH_getstr` and calling the engine's matrix directly
+  (`eng_prep_draw`, `eng_translate_container` in `engine.c`). `native.ui_setup{prep_draw, translate_container}` registers the Lua
+  functions that run when an argument or field has an unexpected type.
+- Balatro harness (`SELECTING_HAND`, `shadowoff,uicache,walk2`): draw 19.4 to 17.1 ms, 29.5 to 31.8 fps in PPSSPP (30 fps target
+  reached), screenshots at 70000 frames identical with and without. The differential test (random moveables, parents, offsets,
+  wrong-typed fields, mutations detected, also with float Lua numbers, valgrind clean) is in the balatro_psp repository
+  (`tests/mv/ui_test.lua`).
+
 ### 2026-11-23, branch `perf/native-psp-loops-c`
 
 - Native PSP engine: `native.mv_loop(moveables, frame, dt)` and `native.mv_update_loop(moveables, dt, node_update)` in

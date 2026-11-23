@@ -90,18 +90,8 @@ static void tex_free(Tex *t) {
 }
 static int tex_gc(lua_State *L) { tex_free((Tex *)luaL_checkudata(L, 1, "balatro.tex")); return 0; }
 
-static int l_image_load(lua_State *L) { trace("imgload");
-    size_t len; const char *path = luaL_checkstring(L, 1);
-    FILE *f = fopen(path, "rb");
-    if (!f) { lua_pushnil(L); lua_pushfstring(L, "cannot open %s", path); return 2; }
-    fseek(f, 0, SEEK_END); len = ftell(f); fseek(f, 0, SEEK_SET);
-    unsigned char *buf = malloc(len);
-    if (!buf || fread(buf, 1, len, f) != len) { fclose(f); free(buf); lua_pushnil(L); lua_pushstring(L, "read error"); return 2; }
-    fclose(f);
-    int w, h, n;
-    unsigned char *img = stbi_load_from_memory(buf, (int)len, &w, &h, &n, 4);
-    free(buf);
-    if (!img) { lua_pushnil(L); lua_pushfstring(L, "decode failed: %s", stbi_failure_reason()); return 2; }
+/* Pushes a Tex built from w*h RGBA8888 pixels (img stays the caller's); returns 0 and pushes nothing on out of memory. */
+static int tex_from_rgba(lua_State *L, unsigned char *img, int w, int h) {
     /* count distinct colours (alpha-0 pixels all count as one) to pick RGBA8888 / T8 / T4 */
     uint32_t pal[256]; int npal = 0, paletted = 1;
     {
@@ -149,7 +139,7 @@ static int l_image_load(lua_State *L) { trace("imgload");
         if (fmt == 2 && k->pw < 32) k->pw = 32;
         size_t bytes = fmt == 0 ? (size_t)k->pw * k->ph * 4 : fmt == 1 ? (size_t)k->pw * k->ph : (size_t)k->pw * k->ph / 2;
         k->px = memalign(16, bytes);
-        if (!k->px) { stbi_image_free(img); tex_free(t); lua_pushnil(L); lua_pushstring(L, "out of memory"); return 2; }
+        if (!k->px) { tex_free(t); lua_pop(L, 1); return 0; }
         memset(k->px, 0, bytes);
         t->bytes += bytes;
         if (fmt == 0) {
@@ -172,10 +162,39 @@ static int l_image_load(lua_State *L) { trace("imgload");
         sceKernelDcacheWritebackRange(k->px, bytes);
     }
     tex_bytes_total += t->bytes;
+    return 1;
+}
+
+static int l_image_load(lua_State *L) { trace("imgload");
+    size_t len; const char *path = luaL_checkstring(L, 1);
+    FILE *f = fopen(path, "rb");
+    if (!f) { lua_pushnil(L); lua_pushfstring(L, "cannot open %s", path); return 2; }
+    fseek(f, 0, SEEK_END); len = ftell(f); fseek(f, 0, SEEK_SET);
+    unsigned char *buf = malloc(len);
+    if (!buf || fread(buf, 1, len, f) != len) { fclose(f); free(buf); lua_pushnil(L); lua_pushstring(L, "read error"); return 2; }
+    fclose(f);
+    int w, h, n;
+    unsigned char *img = stbi_load_from_memory(buf, (int)len, &w, &h, &n, 4);
+    free(buf);
+    if (!img) { lua_pushnil(L); lua_pushfstring(L, "decode failed: %s", stbi_failure_reason()); return 2; }
+    if (!tex_from_rgba(L, img, w, h)) { stbi_image_free(img); lua_pushnil(L); lua_pushstring(L, "out of memory"); return 2; }
     stbi_image_free(img);
     lua_pushinteger(L, w); lua_pushinteger(L, h);
     return 3;
 }
+static int l_image_from_rgba(lua_State *L) {
+    int w = (int)luaL_checknumber(L, 1), h = (int)luaL_checknumber(L, 2);
+    size_t len; const char *str = luaL_checklstring(L, 3, &len);
+    if (w < 1 || h < 1 || len != (size_t)w * h * 4) { lua_pushnil(L); lua_pushstring(L, "bad size"); return 2; }
+    unsigned char *img = malloc(len);
+    if (!img) { lua_pushnil(L); lua_pushstring(L, "out of memory"); return 2; }
+    memcpy(img, str, len);
+    int ok = tex_from_rgba(L, img, w, h);
+    free(img);
+    if (!ok) { lua_pushnil(L); lua_pushstring(L, "out of memory"); return 2; }
+    return 1;
+}
+
 static int l_tex_pixel(lua_State *L) {
     Tex *t = luaL_checkudata(L, 1, "balatro.tex");
     int x = (int)luaL_checknumber(L, 2), y = (int)luaL_checknumber(L, 3);
@@ -875,7 +894,7 @@ void engine_gu_init(void) {
 }
 
 static const luaL_Reg funcs[] = {
-    {"image_load", l_image_load}, {"tex_filter", l_tex_filter}, {"tex_pixel", l_tex_pixel}, {"draw", l_draw}, {"fill_poly", l_fill_poly},
+    {"image_load", l_image_load}, {"image_from_rgba", l_image_from_rgba}, {"tex_filter", l_tex_filter}, {"tex_pixel", l_tex_pixel}, {"draw", l_draw}, {"fill_poly", l_fill_poly},
     {"fill_rect", l_fill_rect}, {"draw_mesh", l_draw_mesh}, {"line", l_line}, {"b64encode", l_b64encode}, {"b64decode", l_b64decode}, {"set_color", l_set_color}, {"get_color", l_get_color}, {"push", l_push}, {"pop", l_pop},
     {"prep_draw", l_prep_draw}, {"origin", l_origin}, {"reset_stack", l_reset_stack}, {"translate", l_translate}, {"scale", l_scale}, {"rotate", l_rotate},
     {"stack_depth", l_stack_depth}, {"shear", l_shear}, {"get_matrix", l_get_matrix}, {"set_matrix", l_set_matrix}, {"mul_matrix", l_mul_matrix},

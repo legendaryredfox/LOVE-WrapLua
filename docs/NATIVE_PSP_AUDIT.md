@@ -50,7 +50,7 @@ documents itself as `tier 2`.
 | Shader / Mesh | Shader stub; **Mesh done 2026-11-22** (`native.draw_mesh`, default vertex format, single-tile textures) | stubs |
 | Rotation and scale | on the GPU | OneLua copies the image per scale or turn |
 | Text | TTF through stb_truetype, atlas pages; **ImageFont done 2026-11-22** (`native.tex_pixel` finds the glyph columns, Lua draws one quad per glyph) | SDK font calls |
-| `love.math` | `random`, `setRandomSeed` only | noise, triangulate, bezier, Transform, RandomGenerator, colour helpers |
+| `love.math` | shared module over the C generator (`PSPNative/shared.lua`) | noise, triangulate, bezier, Transform, RandomGenerator, colour helpers |
 | `love.data` | compress, decompress | hash, encode, pack, compress |
 | SpriteBatch, Transform | **done 2026-11-17** (shared Lua over the C draw; `love.math` Transform from the shared module) | present |
 | ParticleSystem, Text | **ParticleSystem done 2026-11-17** (shared, with curves; it was an inert stub); Text present | basic emitter with curves; Text with replay |

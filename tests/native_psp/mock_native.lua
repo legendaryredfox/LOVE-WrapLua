@@ -81,7 +81,18 @@ function M.image_load(p)
     if px then return { tex = p }, px[1], px[2] end
     return { tex = p }, 32, 16
 end
+function M.image_from_rgba(w, h, str)
+    rec("image_from_rgba", w, h, #str)
+    if #str ~= w * h * 4 then return nil, "bad size" end
+    M.last_rgba = str
+    return { tex = "rgba", data = str, w = w }
+end
 function M.tex_pixel(t, x, y)
+    if t.data then
+        local i = (y * (t.w or 0) + x) * 4
+        assert(x >= 0 and y >= 0 and i + 4 <= #t.data, "tex_pixel out of range")
+        return t.data:byte(i + 1, i + 4)
+    end
     local px = M.pixels[base(t.tex)]
     if not px then return 0, 0, 0, 0 end
     assert(x >= 0 and y >= 0 and x < px[1] and y < px[2], "tex_pixel out of range")

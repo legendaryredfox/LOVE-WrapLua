@@ -11,6 +11,19 @@
   frames back to emulated VRAM (a read returns frames 1 and 2 forever), so the game needs
   `ppsspp_software_rendering = enabled`; real hardware has not been tried.
 
+### 2026-11-23, branch `perf/native-psp-moveable-c`
+
+- Native PSP engine: `native/src/moveable.c`, a C fast path for Balatro's `Moveable:move` (`native.mv_method`, or `native.mv_move`
+  returning a boolean, set up with `native.mv_setup`). It reads and writes the object's Lua tables through Lua's internal
+  `luaH_getstr` on pre-interned keys, so it is tied to the Lua 5.1.5 in `native/third_party`. It covers the frame guard, a paused
+  game, Glued roles, Minor roles (the major's `move` and `move_with_major` are called back in Lua) and a Major with nothing to
+  simulate; any other state, or a missing or mistyped field, returns false without touching the object and the Lua version runs.
+- Why direct table access: on desktop the idle check takes 735 ns in Lua, about 720 ns in C through the public API and 82 ns with
+  `luaH_getstr`.
+- Measured in the Balatro harness (`SELECTING_HAND`, `shadowoff,uicache,walk2`): update 32.2 to 25.9 ms, 18.6 to 21.1 fps in PPSSPP,
+  past the 20 fps gate. The differential test against the Lua version (3000 random node graphs, 83% of the calls handled in C, no
+  differences) lives in the balatro_psp repository (`tests/mv`), because it needs the game's `moveable.lua`.
+
 ### 2026-11-23, branch `feat/native-psp-imagedata-encode`
 
 - Native PSP backend: `ImageData:getString` and `ImageData:encode("png", filename)`. `native.png_encode(w, h, rgba)` (C,

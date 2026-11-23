@@ -425,6 +425,14 @@ end
 function ImageData:_upload()
     return (N.image_from_rgba(self.w, self.h, self:getString()))
 end
+function ImageData._fromRGBA(w, h, str)
+    local rg, ba, byte = {}, {}, string.byte
+    for i = 1, w * h do
+        local r, gr, b, a = byte(str, i * 4 - 3, i * 4)
+        rg[i], ba[i] = r + gr * 256, b + a * 256
+    end
+    return setmetatable({ w = w, h = h, _rg = rg, _ba = ba }, ImageData)
+end
 function ImageData:encode(format, filename)
     if format ~= "png" then error("Unsupported image format: " .. tostring(format) .. " (png only)", 2) end
     local png = N.png_encode(self.w, self.h, self:getString())
@@ -786,6 +794,26 @@ end
 function g.points() end
 
 -- frame handling
+local screenshots = {}
+function g.captureScreenshot(target)
+    if type(target) ~= "string" and type(target) ~= "function" then
+        error("captureScreenshot expects a filename or a callback function", 2)
+    end
+    screenshots[#screenshots + 1] = target
+end
+local function flushScreenshots()
+    local list = screenshots; screenshots = {}
+    local rgba = N.screen_rgba()
+    if not rgba then return end
+    for _, target in ipairs(list) do
+        if type(target) == "string" then
+            local png = N.png_encode(W, H, rgba)
+            if png then love.filesystem.write(target, png) end
+        else
+            target(ImageData._fromRGBA(W, H, rgba))
+        end
+    end
+end
 function g.present()
     present_n = present_n + 1
     if PSP_FRAMELOG and present_n % PSP_FRAMELOG == 0 then
@@ -793,6 +821,7 @@ function g.present()
     end
     draws_n = 0
     N.end_frame(true)
+    if screenshots[1] then flushScreenshots() end
     N.begin_frame()
     N.reset_stack()
     N.blend(0); N.scissor(); scissor_rect = nil; current_canvas = nil

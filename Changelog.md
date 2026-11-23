@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### 2026-11-23, branch `feat/native-psp-screenshot`
+
+- Native PSP backend: `love.graphics.captureScreenshot(filename | callback)`. `native.screen_rgba()` (C) reads the frame
+  `end_frame` just finished from VRAM, using `sceDisplayGetFrameBuf` to find the displayed buffer (the engine's own
+  `screen_draw_off` toggle names the other one). A filename gets a PNG in the save directory; a callback gets an
+  ImageData. `tests/games/screenshot` checks both on an odd and an even frame. PPSSPP's hardware renderer never writes
+  frames back to emulated VRAM (a read returns frames 1 and 2 forever), so the game needs
+  `ppsspp_software_rendering = enabled`; real hardware has not been tried.
+
 ### 2026-11-23, branch `feat/native-psp-imagedata-encode`
 
 - Native PSP backend: `ImageData:getString` and `ImageData:encode("png", filename)`. `native.png_encode(w, h, rgba)` (C,

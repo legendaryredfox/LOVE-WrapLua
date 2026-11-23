@@ -87,6 +87,10 @@ function M.image_from_rgba(w, h, str)
     M.last_rgba = str
     return { tex = "rgba", data = str, w = w }
 end
+function M.screen_rgba()
+    rec("screen_rgba")
+    return string.rep("\1\2\3\255", 480 * 272)
+end
 function M.png_encode(w, h, str)
     rec("png_encode", w, h, #str)
     if #str ~= w * h * 4 then return nil, "bad size" end

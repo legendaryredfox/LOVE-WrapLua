@@ -617,6 +617,21 @@ static int l_end(lua_State *L) {
     frame_no++;
     return 0;
 }
+/* native.screen_rgba() -> 480*272*4 bytes (R, G, B, 255): the frame end_frame finished last, read from the uncached
+   VRAM mirror. The swap has made that buffer the displayed one, so the display driver names it. */
+static int l_screen_rgba(lua_State *L) {
+    void *top = NULL; int bw = 0, fmt = 0;
+    if (sceDisplayGetFrameBuf(&top, &bw, &fmt, PSP_DISPLAY_SETBUF_NEXTFRAME) != 0 || !top || bw < SCR_W) { lua_pushnil(L); return 1; }
+    const volatile uint32_t *src = (const volatile uint32_t *)(((uintptr_t)top & 0x1FFFFFFFu) | 0x40000000u);
+    luaL_Buffer b; luaL_buffinit(L, &b);
+    uint32_t row[480];
+    for (int y = 0; y < 272; y++) {
+        for (int x = 0; x < 480; x++) row[x] = src[y * bw + x] | 0xFF000000u;
+        luaL_addlstring(&b, (const char *)row, sizeof row);
+    }
+    luaL_pushresult(&b);
+    return 1;
+}
 static int l_scissor(lua_State *L) { trace("scissor");
     flush_batch();
     if (lua_isnoneornil(L, 1)) { target_scissor(); return 0; }
@@ -938,7 +953,7 @@ static const luaL_Reg funcs[] = {
     {"font_load", l_font_load}, {"font_width", l_font_width}, {"font_has", l_font_has}, {"font_draw", l_font_draw},
     {"pad", l_pad}, {"time", l_time}, {"sleep", l_sleep}, {"mem", l_mem}, {"tex_mem", l_texmem}, {"canvas_new", l_canvas_new}, {"canvas_set", l_canvas_set}, {"suppress", l_suppress}, {"canvas_pixel", l_canvas_pixel}, {"palette", l_palette}, {"cpu", l_cpu}, {"exit", l_exit},
     {"listdir", l_listdir}, {"stat", l_stat}, {"mkdir", l_mkdir}, {"remove", l_remove},
-    {"png_encode", l_png_encode}, {"deflate", l_deflate}, {"inflate", l_inflate}, {NULL, NULL}
+    {"png_encode", l_png_encode}, {"screen_rgba", l_screen_rgba}, {"deflate", l_deflate}, {"inflate", l_inflate}, {NULL, NULL}
 };
 void audio_register(lua_State *L);
 int luaopen_native(lua_State *L) {

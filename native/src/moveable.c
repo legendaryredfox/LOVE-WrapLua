@@ -6,8 +6,10 @@
  *
  * Contract: native.mv_move(self, dt) returns true when it did the whole move, false (and changed nothing) when the object
  * is in a state the fast path does not cover; the caller then runs the Lua implementation. Covered: the frame guard, the
- * paused game, Glued roles, Minor roles (the major's move and move_with_major stay in Lua and are called back) and a
- * Major that has nothing to simulate. Anything else, including a missing field or a field of the wrong type, is a bail.
+ * paused game, Glued roles, Minor roles (the major's move is called back in Lua; get_major and move_with_major are done
+ * here, and Lua's move_with_major runs when they cannot) and Major roles, idle or moving (move_xy, move_r, move_scale and
+ * move_wh are done here). Anything else, including a missing field or a field of the wrong type, is a bail; so is an
+ * object with a juice, which stays in Lua.
  *
  * native.mv_method(self, dt) is the same thing installed as Moveable.move: it runs the Lua implementation itself on a bail.
  *
@@ -21,12 +23,27 @@
 #include "ltable.h"
 #include "lstring.h"
 #include "lgc.h"
+#include <math.h>
+#ifdef PSP_LUA_FLOAT
+#include <pspmath.h>
+#define MV_SQRT sqrtf
+#define MV_FABS fabsf
+#define MV_SIN vfpu_sinf
+#define MV_COS vfpu_cosf
+#else
+#define MV_SQRT sqrt
+#define MV_FABS fabs
+#define MV_SIN sin
+#define MV_COS cos
+#endif
 
 enum {
     K_G, K_FRAMES, K_MOVE, K_SETTINGS, K_paused, K_ROOM, K_T, K_VT, K_w, K_x, K_y, K_r, K_scale, K_h,
     K_FRAME, K_OLD_MAJOR, K_MAJOR, K_created_on_pause, K_alignment, K_prev_offset, K_offset, K_prev_type, K_type, K_lr_clamp,
     K_CALCING, K_role, K_role_type, K_major, K_STATIONARY, K_NEW_ALIGNMENT, K_config, K_refresh_movement, K_juice, K_zoom,
     K_xy_bond, K_r_bond, K_velocity, K_pinch, K_shadow_parrallax,
+    K_scale_bond, K_wh_bond, K_ARGS, K_get_major, K_temp_offs, K_layered_parallax, K_exp_times, K_max_vel, K_states, K_drag, K_hover, K_is,
+    K_REFRESH, K_Strong, K_xy,
     K_Glued, K_Minor, K_Major, K_Weak,
     K_COUNT
 };
@@ -35,6 +52,8 @@ static const char *const key_names[K_COUNT] = {
     "FRAME", "OLD_MAJOR", "MAJOR", "created_on_pause", "alignment", "prev_offset", "offset", "prev_type", "type", "lr_clamp",
     "CALCING", "role", "role_type", "major", "STATIONARY", "NEW_ALIGNMENT", "config", "refresh_movement", "juice", "zoom",
     "xy_bond", "r_bond", "velocity", "pinch", "shadow_parrallax",
+    "scale_bond", "wh_bond", "ARGS", "get_major", "temp_offs", "layered_parallax", "exp_times", "max_vel", "states", "drag", "hover", "is",
+    "REFRESH_FRAME_MAJOR_CACHE", "Strong", "xy",
     "Glued", "Minor", "Major", "Weak",
 };
 static TString *K[K_COUNT];
@@ -115,7 +134,271 @@ static int major_is_idle(Table *self, Table *T, Table *VT, Table *vel, Table *pi
     return 1;
 }
 
-enum { PLAN_PAUSED, PLAN_GLUED, PLAN_MINOR, PLAN_MAJOR_IDLE, PLAN_NOROLE };
+static void table_clear(Table *t) {
+    int i;
+    for (i = 0; i < t->sizearray; i++) setnilvalue(&t->array[i]);
+    /* an empty hash part is the shared read-only dummy node, whose value is nil: only live entries are written */
+    for (i = 0; i < sizenode(t); i++) { TValue *v = gval(gnode(t, i)); if (!ttisnil(v)) setnilvalue(v); }
+    t->flags = 0;
+}
+
+static int is_weak(Table *role, int k) { return IS_STR(GS(role, k), K_Weak); }
+static int is_strong(Table *role, int k) { return IS_STR(GS(role, k), K_Strong); }
+
+/* ---- Moveable:move_xy, move_r, move_scale and move_wh, with Lua's operation order */
+typedef struct { Table *T, *VT, *vel, *pin, *exp, *drag, *hover; int zoom; } Leaf;
+
+/* every field the movers read, checked before anything is written; an object with a juice is not handled */
+static int leaf_prepare(Table *self, Table *G, Leaf *lf) {
+    static const int six[6] = { K_x, K_y, K_r, K_scale, K_w, K_h };
+    static const int four[4] = { K_x, K_y, K_r, K_scale };
+    const TValue *tv = GS(self, K_T), *vtv = GS(self, K_VT), *velv = GS(self, K_velocity), *pv = GS(self, K_pinch), *ev = GS(G, K_exp_times);
+    int i;
+    if (!IS_TBL(tv) || !IS_TBL(vtv) || !IS_TBL(velv) || !IS_TBL(pv) || !IS_TBL(ev)) return 0;
+    if (!FALSY(GS(self, K_juice))) return 0;
+    lf->T = hvalue(tv); lf->VT = hvalue(vtv); lf->vel = hvalue(velv); lf->pin = hvalue(pv); lf->exp = hvalue(ev);
+    for (i = 0; i < 6; i++) if (!IS_NUM(GS(lf->T, six[i])) || !IS_NUM(GS(lf->VT, six[i]))) return 0;
+    for (i = 0; i < 4; i++) if (!IS_NUM(GS(lf->vel, four[i]))) return 0;
+    if (!IS_NUM(GS(lf->exp, K_xy)) || !IS_NUM(GS(lf->exp, K_r)) || !IS_NUM(GS(lf->exp, K_scale)) || !IS_NUM(GS(lf->exp, K_max_vel))) return 0;
+    lf->zoom = !FALSY(GS(self, K_zoom));
+    lf->drag = lf->hover = NULL;
+    if (lf->zoom) {
+        const TValue *st = GS(self, K_states);
+        if (!IS_TBL(st)) return 0;
+        const TValue *dr = GS(hvalue(st), K_drag), *ho = GS(hvalue(st), K_hover);
+        if (!IS_TBL(dr) || !IS_TBL(ho)) return 0;
+        lf->drag = hvalue(dr); lf->hover = hvalue(ho);
+    }
+    return 1;
+}
+
+#define ABSGT(a, b) (MV_FABS(a) > (b))
+
+static void leaf_xy(lua_State *L, Table *self, const Leaf *lf, lua_Number dt) {
+    Table *T = lf->T, *VT = lf->VT, *vel = lf->vel;
+    lua_Number c001 = cast_num(0.01);
+    if (NUM(T, K_x) != NUM(VT, K_x) || ABSGT(NUM(vel, K_x), c001) || NUM(T, K_y) != NUM(VT, K_y) || ABSGT(NUM(vel, K_y), c001)) {
+        lua_Number xy = NUM(lf->exp, K_xy), mv = NUM(lf->exp, K_max_vel), one_m = luai_numsub(cast_num(1), xy);
+        lua_Number vx = luai_numadd(luai_nummul(xy, NUM(vel, K_x)),
+            luai_nummul(luai_nummul(luai_nummul(one_m, luai_numsub(NUM(T, K_x), NUM(VT, K_x))), cast_num(35)), dt));
+        lua_Number vy = luai_numadd(luai_nummul(xy, NUM(vel, K_y)),
+            luai_nummul(luai_nummul(luai_nummul(one_m, luai_numsub(NUM(T, K_y), NUM(VT, K_y))), cast_num(35)), dt));
+        if (luai_numadd(luai_nummul(vx, vx), luai_nummul(vy, vy)) > luai_nummul(mv, mv)) {
+            lua_Number actual = MV_SQRT(luai_numadd(luai_nummul(vx, vx), luai_nummul(vy, vy)));
+            vx = luai_numdiv(luai_nummul(mv, vx), actual);
+            vy = luai_numdiv(luai_nummul(mv, vy), actual);
+        }
+        put_bool(L, self, K_STATIONARY, 0);
+        lua_Number px = luai_numadd(NUM(VT, K_x), vx), py = luai_numadd(NUM(VT, K_y), vy);
+        if (MV_FABS(luai_numsub(px, NUM(T, K_x))) < c001 && MV_FABS(vx) < c001) { px = NUM(T, K_x); vx = 0; }
+        if (MV_FABS(luai_numsub(py, NUM(T, K_y))) < c001 && MV_FABS(vy) < c001) { py = NUM(T, K_y); vy = 0; }
+        put_num(L, vel, K_x, vx); put_num(L, vel, K_y, vy);
+        put_num(L, VT, K_x, px); put_num(L, VT, K_y, py);
+    }
+}
+
+static void leaf_scale(lua_State *L, Table *self, const Leaf *lf) {
+    Table *T = lf->T, *VT = lf->VT, *vel = lf->vel;
+    lua_Number zoom_add = 0;
+    if (lf->zoom) {
+        zoom_add = luai_numadd(FALSY(GS(lf->drag, K_is)) ? cast_num(0) : cast_num(0.1), FALSY(GS(lf->hover, K_is)) ? cast_num(0) : cast_num(0.05));
+    }
+    lua_Number des = luai_numadd(luai_numadd(NUM(T, K_scale), zoom_add), cast_num(0));
+    if (des != NUM(VT, K_scale) || ABSGT(NUM(vel, K_scale), cast_num(0.001))) {
+        put_bool(L, self, K_STATIONARY, 0);
+        lua_Number es = NUM(lf->exp, K_scale);
+        lua_Number v = luai_numadd(luai_nummul(es, NUM(vel, K_scale)), luai_nummul(luai_numsub(cast_num(1), es), luai_numsub(des, NUM(VT, K_scale))));
+        put_num(L, vel, K_scale, v);
+        put_num(L, VT, K_scale, luai_numadd(NUM(VT, K_scale), v));
+    }
+}
+
+static void leaf_wh(lua_State *L, Table *self, const Leaf *lf, lua_Number dt) {
+    Table *T = lf->T, *VT = lf->VT;
+    int px = !FALSY(GS(lf->pin, K_x)), py = !FALSY(GS(lf->pin, K_y));
+    lua_Number vw = NUM(VT, K_w), vh = NUM(VT, K_h), tw = NUM(T, K_w), th = NUM(T, K_h);
+    if ((tw != vw && !px) || (th != vh && !py) || (vw > 0 && px) || (vh > 0 && py)) {
+        put_bool(L, self, K_STATIONARY, 0);
+        lua_Number step = luai_nummul(cast_num(8), dt);
+        vw = luai_numadd(vw, luai_nummul(luai_nummul(step, px ? cast_num(-1) : cast_num(1)), tw));
+        vh = luai_numadd(vh, luai_nummul(luai_nummul(step, py ? cast_num(-1) : cast_num(1)), th));
+        /* math.max(math.min(v, t), 0): min keeps its first argument unless the second is smaller, max unless it is larger */
+        if (luai_numlt(tw, vw)) vw = tw;
+        if (luai_numlt(vw, cast_num(0))) vw = cast_num(0);
+        if (luai_numlt(th, vh)) vh = th;
+        if (luai_numlt(vh, cast_num(0))) vh = cast_num(0);
+        put_num(L, VT, K_w, vw);
+        put_num(L, VT, K_h, vh);
+    }
+}
+
+static void leaf_r(lua_State *L, Table *self, const Leaf *lf, lua_Number dt) {
+    Table *T = lf->T, *VT = lf->VT, *vel = lf->vel;
+    lua_Number des = luai_numadd(luai_numadd(NUM(T, K_r), luai_numdiv(luai_nummul(cast_num(0.015), NUM(vel, K_x)), dt)), cast_num(0));
+    if (des != NUM(VT, K_r) || ABSGT(NUM(vel, K_r), cast_num(0.001))) {
+        put_bool(L, self, K_STATIONARY, 0);
+        lua_Number er = NUM(lf->exp, K_r);
+        lua_Number v = luai_numadd(luai_nummul(er, NUM(vel, K_r)), luai_nummul(luai_numsub(cast_num(1), er), luai_numsub(des, NUM(VT, K_r))));
+        put_num(L, vel, K_r, v);
+        put_num(L, VT, K_r, luai_numadd(NUM(VT, K_r), v));
+    }
+    {
+        lua_Number c = cast_num(0.001);
+        if (MV_FABS(luai_numsub(NUM(VT, K_r), NUM(T, K_r))) < c && MV_FABS(NUM(vel, K_r)) < c) {
+            put_num(L, VT, K_r, NUM(T, K_r));
+            put_num(L, vel, K_r, 0);
+        }
+    }
+}
+
+/* Moveable:calculate_parrallax once G.ROOM and the shadow_parrallax table have been checked */
+static void parallax_c(lua_State *L, Table *T, Table *room_T, Table *sp) {
+    lua_Number half = HALF(NUM(room_T, K_w));
+    lua_Number a = luai_numsub(luai_numadd(NUM(T, K_x), HALF(NUM(T, K_w))), half);
+    put_num(L, sp, K_x, luai_nummul(luai_numdiv(a, half), cast_num(1.5)));
+}
+
+/* ---- Moveable:get_major. Returns the table Lua's version returns, or NULL when something it would create is missing
+   (the caller then runs Lua's version). Nothing is written before a NULL return for this object; the objects below it in the
+   chain are complete by then, which is the state Lua's version would have left them in. */
+static Table *get_major_c(lua_State *L, Table *node, Table *G, int depth) {
+    const TValue *rv = GS(node, K_role);
+    if (depth > 64 || !IS_TBL(rv)) return NULL;
+    Table *role = hvalue(rv);
+    const TValue *mj = GS(role, K_major);
+    int major_role = IS_STR(GS(role, K_role_type), K_Major);
+    int self_major = IS_TBL(mj) && hvalue(mj) == node;
+    if (!major_role && !self_major && !is_weak(role, K_xy_bond) && !is_weak(role, K_r_bond)) {
+        const TValue *fv = GS(node, K_FRAME);
+        if (!IS_TBL(fv)) return NULL;
+        Table *FR = hvalue(fv);
+        const TValue *cached = GS(FR, K_MAJOR);
+        int refresh = !FALSY(GS(G, K_REFRESH));
+        if (!FALSY(cached) && !refresh) return IS_TBL(cached) ? hvalue(cached) : NULL;
+        if (!IS_TBL(mj)) return NULL;
+        Table *sub = get_major_c(L, hvalue(mj), G, depth + 1);
+        if (!sub) return NULL;
+        const TValue *tov = GS(node, K_temp_offs), *lpv = GS(node, K_layered_parallax), *rov = GS(role, K_offset);
+        const TValue *so = GS(sub, K_offset);
+        if (!IS_TBL(tov) || !IS_TBL(lpv) || !IS_TBL(rov) || !IS_TBL(so)) return NULL;
+        Table *res, *offt;
+        int set_offset;
+        if (!FALSY(cached)) {
+            if (!IS_TBL(cached)) return NULL;
+            res = hvalue(cached);
+            const TValue *ex = GS(res, K_offset);
+            if (FALSY(ex)) { offt = hvalue(tov); set_offset = 1; }
+            else if (IS_TBL(ex)) { offt = hvalue(ex); set_offset = 0; }
+            else return NULL;
+        } else {
+            /* EMPTY(OLD_MAJOR) drops its old offset too, so the temp table becomes the offset again */
+            const TValue *ov = GS(FR, K_OLD_MAJOR);
+            if (!IS_TBL(ov)) return NULL;
+            res = hvalue(ov); offt = hvalue(tov); set_offset = 1;
+        }
+        Table *temp = hvalue(tov), *lp = hvalue(lpv), *ro = hvalue(rov), *sof = hvalue(so);
+        if (res == temp || offt == sof) return NULL;
+        if (!IS_NUM(GS(sof, K_x)) || !IS_NUM(GS(sof, K_y)) || !IS_NUM(GS(ro, K_x)) || !IS_NUM(GS(ro, K_y)) || !IS_NUM(GS(lp, K_x)) || !IS_NUM(GS(lp, K_y))) return NULL;
+        /* from here on this object's cache is written, in Lua's order */
+        if (FALSY(cached)) table_clear(res);
+        table_clear(temp);
+        { TValue sm = *GS(sub, K_major); put(L, res, K_major, &sm); }
+        if (set_offset) { TValue t; sethvalue(L, &t, temp); put(L, res, K_offset, &t); }
+        {
+            lua_Number x = luai_numadd(luai_numadd(NUM(sof, K_x), NUM(ro, K_x)), NUM(lp, K_x));
+            lua_Number y = luai_numadd(luai_numadd(NUM(sof, K_y), NUM(ro, K_y)), NUM(lp, K_y));
+            put_num(L, offt, K_x, x); put_num(L, offt, K_y, y);
+        }
+        { TValue t; sethvalue(L, &t, res); put(L, FR, K_MAJOR, &t); }
+        return res;
+    } else {
+        const TValue *av = GS(node, K_ARGS);
+        if (!IS_TBL(av)) return NULL;
+        Table *ARGS = hvalue(av);
+        const TValue *gv = GS(ARGS, K_get_major);
+        if (!IS_TBL(gv)) return NULL;
+        Table *ga = hvalue(gv);
+        const TValue *ov = GS(ga, K_offset);
+        if (!IS_TBL(ov)) return NULL;
+        Table *off = hvalue(ov);   /* put() may rehash ga and move the slot ov points to */
+        { TValue t; sethvalue(L, &t, node); put(L, ga, K_major, &t); }
+        put_num(L, off, K_x, 0);
+        put_num(L, off, K_y, 0);
+        return ga;
+    }
+}
+
+/* ---- Moveable:move_with_major for a Minor role, after the major has moved. Returns 0, having written nothing but
+   the (complete) get_major caches, when Lua's version has to do it. */
+static int mwm_c(lua_State *L, Table *self, Table *role, Table *G, lua_Number dt) {
+    static const int six[6] = { K_x, K_y, K_r, K_scale, K_w, K_h };
+    int i;
+    if (!FALSY(GS(self, K_juice))) return 0;
+    const TValue *mj = GS(role, K_major);
+    if (!IS_TBL(mj)) return 0;
+    Table *mt = get_major_c(L, hvalue(mj), G, 0);
+    if (!mt) return 0;
+    const TValue *rv = GS(mt, K_major), *mo = GS(mt, K_offset), *ro = GS(role, K_offset);
+    const TValue *tv = GS(self, K_T), *vtv = GS(self, K_VT);
+    if (!IS_TBL(rv) || !IS_TBL(mo) || !IS_TBL(ro) || !IS_TBL(tv) || !IS_TBL(vtv)) return 0;
+    Table *M = hvalue(rv), *moff = hvalue(mo), *roff = hvalue(ro), *T = hvalue(tv), *VT = hvalue(vtv);
+    const TValue *mTv = GS(M, K_T), *mVTv = GS(M, K_VT);
+    if (!IS_TBL(mTv) || !IS_TBL(mVTv)) return 0;
+    Table *MT = hvalue(mTv), *MVT = hvalue(mVTv);
+    for (i = 0; i < 6; i++) if (!IS_NUM(GS(T, six[i])) || !IS_NUM(GS(VT, six[i])) || !IS_NUM(GS(MT, six[i])) || !IS_NUM(GS(MVT, six[i]))) return 0;
+    if (!IS_NUM(GS(moff, K_x)) || !IS_NUM(GS(moff, K_y)) || !IS_NUM(GS(roff, K_x)) || !IS_NUM(GS(roff, K_y))) return 0;
+    int xy_weak = is_weak(role, K_xy_bond), r_weak = is_weak(role, K_r_bond);
+    int sc_weak = is_weak(role, K_scale_bond), wh_weak = is_weak(role, K_wh_bond);
+    Leaf lf;
+    if (xy_weak || r_weak || sc_weak || wh_weak) {
+        if (!leaf_prepare(self, G, &lf)) return 0;
+        if (lf.T != T || lf.VT != VT) return 0;
+    }
+    lua_Number mvr = NUM(MVT, K_r), rx, ry;
+    if (r_weak || (mvr < cast_num(0.0001) && mvr > cast_num(-0.0001))) {
+        rx = luai_numadd(NUM(roff, K_x), NUM(moff, K_x));
+        ry = luai_numadd(NUM(roff, K_y), NUM(moff, K_y));
+    } else {
+        lua_Number cs = MV_COS(mvr), sn = MV_SIN(mvr);
+        lua_Number whw = luai_numadd(luai_numdiv(luai_numunm(NUM(T, K_w)), cast_num(2)), luai_numdiv(NUM(MT, K_w), cast_num(2)));
+        lua_Number whh = luai_numadd(luai_numdiv(luai_numunm(NUM(T, K_h)), cast_num(2)), luai_numdiv(NUM(MT, K_h), cast_num(2)));
+        lua_Number ox = luai_numsub(luai_numadd(NUM(roff, K_x), NUM(moff, K_x)), whw);
+        lua_Number oy = luai_numsub(luai_numadd(NUM(roff, K_y), NUM(moff, K_y)), whh);
+        rx = luai_numadd(luai_numsub(luai_nummul(ox, cs), luai_nummul(oy, sn)), whw);
+        ry = luai_numadd(luai_numadd(luai_nummul(ox, sn), luai_nummul(oy, cs)), whh);
+    }
+    {
+        const TValue *room = GS(G, K_ROOM);
+        Table *room_T = NULL, *sp = NULL;
+        if (!FALSY(room)) {
+            if (!IS_TBL(room)) return 0;
+            const TValue *rT = GS(hvalue(room), K_T), *spv = GS(self, K_shadow_parrallax);
+            if (!IS_TBL(rT) || !IS_TBL(spv) || !IS_NUM(GS(hvalue(rT), K_w))) return 0;
+            room_T = hvalue(rT); sp = hvalue(spv);
+        }
+        put_num(L, T, K_x, luai_numadd(NUM(MT, K_x), rx));
+        put_num(L, T, K_y, luai_numadd(NUM(MT, K_y), ry));
+        if (is_strong(role, K_xy_bond)) {
+            put_num(L, VT, K_x, luai_numadd(NUM(MVT, K_x), rx));
+            put_num(L, VT, K_y, luai_numadd(NUM(MVT, K_y), ry));
+        } else if (xy_weak) leaf_xy(L, self, &lf, dt);
+        if (is_strong(role, K_r_bond)) put_num(L, VT, K_r, luai_numadd(luai_numadd(NUM(T, K_r), NUM(MVT, K_r)), cast_num(0)));
+        else if (r_weak) leaf_r(L, self, &lf, dt);
+        if (is_strong(role, K_scale_bond))
+            put_num(L, VT, K_scale, luai_numadd(luai_nummul(NUM(T, K_scale), luai_numdiv(NUM(MVT, K_scale), NUM(MT, K_scale))), cast_num(0)));
+        else if (sc_weak) leaf_scale(L, self, &lf);
+        if (is_strong(role, K_wh_bond)) {
+            lua_Number mw = NUM(MT, K_w), mh = NUM(MT, K_h);
+            put_num(L, VT, K_x, luai_numadd(NUM(VT, K_x), luai_nummul(luai_nummul(cast_num(0.5), luai_numsub(cast_num(1), luai_numdiv(NUM(MVT, K_w), mw))), NUM(T, K_w))));
+            put_num(L, VT, K_w, luai_nummul(NUM(T, K_w), luai_numdiv(NUM(MVT, K_w), mw)));
+            put_num(L, VT, K_h, luai_nummul(NUM(T, K_h), luai_numdiv(NUM(MVT, K_h), mh)));
+        } else if (wh_weak) leaf_wh(L, self, &lf, dt);
+        if (room_T) parallax_c(L, T, room_T, sp);
+    }
+    return 1;
+}
+
+enum { PLAN_PAUSED, PLAN_GLUED, PLAN_MINOR, PLAN_MAJOR_IDLE, PLAN_MAJOR_ACTIVE, PLAN_NOROLE };
 
 /* major:move(dt) through the object: a subclass may override move */
 static void call_major_move(lua_State *L, const TValue *major, lua_Number dt) {
@@ -157,6 +440,7 @@ static int move_core(lua_State *L) {
 
     int plan = PLAN_NOROLE;
     Table *T = NULL, *al = NULL, *role = NULL, *major = NULL, *room_T = NULL, *sp = NULL;
+    Leaf lf;
     if (FALSY(GS(self, K_created_on_pause))) {
         v = GS(G, K_SETTINGS);
         if (!IS_TBL(v)) goto bail;
@@ -204,8 +488,10 @@ static int move_core(lua_State *L) {
             const TValue *tv = GS(self, K_T), *vtv = GS(self, K_VT), *velv = GS(self, K_velocity), *pv = GS(self, K_pinch);
             if (!IS_TBL(tv) || !IS_TBL(vtv) || !IS_TBL(velv) || !IS_TBL(pv)) goto bail;
             T = hvalue(tv);
-            if (major_is_idle(self, T, hvalue(vtv), hvalue(velv), hvalue(pv)) != 1) goto bail;
-            plan = PLAN_MAJOR_IDLE;
+            int idle = major_is_idle(self, T, hvalue(vtv), hvalue(velv), hvalue(pv));
+            if (idle < 0) goto bail;
+            plan = idle ? PLAN_MAJOR_IDLE : PLAN_MAJOR_ACTIVE;
+            if (plan == PLAN_MAJOR_ACTIVE && !leaf_prepare(self, G, &lf)) goto bail;
             const TValue *room = GS(G, K_ROOM);
             if (!FALSY(room)) {
                 if (!IS_TBL(room)) goto bail;
@@ -251,16 +537,18 @@ static int move_core(lua_State *L) {
             if (FALSY(st) || !FALSY(GS(self, K_NEW_ALIGNMENT)) || !FALSY(GS(hvalue(cfg), K_refresh_movement))
                 || !FALSY(GS(self, K_juice)) || IS_STR(GS(role, K_xy_bond), K_Weak) || IS_STR(GS(role, K_r_bond), K_Weak)) {
                 put_bool(L, self, K_CALCING, 1);
-                call_ref(L, ref_with_major, self, 1, dt);
+                if (!mwm_c(L, self, role, G, dt)) call_ref(L, ref_with_major, self, 1, dt);
             }
         }
-    } else if (plan == PLAN_MAJOR_IDLE) {
+    } else if (plan == PLAN_MAJOR_IDLE || plan == PLAN_MAJOR_ACTIVE) {
         put_bool(L, self, K_STATIONARY, 1);
-        if (room_T) {
-            lua_Number half = HALF(NUM(room_T, K_w));
-            lua_Number a = luai_numsub(luai_numadd(NUM(T, K_x), HALF(NUM(T, K_w))), half);
-            put_num(L, sp, K_x, luai_nummul(luai_numdiv(a, half), cast_num(1.5)));
+        if (plan == PLAN_MAJOR_ACTIVE) {
+            leaf_xy(L, self, &lf, dt);
+            leaf_r(L, self, &lf, dt);
+            leaf_scale(L, self, &lf);
+            leaf_wh(L, self, &lf, dt);
         }
+        if (room_T) parallax_c(L, T, room_T, sp);
     }
     if (!FALSY(GS(al, K_lr_clamp))) call_ref(L, ref_lr_clamp, self, 0, 0);
     put_bool(L, self, K_NEW_ALIGNMENT, 0);

@@ -122,8 +122,8 @@ unprofiled baseline from that build is the same 16.4 fps (update 31.4 ms, draw 2
   and `Game:update` work done at 1 Hz. Reaching 30 fps needs several of them; the first two are the large ones.
   **Update 2026-11-23:** the `Moveable:move` fast path is in C (`native/src/moveable.c`): update 32.2 to 25.9 ms, 18.6 to 21.1 fps with the
   UI cache on. Reading fields through the public Lua API is no faster than the VM; only direct table access (`luaH_getstr`) pays, about
-  9x on the idle check. What stays in Lua is `move_with_major`, `get_major` and the per-field `move_*` functions
-  (`update:move` is still 15.7 ms per frame).
+  9x on the idle check. `get_major`, `move_with_major` and the per-field `move_*` functions followed the same day:
+  update 25.9 to 17.7 ms and 25.6 fps in all, `update:move` 15.7 to 8.1 ms per frame. Objects with a `juice` stay in Lua.
 
 ### Cost of audio in Balatro (2026-11-17)
 

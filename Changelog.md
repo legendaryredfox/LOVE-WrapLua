@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### 2026-11-23, branch `perf/native-psp-moveable-c2`
+
+- `native/src/moveable.c` now also does `Moveable:get_major`, `move_with_major` for Minor roles and the movers `move_xy`,
+  `move_r`, `move_scale` and `move_wh` (so a moving Major and Weak bonds stay in C). An object with a `juice`, a missing
+  field or a mistyped one still returns false and runs the Lua version; `get_major` returns nothing when it would have to
+  create a table, and Lua's version then runs. Writes copy a value before `luaH_setstr` (which may rehash the table the value
+  lives in), and clearing a table skips nil slots so the shared read-only dummy node is never written.
+- Balatro harness (`SELECTING_HAND`, `shadowoff,uicache,walk2`): update 25.9 to 17.7 ms, 21.1 to 25.6 fps in PPSSPP;
+  `update:move` 15.7 to 8.1 ms per frame. Together with the first port: 18.6 to 25.6 fps.
+
 ### 2026-11-23, branch `feat/native-psp-screenshot`
 
 - Native PSP backend: `love.graphics.captureScreenshot(filename | callback)`. `native.screen_rgba()` (C) reads the frame

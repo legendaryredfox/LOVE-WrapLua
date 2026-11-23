@@ -312,9 +312,14 @@ local ImageData = {}; ImageData.__index = ImageData
 function g.newImage(path)
     if type(path) == "table" and getmetatable(path) == ImageData then  -- from love.image.newImageData (shares the texture)
         local d = path
-        if not d._tex then error("ImageData has no pixel data (blank ImageData is not supported yet)", 2) end
-        N.tex_filter(d._tex, default_linear)
-        return setmetatable({ _tex = d._tex, w = d.w, h = d.h, linear = default_linear }, Image)
+        local tex = d._tex
+        if not tex and not d._rg then d:_materialize() end
+        if d._rg then
+            tex = d:_upload()
+            if not tex then error("Could not create the texture (out of memory)", 2) end
+        end
+        N.tex_filter(tex, default_linear)
+        return setmetatable({ _tex = tex, w = d.w, h = d.h, linear = default_linear }, Image)
     end
     local p = type(path) == "string" and (love.filesystem.getInfo(path) and (resolve(path))) or nil
     if not p then error("Could not open file " .. tostring(path), 2) end
@@ -326,13 +331,74 @@ end
 function ImageData:getWidth() return self.w end
 function ImageData:getHeight() return self.h end
 function ImageData:getDimensions() return self.w, self.h end
+local function inRange(d, x, y, level)
+    if type(x) ~= "number" or type(y) ~= "number" or x < 0 or y < 0 or x >= d.w or y >= d.h then
+        error(("Attempt to get out-of-range pixel (%s, %s)"):format(tostring(x), tostring(y)), level + 1)
+    end
+end
+-- CPU pixels live as two numbers per pixel (r + g*256, b + a*256), which stay exact in single precision floats.
+local function materialize(d)
+    if d._rg then return end
+    local rg, ba, n = {}, {}, d.w * d.h
+    if d._tex then
+        local i = 1
+        for y = 0, d.h - 1 do
+            for x = 0, d.w - 1 do
+                local r, gr, b, a = N.tex_pixel(d._tex, x, y)
+                rg[i], ba[i] = r + gr * 256, b + a * 256; i = i + 1
+            end
+        end
+    else
+        for i = 1, n do rg[i], ba[i] = 0, 0 end
+    end
+    d._rg, d._ba, d._tex = rg, ba, nil
+end
+ImageData._materialize = materialize
 function ImageData:getPixel(x, y)
+    inRange(self, x, y, 2)
+    if self._rg then
+        local i = y * self.w + x + 1
+        local rg, ba = self._rg[i], self._ba[i]
+        return (rg % 256) / 255, math.floor(rg / 256) / 255, (ba % 256) / 255, math.floor(ba / 256) / 255
+    end
     if not self._tex then return 0, 0, 0, 0 end
     local r, gr, b, a = N.tex_pixel(self._tex, x, y)
     return r / 255, gr / 255, b / 255, a / 255
 end
-function ImageData:setPixel() end   -- CPU writes: E3
-function ImageData:release() return true end            -- handles are shared by reference; the texture lives with the Image
+local function to255(v) v = (tonumber(v) or 0) * 255 + 0.5; return v < 0 and 0 or v > 255 and 255 or math.floor(v) end
+function ImageData:setPixel(x, y, r, gr, b, a)
+    inRange(self, x, y, 2)
+    if type(r) == "table" then r, gr, b, a = r[1], r[2], r[3], r[4] end
+    materialize(self)
+    local i = y * self.w + x + 1
+    self._rg[i] = to255(r) + to255(gr) * 256
+    self._ba[i] = to255(b) + to255(a == nil and 1 or a) * 256
+end
+function ImageData:mapPixel(fn, sx, sy, sw, sh)
+    sx, sy = sx or 0, sy or 0; sw, sh = sw or self.w - sx, sh or self.h - sy
+    for y = sy, sy + sh - 1 do
+        for x = sx, sx + sw - 1 do
+            local r, gr, b, a = fn(x, y, self:getPixel(x, y))
+            self:setPixel(x, y, r, gr, b, a)
+        end
+    end
+end
+function ImageData:_upload()
+    local rg, ba, parts, n = self._rg, self._ba, {}, self.w * self.h
+    -- unpack and string.char take at most about 8000 values per call (LUAI_MAXCSTACK), so 1024 pixels at a time
+    local char, floor = string.char, math.floor
+    for from = 1, n, 1024 do
+        local bytes, k = {}, 0
+        for i = from, math.min(n, from + 1023) do
+            local p, q = rg[i], ba[i]
+            bytes[k + 1], bytes[k + 2], bytes[k + 3], bytes[k + 4] = p % 256, floor(p / 256), q % 256, floor(q / 256)
+            k = k + 4
+        end
+        parts[#parts + 1] = char(unpack(bytes, 1, k))
+    end
+    return (N.image_from_rgba(self.w, self.h, table.concat(parts)))
+end
+function ImageData:release() return true end            -- an unmodified file ImageData shares its texture with the Image
 function ImageData:type() return "ImageData" end
 function ImageData:typeOf(t) return t == "ImageData" or t == "Data" or t == "Object" end
 g._ImageData = ImageData

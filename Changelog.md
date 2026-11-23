@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### 2026-11-23, branch `feat/native-psp-blank-imagedata`
+
+- Native PSP backend: blank `love.image.newImageData(w, h)`, `ImageData:setPixel` and `mapPixel`, and `newImage(imageData)`
+  from edited or generated pixels. `native.image_from_rgba(w, h, bytes)` (C) builds the texture through the same code
+  as `native.image_load` (palette picked for 256 colours or fewer). `setPixel` on a file ImageData copies its pixels
+  first. `getPixel` and `setPixel` raise on coordinates outside the image. `tests/games/imagedata` draws a generated
+  gradient and an edited copy; checked in PPSSPP.
+
 ### 2026-11-22, branch `feat/native-psp-imagefont`
 
 - Native PSP backend: `love.graphics.newImageFont(filename | Image | ImageData, glyphs, extraspacing)`. The glyph columns

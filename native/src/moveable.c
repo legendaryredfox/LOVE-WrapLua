@@ -43,7 +43,7 @@ enum {
     K_CALCING, K_role, K_role_type, K_major, K_STATIONARY, K_NEW_ALIGNMENT, K_config, K_refresh_movement, K_juice, K_zoom,
     K_xy_bond, K_r_bond, K_velocity, K_pinch, K_shadow_parrallax,
     K_scale_bond, K_wh_bond, K_ARGS, K_get_major, K_temp_offs, K_layered_parallax, K_exp_times, K_max_vel, K_states, K_drag, K_hover, K_is,
-    K_REFRESH, K_Strong, K_xy,
+    K_REFRESH, K_Strong, K_xy, K_update, K_collide,
     K_Glued, K_Minor, K_Major, K_Weak,
     K_COUNT
 };
@@ -53,7 +53,7 @@ static const char *const key_names[K_COUNT] = {
     "CALCING", "role", "role_type", "major", "STATIONARY", "NEW_ALIGNMENT", "config", "refresh_movement", "juice", "zoom",
     "xy_bond", "r_bond", "velocity", "pinch", "shadow_parrallax",
     "scale_bond", "wh_bond", "ARGS", "get_major", "temp_offs", "layered_parallax", "exp_times", "max_vel", "states", "drag", "hover", "is",
-    "REFRESH_FRAME_MAJOR_CACHE", "Strong", "xy",
+    "REFRESH_FRAME_MAJOR_CACHE", "Strong", "xy", "update", "collide",
     "Glued", "Minor", "Major", "Weak",
 };
 static TString *K[K_COUNT];
@@ -416,11 +416,8 @@ static void call_ref(lua_State *L, int ref, Table *self, int with_dt, lua_Number
     lua_call(L, 1 + with_dt, 0);
 }
 
-static int move_core(lua_State *L) {
-    if (!keys_ready) return luaL_error(L, "native.mv_setup has not run");
-    if (lua_gettop(L) < 2 || !IS_TBL(L->base) || !lua_isnumber(L, 2)) goto bail;
-    Table *self = hvalue(L->base);
-    lua_Number dt = lua_tonumber(L, 2);
+/* The whole move for one object: 1 when done, 0 (nothing changed) when the Lua implementation has to run. */
+static int move_obj(lua_State *L, Table *self, lua_Number dt) {
 
     const TValue *v = GS(hvalue(&L->l_gt), K_G);
     if (!IS_TBL(v)) goto bail;
@@ -436,7 +433,7 @@ static int move_core(lua_State *L) {
     Table *FR = hvalue(v);
     const TValue *fm = GS(FR, K_MOVE);
     if (!IS_NUM(fm)) goto bail;
-    if (nvalue(fm) >= gm) { lua_pushboolean(L, 1); return 1; }
+    if (nvalue(fm) >= gm) return 1;
 
     int plan = PLAN_NOROLE;
     Table *T = NULL, *al = NULL, *role = NULL, *major = NULL, *room_T = NULL, *sp = NULL;
@@ -508,7 +505,7 @@ static int move_core(lua_State *L) {
     put(L, FR, K_OLD_MAJOR, GS(FR, K_MAJOR));
     put_nil(L, FR, K_MAJOR);
     put_num(L, FR, K_MOVE, gm);
-    if (plan == PLAN_PAUSED) { lua_pushboolean(L, 1); return 1; }
+    if (plan == PLAN_PAUSED) return 1;
 
     put_nil(L, self, K_CALCING);
     if (plan == PLAN_GLUED) {
@@ -552,23 +549,32 @@ static int move_core(lua_State *L) {
     }
     if (!FALSY(GS(al, K_lr_clamp))) call_ref(L, ref_lr_clamp, self, 0, 0);
     put_bool(L, self, K_NEW_ALIGNMENT, 0);
-    lua_pushboolean(L, 1);
     return 1;
 bail:
-    lua_pushboolean(L, 0);
-    return 1;
+    return 0;
 }
 
-static int l_mv_move(lua_State *L) {
-    int done = move_core(L);
-    (void)done;
+/* the arguments of native.mv_move / native.mv_method: (self, dt); 0 when they are not a table and a number */
+static int move_args(lua_State *L, Table **self, lua_Number *dt) {
+    if (!keys_ready) luaL_error(L, "native.mv_setup has not run");
+    if (lua_gettop(L) < 2 || !IS_TBL(L->base) || !lua_isnumber(L, 2)) return 0;
+    *self = hvalue(L->base);
+    *dt = lua_tonumber(L, 2);
     return 1;
 }
+static int l_mv_move(lua_State *L) {
+    Table *self; lua_Number dt;
+    lua_pushboolean(L, move_args(L, &self, &dt) && move_obj(L, self, dt));
+    return 1;
+}
+static void run_fallback(lua_State *L, Table *self, lua_Number dt) {
+    if (ref_fallback == LUA_NOREF) luaL_error(L, "native.mv_method needs mv_setup{fallback = f}");
+    call_ref(L, ref_fallback, self, 1, dt);
+}
 static int l_mv_method(lua_State *L) {
-    move_core(L);
-    int handled = lua_toboolean(L, -1);
+    Table *self; lua_Number dt;
+    if (move_args(L, &self, &dt) && move_obj(L, self, dt)) return 0;
     lua_settop(L, 2);
-    if (handled) return 0;
     if (ref_fallback == LUA_NOREF) return luaL_error(L, "native.mv_method needs mv_setup{fallback = f}");
     lua_rawgeti(L, LUA_REGISTRYINDEX, ref_fallback);
     lua_pushvalue(L, 1);
@@ -577,9 +583,69 @@ static int l_mv_method(lua_State *L) {
     return 0;
 }
 
+/* native.mv_loop(moveables, game_move_frame, dt): for every object with FRAME.MOVE below the frame, v:move(dt) as
+ * Game:update does. An object whose move is the native.mv_method installed by mv_setup skips the call frame. */
+static int l_mv_loop(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    lua_Number gm = luaL_checknumber(L, 2), dt = luaL_checknumber(L, 3);
+    if (!keys_ready) return luaL_error(L, "native.mv_setup has not run");
+    lua_settop(L, 3);
+    lua_pushnil(L);
+    while (lua_next(L, 1)) {
+        const TValue *vv = L->top - 1;
+        if (!IS_TBL(vv)) return luaL_error(L, "attempt to index a non-table moveable");
+        Table *self = hvalue(vv);
+        const TValue *fr = GS(self, K_FRAME);
+        const TValue *fm = IS_TBL(fr) ? GS(hvalue(fr), K_MOVE) : NULL;
+        if (!fm || !IS_NUM(fm)) return luaL_error(L, "attempt to compare a moveable FRAME.MOVE that is not a number");
+        if (nvalue(fm) < gm) {
+            lua_getfield(L, 5, "move");
+            if (lua_tocfunction(L, -1) == l_mv_method) {
+                lua_pop(L, 1);
+                if (!move_obj(L, self, dt)) run_fallback(L, self, dt);
+            } else {
+                lua_pushvalue(L, 5);
+                lua_pushnumber(L, dt);
+                lua_call(L, 2, 0);
+            }
+        }
+        lua_pop(L, 1);
+    }
+    return 0;
+}
+
+/* native.mv_update_loop(moveables, dt, node_update): for every object whose update is not node_update, v:update(dt);
+ * then v.states.collide.is = false. */
+static int l_mv_update_loop(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    lua_Number dt = luaL_checknumber(L, 2);
+    luaL_checkany(L, 3);
+    if (!keys_ready) return luaL_error(L, "native.mv_setup has not run");
+    lua_settop(L, 3);
+    lua_pushnil(L);
+    while (lua_next(L, 1)) {
+        if (!IS_TBL(L->top - 1)) return luaL_error(L, "attempt to index a non-table moveable");
+        Table *self = hvalue(L->top - 1);
+        lua_getfield(L, 5, "update");
+        if (!lua_rawequal(L, 6, 3)) {
+            lua_pushvalue(L, 5);
+            lua_pushnumber(L, dt);
+            lua_call(L, 2, 0);
+        } else lua_pop(L, 1);
+        const TValue *st = GS(self, K_states);
+        const TValue *cl = IS_TBL(st) ? GS(hvalue(st), K_collide) : NULL;
+        if (!cl || !IS_TBL(cl)) return luaL_error(L, "attempt to index a moveable without states.collide");
+        put_bool(L, hvalue(cl), K_is, 0);
+        lua_pop(L, 1);
+    }
+    return 0;
+}
+
 int mv_open(lua_State *L) {
     lua_pushcfunction(L, l_mv_setup); lua_setfield(L, -2, "mv_setup");
     lua_pushcfunction(L, l_mv_move); lua_setfield(L, -2, "mv_move");
     lua_pushcfunction(L, l_mv_method); lua_setfield(L, -2, "mv_method");
+    lua_pushcfunction(L, l_mv_loop); lua_setfield(L, -2, "mv_loop");
+    lua_pushcfunction(L, l_mv_update_loop); lua_setfield(L, -2, "mv_update_loop");
     return 0;
 }

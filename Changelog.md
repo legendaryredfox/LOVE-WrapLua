@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### 2026-11-23, branch `perf/native-psp-loops-c`
+
+- Native PSP engine: `native.mv_loop(moveables, frame, dt)` and `native.mv_update_loop(moveables, dt, node_update)` in
+  `native/src/moveable.c`, the two `MOVEABLES` loops of Balatro's `Game:update`. An object whose `move` is `native.mv_method` is
+  moved without a call frame; `move_core` became `move_obj(L, self, dt)` so both paths share it.
+- Balatro harness (`SELECTING_HAND`, `shadowoff,uicache,walk2`): update 15.9 to 14.6 ms, 28.3 to 29.4 fps in PPSSPP. The differential
+  test (random populations, killers removing entries during the walk, no differences, also with float Lua numbers, valgrind clean)
+  is in the balatro_psp repository (`tests/mv/loops_test.lua`).
+
 ### 2026-11-23, branch `perf/native-psp-reduction-c`
 
 - Native PSP engine: `native/src/reduce.c`, the round-robin update gate of the Balatro harness in C

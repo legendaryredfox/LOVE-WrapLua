@@ -125,7 +125,8 @@ unprofiled baseline from that build is the same 16.4 fps (update 31.4 ms, draw 2
   9x on the idle check. `get_major`, `move_with_major` and the per-field `move_*` functions followed the same day:
   update 25.9 to 17.7 ms and 25.6 fps in all, `update:move` 15.7 to 8.1 ms per frame. Objects with a `juice` stay in Lua.
   The UI cache signature walk (`native/src/uiwalk.c`) took draw from 21.5 to 19.4 ms (27.1 fps), and the round-robin update gate
-  (`native/src/reduce.c`) update from 17.6 to 16.1 ms (28.2 fps).
+  (`native/src/reduce.c`) update from 17.6 to 16.1 ms (28.2 fps). The two `MOVEABLES` loops of `Game:update` in C (`mv_loop`, `mv_update_loop`)
+  took update to 14.6 ms (29.4 fps).
 
 ### Cost of audio in Balatro (2026-11-17)
 

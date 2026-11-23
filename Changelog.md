@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### 2026-11-23, branch `perf/native-psp-reduction-c`
+
+- Native PSP engine: `native/src/reduce.c`, the round-robin update gate of the Balatro harness in C
+  (`native.rr_make(class, rate, minAge)` replaces `class.update` and returns the per-frame cycle function). The object's gate
+  fields are read and written through `luaH_getstr` / `luaH_setstr`; the original `update` runs unchanged where the Lua wrapper
+  would have raised (wrong field type, `G.TIMERS.REAL` missing).
+- Balatro harness (`SELECTING_HAND`, `shadowoff,uicache,walk2`): update 17.6 to 16.1 ms, 27.1 to 28.2 fps in PPSSPP. The differential
+  test (six rate / age configurations against the Lua wrapper, no differences, also with float Lua numbers, valgrind clean, three
+  mutations detected) is in the balatro_psp repository (`tests/mv/rr_test.lua`).
+
 ### 2026-11-23, branch `perf/native-psp-uiwalk-c`
 
 - Native PSP engine: `native/src/uiwalk.c`, the per-frame signature walk of the Balatro UI layer cache in C

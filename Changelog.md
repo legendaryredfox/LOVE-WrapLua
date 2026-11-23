@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### 2026-11-23, branch `perf/native-psp-uiwalk-c`
+
+- Native PSP engine: `native/src/uiwalk.c`, the per-frame signature walk of the Balatro UI layer cache in C
+  (`native.ui_walk(root, sig, start, sigq, uit_object, now)`), reading the node tables through `luaH_getstr` like `moveable.c`.
+  A missing or mistyped field returns nothing and the caller runs its Lua walk, counting the box as changed.
+- Balatro harness (`SELECTING_HAND`, `shadowoff,uicache,walk2`): draw 21.5 to 19.4 ms, 25.6 to 26.9 fps in PPSSPP. The differential
+  test (random UI trees, no differences, also with float Lua numbers) is in the balatro_psp repository (`tests/mv/uiwalk_test.lua`).
+
 ### 2026-11-23, branch `perf/native-psp-moveable-c2`
 
 - `native/src/moveable.c` now also does `Moveable:get_major`, `move_with_major` for Minor roles and the movers `move_xy`,

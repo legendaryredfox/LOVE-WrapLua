@@ -379,7 +379,7 @@ records its usual emulator and the areas it gets wrong in
 - **ImageFont** exists only on the native PSP backend (`love.graphics.newImageFont` from a filename, an Image or an
   ImageData; `native.tex_pixel` finds the glyph columns from the top row, whose first pixel is the spacer colour). Spacer
   coloured pixels below the top row are drawn as they are, not made transparent, and an unknown character has no glyph.
-  `ImageData` works there for files and blank images: `love.image.newImageData(w, h)`, `getPixel`, `setPixel`, `mapPixel`, and `newImage(imageData)`, which uploads a copy through `native.image_from_rgba`, so later edits do not change the Image. Two Lua numbers per pixel (about 32 bytes), so keep generated images small. `paste`, `encode` and `getString` are still missing.
+  `ImageData` works there for files and blank images: `love.image.newImageData(w, h)`, `getPixel`, `setPixel`, `mapPixel`, and `newImage(imageData)`, which uploads a copy through `native.image_from_rgba`, so later edits do not change the Image. Two Lua numbers per pixel (about 32 bytes), so keep generated images small. `clone`, `paste` (clipped to both images) and `getFormat` (always `rgba8`) work; `encode` and `getString` are still missing.
 - **Rotation** in the transform stack turns what is drawn but not the positions
   that follow it: the stack keeps an offset, a 2x2 matrix (scale and shear) and an angle per level.
   `shear` slants shapes, lines and points; images and text only move.

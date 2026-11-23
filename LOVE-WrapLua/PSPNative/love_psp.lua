@@ -383,6 +383,29 @@ function ImageData:mapPixel(fn, sx, sy, sw, sh)
         end
     end
 end
+function ImageData:clone()
+    materialize(self)
+    local rg, ba = {}, {}
+    for i = 1, self.w * self.h do rg[i], ba[i] = self._rg[i], self._ba[i] end
+    return setmetatable({ w = self.w, h = self.h, _rg = rg, _ba = ba }, ImageData)
+end
+function ImageData:paste(src, dx, dy, sx, sy, sw, sh)
+    materialize(self); materialize(src)
+    sx, sy = sx or 0, sy or 0; sw, sh = sw or src.w - sx, sh or src.h - sy
+    for y = 0, sh - 1 do
+        local ty, fy = dy + y, sy + y
+        if ty >= 0 and ty < self.h and fy >= 0 and fy < src.h then
+            for x = 0, sw - 1 do
+                local tx, fx = dx + x, sx + x
+                if tx >= 0 and tx < self.w and fx >= 0 and fx < src.w then
+                    local to, from = ty * self.w + tx + 1, fy * src.w + fx + 1
+                    self._rg[to], self._ba[to] = src._rg[from], src._ba[from]
+                end
+            end
+        end
+    end
+end
+function ImageData:getFormat() return "rgba8" end
 function ImageData:_upload()
     local rg, ba, parts, n = self._rg, self._ba, {}, self.w * self.h
     -- unpack and string.char take at most about 8000 values per call (LUAI_MAXCSTACK), so 1024 pixels at a time

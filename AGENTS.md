@@ -55,6 +55,7 @@ index.lua / app.lua   Entry points (lpp-vita and 3DS / PS3).
 game/                 The game (main.lua, conf.lua, assets); libraries/anim8.lua (upstream), desAnim8.lua.
 docs/adr/             Architecture decision records.
 native/               C engine for the native PSP backend (src/, Makefile, Lua 5.1.5 tarball + PSP patch).
+                      src/balatro/: game-specific fast paths (native.balatro), built only with --game=balatro.
 tools/lovepsp.lua     Dev steps in Lua: build the EBOOT, package a game, print a directory manifest.
 tests/                See "Running the tests".
 LOVE-WrapLua/

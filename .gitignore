@@ -4,6 +4,7 @@ native/third_party/lua-5.1.5/
 native/.luaflags
 native/*.o
 native/src/*.o
+native/src/*/*.o
 native/*.elf
 native/*.prx
 native/EBOOT.PBP

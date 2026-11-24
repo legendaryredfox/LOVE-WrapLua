@@ -3,7 +3,7 @@
  * previous frame's signature array and stores the new ones. Like moveable.c it reads the Lua tables directly through
  * Lua's internal luaH_getstr, so it is tied to the Lua 5.1.5 in third_party/.
  *
- * native.ui_walk(root, sig, start, sigq, uit_object, now) -> next_index, changed
+ * native.balatro.ui_walk(root, sig, start, sigq, uit_object, now) -> next_index, changed
  *   sig            the signature array (positive integer keys); entries from start + 1 on are compared and rewritten
  *   uit_object     the value of G.UIT.O, now the value of G.TIMERS.REAL
  * It returns nothing (nil) when a field is missing or has an unexpected type; sig may then be partly rewritten, so the

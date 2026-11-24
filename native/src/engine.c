@@ -966,16 +966,16 @@ static const luaL_Reg funcs[] = {
     {"png_encode", l_png_encode}, {"screen_rgba", l_screen_rgba}, {"deflate", l_deflate}, {"inflate", l_inflate}, {NULL, NULL}
 };
 void audio_register(lua_State *L);
-int mv_open(lua_State *L);
-int uw_open(lua_State *L);
-int rr_open(lua_State *L);
+#ifdef GAME_BALATRO
+int balatro_open(lua_State *L);
+#endif
 int luaopen_native(lua_State *L) {
     luaL_newmetatable(L, "balatro.tex"); lua_pushcfunction(L, tex_gc); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
     luaL_newmetatable(L, "balatro.font"); lua_pushcfunction(L, font_gc); lua_setfield(L, -2, "__gc"); lua_pop(L, 1);
     luaL_register(L, "native", funcs);
     audio_register(L);
-    mv_open(L);
-    uw_open(L);
-    rr_open(L);
+#ifdef GAME_BALATRO
+    balatro_open(L);
+#endif
     return 1;
 }

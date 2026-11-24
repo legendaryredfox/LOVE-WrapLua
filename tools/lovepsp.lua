@@ -1,5 +1,5 @@
 -- Development steps for the native PSP backend, all in Lua. Run from the project root:
---   lua tools/lovepsp.lua build [--double] [--opt="-O2"]      compile native/EBOOT.PBP (docker pspdev)
+--   lua tools/lovepsp.lua build [--double] [--opt="-O2"] [--game=balatro]  compile native/EBOOT.PBP (docker pspdev)
 --   lua tools/lovepsp.lua package <game_dir> <out_dir> [identity] [title]
 --   lua tools/lovepsp.lua stage <game_dir> <out_dir>           package without the EBOOT (tests)
 --   lua tools/lovepsp.lua convert <dir>                       turn every .ogg and .wav under dir into a stereo .mp3
@@ -103,18 +103,19 @@ local function build(opts)
     end
     local float = opts.double and "" or "-DPSP_LUA_FLOAT"
     local opt = opts.opt or "-O2"
-    local key = float .. "|" .. opt
+    local game = opts.game or ""
+    local key = float .. "|" .. opt .. "|" .. game
     local keyfile = "native/.luaflags"
     local uid, gid = capture("id -u"):gsub("%s", ""), capture("id -g"):gsub("%s", "")
     local cwd = capture("pwd"):gsub("\n", "")
     local docker = "docker run --rm --user " .. uid .. ":" .. gid .. " -v " .. q(cwd .. "/native") .. ":/work -w /work " .. IMAGE
     if (exists(keyfile) and read(keyfile) or "") ~= key then
-        run(docker .. " make clean >/dev/null 2>&1")
+        run(docker .. " make GAME=balatro clean >/dev/null 2>&1")
         write(keyfile, key)
     end
-    must(docker .. " make LUAFLOAT=" .. q(float) .. " OPT=" .. q(opt), "make")
+    must(docker .. " make LUAFLOAT=" .. q(float) .. " OPT=" .. q(opt) .. " GAME=" .. q(game), "make")
     if not exists("native/EBOOT.PBP") then error("native/EBOOT.PBP was not produced", 0) end
-    print("built native/EBOOT.PBP (" .. (float == "" and "double" or "float") .. " numbers, " .. opt .. ")")
+    print("built native/EBOOT.PBP (" .. (float == "" and "double" or "float") .. " numbers, " .. opt .. (game ~= "" and ", game " .. game or "") .. ")")
 end
 
 -- ── package ──────────────────────────────────────────────────────
@@ -162,7 +163,8 @@ local ok, err = pcall(function()
         local opts = {}
         for _, a in ipairs(rest) do
             if a == "--double" then opts.double = true
-            elseif a:match("^%-%-opt=") then opts.opt = a:match("^%-%-opt=(.*)$") end
+            elseif a:match("^%-%-opt=") then opts.opt = a:match("^%-%-opt=(.*)$")
+            elseif a:match("^%-%-game=") then opts.game = a:match("^%-%-game=(.*)$") end
         end
         build(opts)
     elseif cmd == "package" then

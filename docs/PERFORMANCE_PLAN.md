@@ -38,8 +38,9 @@ The 30 fps working target of the native phase is met (update 14.6 ms, draw 17.1 
 `NATIVE_PSP_AUDIT.md`. Open on this path, in order:
 
 1. Blind-select and overlay screenshot diffs with the UI cache on and off; the canvas test game is `tests/games/canvas`.
-2. The cache code and the C fast paths still live in the Balatro harness (`balatro_psp/psp/opt.lua` plus the engine's Balatro-shaped
-   `moveable.c`, `uiwalk.c`, `reduce.c`); decide what is a generic engine feature and what stays game-side.
+2. The Balatro-shaped C is now in `native/src/balatro/` behind `GAME=balatro` and registers as `native.balatro` (2026-11-24); the UI
+   cache itself still lives in `balatro_psp/psp/opt.lua`. Left: decide whether the cache's engine half (atlas, strip blits) becomes
+   a generic `native` feature.
 3. Decide whether shadows off is the PSP default (about 2.7 ms by itself).
 4. Hardware test: nothing here ran on a real PSP, and PPSSPP timing is not hardware timing.
 5. Native `hash`, joystick/thread/filesystem from the shared modules, a PSP-native row in `core/capabilities.lua`.

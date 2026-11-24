@@ -201,7 +201,7 @@ Open, in order:
 3. (done) The walk costs as much as a draw; `walk2` skips it on alternate frames.
 4. Shop checked; blind select and overlays still to diff, and a test
    game in `tests/games/` that exercises canvas plus quad blits so the engine side stays covered (done 2026-11-24:
-   `tests/games/canvas`, packaged but its screenshot not yet compared in an emulator).
+   `tests/games/canvas`, screenshot checked in PPSSPP).
 5. If it pays, move the code from `opt.lua` into a reusable place and decide whether the PSP default is shadows off
    (also worth about `-2.7 ms` by itself).
 

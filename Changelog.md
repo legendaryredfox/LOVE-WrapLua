@@ -6,7 +6,7 @@
 
 - `tests/games/canvas`: on-device test game for the native PSP canvas path. Two canvases are rendered and drawn whole, then
   sub-rects of one canvas are blitted through Quads, one of them under a scissor, which is how the Balatro UI cache uses the
-  engine. Packages with `lua tools/lovepsp.lua package`; the screenshot was not compared in an emulator yet.
+  engine. Packages with `lua tools/lovepsp.lua package`; checked in PPSSPP through retroarch (screenshot matches the description at the top of the file).
 
 ### 2026-11-23, branch `perf/native-psp-prep-c`
 

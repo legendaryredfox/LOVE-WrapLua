@@ -45,6 +45,32 @@ The 30 fps working target of the native phase is met (update 14.6 ms, draw 17.1 
 4. Hardware test: nothing here ran on a real PSP, and PPSSPP timing is not hardware timing.
 5. Native `hash`, joystick/thread/filesystem from the shared modules, a PSP-native row in `core/capabilities.lua`.
 
+### Next step (chosen 2026-11-24, not started): overlay screens with the UI cache on and off
+
+Open item 1 above, and the gate for items 2 and 3 (a generic cache, shadows off as the default): the cache replaces drawing with
+blits of an atlas, so every screen that composes boxes differently is a place it can be wrong. Title, blind select and the shop are
+checked; the hand screen is the benchmark. Still unchecked: the options overlay, run info, the shop with a booster pack open, the
+round-end cash-out screen and game over.
+
+Procedure (A/B on the same build, only `opt_flags.lua` differs):
+- Build once: `OPT_ON=shadowoff,uicache,walk2 tools/build_native.sh` in `balatro_psp`. Run B by writing
+  `return {cprep=true,on={shadowoff=true,}}` to `build/native/opt_flags.lua` (shadows off in both, so the diff isolates the cache).
+- Reach each screen with a script in the style of `psp/autoplay_hand.lua` (`G.FUNCS.*` calls such as `options`, `run_info`,
+  `cash_out`, `G.FUNCS.start_run`; `a.tap` for the controller), one script per screen, and stop on it.
+- Screenshot at a frame count where the screen has settled: fades and springs make an early frame differ at another animation
+  phase (blind select at 2000 RA frames looked undimmed with the cache and was not a bug; 2600 matched). Take two screenshots a few
+  hundred frames apart on each side and compare like with like.
+- Pass: same layout, same dimming and colours, only text edge softness differs. Count pixels over a threshold of 16 as a number, but
+  look at the images, since a moved box and a softer glyph are different failures.
+- Fail: anything translucent turned opaque (the engine writes alpha 255 into canvases), a missing child UIBox (button pip), a box
+  stuck on a stale frame. The `uidiag2` flag logs the reason a box is not cached.
+
+Done when: each screen above has a pass line in `NATIVE_PSP_AUDIT.md` and `Changelog.md`, a failure has a fix or a documented
+exclusion (a box kind that is never cached), and the autoplay scripts are committed in `balatro_psp`. The image diff used so far is a
+one-off PIL script; `AGENTS.md` wants dev steps in Lua, so decide first whether to write a small PNG diff in Lua (`tools/lovepsp.lua`
+already has a PNG encoder on the engine side) or keep the check manual for this step. Estimated size: half a day, mostly emulator
+wall time. After it: the PSP-native row in `core/capabilities.lua`, then the generic-cache and shadows-off decisions.
+
 ## Status of the OneLua and other backends, 2026-11-17
 
 Done, or done in part judging by the commit history (2.1 to 2.3 were not re-audited against their task text): 0.1, 0.2 (`frame_cost.lua` prints wall time per frame and the Lua runtime, `-joff` included), 0.3 (`api_coverage.lua` boots the runtime in `script.lua` order; checked against ten calls), 1.1, 1.2 (first same-scene number, `PERFORMANCE_FINDINGS.md` section 7), 2.1, 2.2 (font width cache, 3DS text), 2.3 (circle and ellipse point cache), 2.4 (the polygon cache snaps to the nearest pixel, so animated shapes hit it), 2.5, 2.6, 2b.1

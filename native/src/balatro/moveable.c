@@ -4,16 +4,16 @@
  * (about 720 ns against 735 ns for the idle check on desktop); with luaH_getstr on pre-interned keys it takes 82 ns.
  * This file therefore includes Lua's internal headers and is tied to the Lua 5.1.5 in third_party/.
  *
- * Contract: native.mv_move(self, dt) returns true when it did the whole move, false (and changed nothing) when the object
+ * Contract: native.balatro.mv_move(self, dt) returns true when it did the whole move, false (and changed nothing) when the object
  * is in a state the fast path does not cover; the caller then runs the Lua implementation. Covered: the frame guard, the
  * paused game, Glued roles, Minor roles (the major's move is called back in Lua; get_major and move_with_major are done
  * here, and Lua's move_with_major runs when they cannot) and Major roles, idle or moving (move_xy, move_r, move_scale and
  * move_wh are done here). Anything else, including a missing field or a field of the wrong type, is a bail; so is an
  * object with a juice, which stays in Lua.
  *
- * native.mv_method(self, dt) is the same thing installed as Moveable.move: it runs the Lua implementation itself on a bail.
+ * native.balatro.mv_method(self, dt) is the same thing installed as Moveable.move: it runs the Lua implementation itself on a bail.
  *
- * native.mv_setup{ move_with_major = f, lr_clamp = f, fallback = f } interns the keys and registers the Lua functions
+ * native.balatro.mv_setup{ move_with_major = f, lr_clamp = f, fallback = f } interns the keys and registers the Lua functions
  * called back (fallback is only needed by mv_method). */
 #define LUA_CORE
 #include "lua.h"
@@ -557,9 +557,9 @@ bail:
     return 0;
 }
 
-/* the arguments of native.mv_move / native.mv_method: (self, dt); 0 when they are not a table and a number */
+/* the arguments of native.balatro.mv_move / native.balatro.mv_method: (self, dt); 0 when they are not a table and a number */
 static int move_args(lua_State *L, Table **self, lua_Number *dt) {
-    if (!keys_ready) luaL_error(L, "native.mv_setup has not run");
+    if (!keys_ready) luaL_error(L, "native.balatro.mv_setup has not run");
     if (lua_gettop(L) < 2 || !IS_TBL(L->base) || !lua_isnumber(L, 2)) return 0;
     *self = hvalue(L->base);
     *dt = lua_tonumber(L, 2);
@@ -571,14 +571,14 @@ static int l_mv_move(lua_State *L) {
     return 1;
 }
 static void run_fallback(lua_State *L, Table *self, lua_Number dt) {
-    if (ref_fallback == LUA_NOREF) luaL_error(L, "native.mv_method needs mv_setup{fallback = f}");
+    if (ref_fallback == LUA_NOREF) luaL_error(L, "native.balatro.mv_method needs mv_setup{fallback = f}");
     call_ref(L, ref_fallback, self, 1, dt);
 }
 static int l_mv_method(lua_State *L) {
     Table *self; lua_Number dt;
     if (move_args(L, &self, &dt) && move_obj(L, self, dt)) return 0;
     lua_settop(L, 2);
-    if (ref_fallback == LUA_NOREF) return luaL_error(L, "native.mv_method needs mv_setup{fallback = f}");
+    if (ref_fallback == LUA_NOREF) return luaL_error(L, "native.balatro.mv_method needs mv_setup{fallback = f}");
     lua_rawgeti(L, LUA_REGISTRYINDEX, ref_fallback);
     lua_pushvalue(L, 1);
     lua_pushvalue(L, 2);
@@ -586,12 +586,12 @@ static int l_mv_method(lua_State *L) {
     return 0;
 }
 
-/* native.mv_loop(moveables, game_move_frame, dt): for every object with FRAME.MOVE below the frame, v:move(dt) as
- * Game:update does. An object whose move is the native.mv_method installed by mv_setup skips the call frame. */
+/* native.balatro.mv_loop(moveables, game_move_frame, dt): for every object with FRAME.MOVE below the frame, v:move(dt) as
+ * Game:update does. An object whose move is the native.balatro.mv_method installed by mv_setup skips the call frame. */
 static int l_mv_loop(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua_Number gm = luaL_checknumber(L, 2), dt = luaL_checknumber(L, 3);
-    if (!keys_ready) return luaL_error(L, "native.mv_setup has not run");
+    if (!keys_ready) return luaL_error(L, "native.balatro.mv_setup has not run");
     lua_settop(L, 3);
     lua_pushnil(L);
     while (lua_next(L, 1)) {
@@ -617,13 +617,13 @@ static int l_mv_loop(lua_State *L) {
     return 0;
 }
 
-/* native.mv_update_loop(moveables, dt, node_update): for every object whose update is not node_update, v:update(dt);
+/* native.balatro.mv_update_loop(moveables, dt, node_update): for every object whose update is not node_update, v:update(dt);
  * then v.states.collide.is = false. */
 static int l_mv_update_loop(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua_Number dt = luaL_checknumber(L, 2);
     luaL_checkany(L, 3);
-    if (!keys_ready) return luaL_error(L, "native.mv_setup has not run");
+    if (!keys_ready) return luaL_error(L, "native.balatro.mv_setup has not run");
     lua_settop(L, 3);
     lua_pushnil(L);
     while (lua_next(L, 1)) {
@@ -762,7 +762,7 @@ static int tc_core(lua_State *L) {
 }
 
 static int run_ui_fallback(lua_State *L, int ref, const char *what) {
-    if (ref == LUA_NOREF) return luaL_error(L, "native.%s needs ui_setup", what);
+    if (ref == LUA_NOREF) return luaL_error(L, "native.balatro.%s needs ui_setup", what);
     int n = lua_gettop(L);
     lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
     lua_insert(L, 1);
@@ -770,12 +770,12 @@ static int run_ui_fallback(lua_State *L, int ref, const char *what) {
     return 0;
 }
 static int l_prep_method(lua_State *L) {
-    if (!keys_ready) return luaL_error(L, "native.ui_setup has not run");
+    if (!keys_ready) return luaL_error(L, "native.balatro.ui_setup has not run");
     if (prep_core(L)) return 0;
     return run_ui_fallback(L, ref_prep_fb, "prep_method");
 }
 static int l_tc_method(lua_State *L) {
-    if (!keys_ready) return luaL_error(L, "native.ui_setup has not run");
+    if (!keys_ready) return luaL_error(L, "native.balatro.ui_setup has not run");
     if (tc_core(L)) return 0;
     return run_ui_fallback(L, ref_tc_fb, "tc_method");
 }

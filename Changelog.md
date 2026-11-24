@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### 2026-11-24, branch `refactor/native-balatro-module`
+
+- The Balatro-shaped C (`moveable.c`, `uiwalk.c`, `reduce.c`, which read Balatro's tables by field name) moved to
+  `native/src/balatro/` and registers as `native.balatro.*` (`mv_setup`, `mv_method`, `mv_loop`, `mv_update_loop`,
+  `ui_setup`, `prep_method`, `tc_method`, `ui_walk`, `rr_make`). It is compiled only with `GAME=balatro`
+  (`lua tools/lovepsp.lua build --game=balatro`); the default engine has no game code. The engine's own `native.*` API is
+  unchanged. Balatro harness: 31.7 fps, update 14.4 ms, draw 17.1 ms, the same as before the move.
+
 ### 2026-11-24, branch `docs/native-uicache-blind-select`
 
 - Blind select screen compared with the UI cache on and off in PPSSPP: identical layout once the fade settles, only text edge

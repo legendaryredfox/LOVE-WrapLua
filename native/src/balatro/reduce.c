@@ -1,6 +1,6 @@
 /* A C version of the round-robin update gate Balatro's psp/opt.lua wraps around an object type's update().
  *
- * native.rr_make(class, rate, minAge) replaces class.update with a C closure and returns the per-frame cycle function.
+ * native.balatro.rr_make(class, rate, minAge) replaces class.update with a C closure and returns the per-frame cycle function.
  * The gate runs once per call, for every object of the type, and nearly always returns without updating: in Lua that
  * is a function call plus a dozen table accesses; here the object's fields are read with luaH_getstr on pre-interned
  * keys (this file includes Lua's internal headers and is tied to the Lua 5.1.5 in third_party/).

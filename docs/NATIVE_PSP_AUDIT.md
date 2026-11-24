@@ -120,12 +120,12 @@ unprofiled baseline from that build is the same 16.4 fps (update 31.4 ms, draw 2
   caching static UI in a canvas (`-8` to `-14 ms`, canvases are real in this engine), moving `Moveable:move` and
   the other per-node updates to C behind the same field API (`~-8 ms` for `move` alone), skipping invisible nodes,
   and `Game:update` work done at 1 Hz. Reaching 30 fps needs several of them; the first two are the large ones.
-  **Update 2026-11-23:** the `Moveable:move` fast path is in C (`native/src/moveable.c`): update 32.2 to 25.9 ms, 18.6 to 21.1 fps with the
+  **Update 2026-11-23:** the `Moveable:move` fast path is in C (`native/src/balatro/moveable.c`): update 32.2 to 25.9 ms, 18.6 to 21.1 fps with the
   UI cache on. Reading fields through the public Lua API is no faster than the VM; only direct table access (`luaH_getstr`) pays, about
   9x on the idle check. `get_major`, `move_with_major` and the per-field `move_*` functions followed the same day:
   update 25.9 to 17.7 ms and 25.6 fps in all, `update:move` 15.7 to 8.1 ms per frame. Objects with a `juice` stay in Lua.
-  The UI cache signature walk (`native/src/uiwalk.c`) took draw from 21.5 to 19.4 ms (27.1 fps), and the round-robin update gate
-  (`native/src/reduce.c`) update from 17.6 to 16.1 ms (28.2 fps). The two `MOVEABLES` loops of `Game:update` in C (`mv_loop`, `mv_update_loop`)
+  The UI cache signature walk (`native/src/balatro/uiwalk.c`) took draw from 21.5 to 19.4 ms (27.1 fps), and the round-robin update gate
+  (`native/src/balatro/reduce.c`) update from 17.6 to 16.1 ms (28.2 fps). The two `MOVEABLES` loops of `Game:update` in C (`mv_loop`, `mv_update_loop`)
   took update to 14.6 ms (29.4 fps).
   `prep_draw` and `Node:translate_container` in C (`prep_method`, `tc_method`) took draw from 19.4 to 17.1 ms: 31.8 fps in PPSSPP,
   past the 30 fps target of this phase (emulator figure, not hardware).

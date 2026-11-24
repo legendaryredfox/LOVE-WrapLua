@@ -43,7 +43,7 @@ enum {
     K_CALCING, K_role, K_role_type, K_major, K_STATIONARY, K_NEW_ALIGNMENT, K_config, K_refresh_movement, K_juice, K_zoom,
     K_xy_bond, K_r_bond, K_velocity, K_pinch, K_shadow_parrallax,
     K_scale_bond, K_wh_bond, K_ARGS, K_get_major, K_temp_offs, K_layered_parallax, K_exp_times, K_max_vel, K_states, K_drag, K_hover, K_is,
-    K_REFRESH, K_Strong, K_xy, K_update, K_collide,
+    K_REFRESH, K_Strong, K_xy, K_update, K_collide, K_container, K_TILESCALE, K_TILESIZE, K_parent,
     K_Glued, K_Minor, K_Major, K_Weak,
     K_COUNT
 };
@@ -53,7 +53,7 @@ static const char *const key_names[K_COUNT] = {
     "CALCING", "role", "role_type", "major", "STATIONARY", "NEW_ALIGNMENT", "config", "refresh_movement", "juice", "zoom",
     "xy_bond", "r_bond", "velocity", "pinch", "shadow_parrallax",
     "scale_bond", "wh_bond", "ARGS", "get_major", "temp_offs", "layered_parallax", "exp_times", "max_vel", "states", "drag", "hover", "is",
-    "REFRESH_FRAME_MAJOR_CACHE", "Strong", "xy", "update", "collide",
+    "REFRESH_FRAME_MAJOR_CACHE", "Strong", "xy", "update", "collide", "container", "TILESCALE", "TILESIZE", "parent",
     "Glued", "Minor", "Major", "Weak",
 };
 static TString *K[K_COUNT];
@@ -88,18 +88,21 @@ static void put_nil(lua_State *L, Table *h, int k) {
     h->flags = 0;
 }
 
+static void init_keys(lua_State *L) {
+    if (keys_ready) return;
+    lua_newtable(L);
+    for (int i = 0; i < K_COUNT; i++) {
+        lua_pushstring(L, key_names[i]);
+        K[i] = rawtsvalue(L->top - 1);
+        lua_rawseti(L, -2, i + 1);
+    }
+    lua_setfield(L, LUA_REGISTRYINDEX, "mv.keys");
+    keys_ready = 1;
+}
+
 static int l_mv_setup(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
-    if (!keys_ready) {
-        lua_newtable(L);
-        for (int i = 0; i < K_COUNT; i++) {
-            lua_pushstring(L, key_names[i]);
-            K[i] = rawtsvalue(L->top - 1);
-            lua_rawseti(L, -2, i + 1);
-        }
-        lua_setfield(L, LUA_REGISTRYINDEX, "mv.keys");
-        keys_ready = 1;
-    }
+    init_keys(L);
     lua_getfield(L, 1, "move_with_major"); luaL_checktype(L, -1, LUA_TFUNCTION);
     if (ref_with_major != LUA_NOREF) luaL_unref(L, LUA_REGISTRYINDEX, ref_with_major);
     ref_with_major = luaL_ref(L, LUA_REGISTRYINDEX);
@@ -641,10 +644,149 @@ static int l_mv_update_loop(lua_State *L) {
     return 0;
 }
 
+
+/* Balatro's prep_draw(moveable, scale, rotate, offset) and Node:translate_container() reduced to the engine's matrix calls.
+ * As with mv_method, an argument or field of an unexpected type means nothing is done here and the Lua function runs. */
+void eng_prep_draw(float S, float tx, float ty, float r, float ox, float oy, float sc);
+void eng_translate_container(float a, float b, float r, float c, float d);
+static int ref_prep_fb = LUA_NOREF, ref_tc_fb = LUA_NOREF;
+
+static int l_ui_setup(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    init_keys(L);
+    lua_getfield(L, 1, "prep_draw"); luaL_checktype(L, -1, LUA_TFUNCTION);
+    if (ref_prep_fb != LUA_NOREF) luaL_unref(L, LUA_REGISTRYINDEX, ref_prep_fb);
+    ref_prep_fb = luaL_ref(L, LUA_REGISTRYINDEX);
+    lua_getfield(L, 1, "translate_container"); luaL_checktype(L, -1, LUA_TFUNCTION);
+    if (ref_tc_fb != LUA_NOREF) luaL_unref(L, LUA_REGISTRYINDEX, ref_tc_fb);
+    ref_tc_fb = luaL_ref(L, LUA_REGISTRYINDEX);
+    return 0;
+}
+
+static int tile_size(lua_State *L, lua_Number *out) {
+    const TValue *g = GS(hvalue(&L->l_gt), K_G);
+    if (!IS_TBL(g)) return 0;
+    const TValue *ts = GS(hvalue(g), K_TILESCALE), *tz = GS(hvalue(g), K_TILESIZE);
+    if (!IS_NUM(ts) || !IS_NUM(tz)) return 0;
+    out[0] = nvalue(ts);
+    out[1] = nvalue(tz);
+    return 1;
+}
+
+/* (lp and lp.key) or (parent.layered_parallax and ...key) or 0; 0 when a field has the wrong type */
+static int parallax_of(const TValue *lp, const TValue *parent, int key, lua_Number *out) {
+    const TValue *v;
+    *out = 0;
+    if (!FALSY(lp)) {
+        if (!IS_TBL(lp)) return 0;
+        v = GS(hvalue(lp), key);
+        if (!FALSY(v)) { if (!IS_NUM(v)) return 0; *out = nvalue(v); return 1; }
+    }
+    if (!FALSY(parent)) {
+        if (!IS_TBL(parent)) return 0;
+        const TValue *plp = GS(hvalue(parent), K_layered_parallax);
+        if (!FALSY(plp)) {
+            if (!IS_TBL(plp)) return 0;
+            v = GS(hvalue(plp), key);
+            if (!FALSY(v)) { if (!IS_NUM(v)) return 0; *out = nvalue(v); return 1; }
+        }
+    }
+    return 1;
+}
+
+/* (offset and offset.key or 0) */
+static int offset_of(const TValue *off, int key, lua_Number *out) {
+    *out = 0;
+    if (FALSY(off)) return 1;
+    if (!IS_TBL(off)) return 0;
+    const TValue *v = GS(hvalue(off), key);
+    if (FALSY(v)) return 1;
+    if (!IS_NUM(v)) return 0;
+    *out = nvalue(v);
+    return 1;
+}
+
+static int prep_core(lua_State *L) {
+    int n = lua_gettop(L);
+    if (n < 2 || !IS_TBL(L->base) || !IS_NUM(L->base + 1)) return 0;
+    Table *m = hvalue(L->base);
+    lua_Number scale = nvalue(L->base + 1);
+    const TValue *rotate = n >= 3 ? L->base + 2 : luaO_nilobject;
+    const TValue *offset = n >= 4 ? L->base + 3 : luaO_nilobject;
+    lua_Number ts[2];
+    if (!tile_size(L, ts)) return 0;
+    const TValue *vt = GS(m, K_VT);
+    if (!IS_TBL(vt)) return 0;
+    Table *VT = hvalue(vt);
+    const TValue *vx = GS(VT, K_x), *vy = GS(VT, K_y), *vw = GS(VT, K_w), *vh = GS(VT, K_h), *vr = GS(VT, K_r), *vsc = GS(VT, K_scale);
+    if (!IS_NUM(vx) || !IS_NUM(vy) || !IS_NUM(vw) || !IS_NUM(vh) || !IS_NUM(vr) || !IS_NUM(vsc)) return 0;
+    lua_Number px, py, ox, oy, rot = 0;
+    const TValue *lp = GS(m, K_layered_parallax), *parent = GS(m, K_parent);
+    if (!FALSY(parent) && !IS_TBL(parent)) return 0;   /* Lua indexes parent.layered_parallax before using either value */
+    if (!parallax_of(lp, parent, K_x, &px) || !parallax_of(lp, parent, K_y, &py)) return 0;
+    if (!offset_of(offset, K_x, &ox) || !offset_of(offset, K_y, &oy)) return 0;
+    if (!FALSY(rotate)) { if (!IS_NUM(rotate)) return 0; rot = nvalue(rotate); }
+    lua_Number r = 0;
+    if (nvalue(vr) != 0 || !FALSY(GS(m, K_juice)) || !FALSY(rotate)) r = nvalue(vr) + rot;
+    lua_Number vs = nvalue(vsc), w = nvalue(vw), h = nvalue(vh), two = cast_num(2);
+    eng_prep_draw((float)(ts[0] * ts[1]),
+                  (float)(nvalue(vx) + w / two + ox + px),
+                  (float)(nvalue(vy) + h / two + oy + py),
+                  (float)r,
+                  (float)(-scale * w * vs / two),
+                  (float)(-scale * h * vs / two),
+                  (float)(vs * scale));
+    return 1;
+}
+
+static int tc_core(lua_State *L) {
+    if (lua_gettop(L) < 1 || !IS_TBL(L->base)) return 0;
+    Table *self = hvalue(L->base);
+    const TValue *c = GS(self, K_container);
+    if (FALSY(c)) return 1;
+    if (!IS_TBL(c)) return 0;
+    if (hvalue(c) == self) return 1;
+    const TValue *t = GS(hvalue(c), K_T);
+    if (!IS_TBL(t)) return 0;
+    const TValue *tw = GS(hvalue(t), K_w), *th = GS(hvalue(t), K_h), *tr = GS(hvalue(t), K_r), *tx = GS(hvalue(t), K_x), *ty = GS(hvalue(t), K_y);
+    if (!IS_NUM(tw) || !IS_NUM(th) || !IS_NUM(tr) || !IS_NUM(tx) || !IS_NUM(ty)) return 0;
+    lua_Number ts[2];
+    if (!tile_size(L, ts)) return 0;
+    lua_Number w = nvalue(tw), h = nvalue(th), half = cast_num(0.5);
+    eng_translate_container((float)(w * ts[0] * ts[1] * half),
+                            (float)(h * ts[0] * ts[1] * half),
+                            (float)nvalue(tr),
+                            (float)(-w * ts[0] * ts[1] * half + nvalue(tx) * ts[0] * ts[1]),
+                            (float)(-h * ts[0] * ts[1] * half + nvalue(ty) * ts[0] * ts[1]));
+    return 1;
+}
+
+static int run_ui_fallback(lua_State *L, int ref, const char *what) {
+    if (ref == LUA_NOREF) return luaL_error(L, "native.%s needs ui_setup", what);
+    int n = lua_gettop(L);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
+    lua_insert(L, 1);
+    lua_call(L, n, 0);
+    return 0;
+}
+static int l_prep_method(lua_State *L) {
+    if (!keys_ready) return luaL_error(L, "native.ui_setup has not run");
+    if (prep_core(L)) return 0;
+    return run_ui_fallback(L, ref_prep_fb, "prep_method");
+}
+static int l_tc_method(lua_State *L) {
+    if (!keys_ready) return luaL_error(L, "native.ui_setup has not run");
+    if (tc_core(L)) return 0;
+    return run_ui_fallback(L, ref_tc_fb, "tc_method");
+}
+
 int mv_open(lua_State *L) {
     lua_pushcfunction(L, l_mv_setup); lua_setfield(L, -2, "mv_setup");
     lua_pushcfunction(L, l_mv_move); lua_setfield(L, -2, "mv_move");
     lua_pushcfunction(L, l_mv_method); lua_setfield(L, -2, "mv_method");
+    lua_pushcfunction(L, l_ui_setup); lua_setfield(L, -2, "ui_setup");
+    lua_pushcfunction(L, l_prep_method); lua_setfield(L, -2, "prep_method");
+    lua_pushcfunction(L, l_tc_method); lua_setfield(L, -2, "tc_method");
     lua_pushcfunction(L, l_mv_loop); lua_setfield(L, -2, "mv_loop");
     lua_pushcfunction(L, l_mv_update_loop); lua_setfield(L, -2, "mv_update_loop");
     return 0;

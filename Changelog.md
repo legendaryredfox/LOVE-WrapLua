@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### 2026-11-24, branch `docs/native-uicache-blind-select`
+
+- Blind select screen compared with the UI cache on and off in PPSSPP: identical layout once the fade settles, only text edge
+  softness differs. Compare at 2600 RA frames or later, not 2000.
+
 ### 2026-11-24, branch `test/native-psp-canvas-game`
 
 - `tests/games/canvas`: on-device test game for the native PSP canvas path. Two canvases are rendered and drawn whole, then

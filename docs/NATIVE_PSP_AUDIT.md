@@ -199,7 +199,9 @@ Open, in order:
 1. (done, see above) The 797-node box, cached in strips.
 2. (done) The 25-node box changes because it rotates, not because of scale: nothing to quantise.
 3. (done) The walk costs as much as a draw; `walk2` skips it on alternate frames.
-4. Shop checked; blind select and overlays still to diff, and a test
+4. Shop and blind select checked (blind select 2026-11-24: `shadowoff` against `shadowoff,uicache,walk2` at 2600 RA frames,
+   same layout and the same dimmed upcoming panels; at 2000 frames the cached run showed the panels undimmed, which was the
+   fade animation at another phase, not the cache); overlays still to diff, and a test
    game in `tests/games/` that exercises canvas plus quad blits so the engine side stays covered (done 2026-11-24:
    `tests/games/canvas`, screenshot checked in PPSSPP).
 5. If it pays, move the code from `opt.lua` into a reusable place and decide whether the PSP default is shadows off

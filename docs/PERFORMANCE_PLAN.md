@@ -4,17 +4,52 @@ Implements `PERFORMANCE_SPEC.md`. IDs refer to the catalogue there. Every task e
 `lua5.1`, `lua5.4` and `luajit`; `tests/bench/frame_cost.lua --check` has no regression; the numbers go
 in `Changelog.md`.
 
-## Status, 2026-11-17
+## Status, 2026-11-17 (before the native pivot)
 
 Done, or done in part judging by the commit history (2.1 to 2.3 were not re-audited against their task text): 0.1, 0.2 (`frame_cost.lua` prints wall time per frame and the Lua runtime, `-joff` included), 0.3 (`api_coverage.lua` boots the runtime in `script.lua` order; checked against ten calls), 1.1, 1.2 (first same-scene number, `PERFORMANCE_FINDINGS.md` section 7), 2.1, 2.2 (font width cache, 3DS text), 2.3 (circle and ellipse point cache), 2.4 (the polygon cache snaps to the nearest pixel, so animated shapes hit it), 2.5, 2.6, 2b.1
 (partial: plain blit measured, rotated blit not), 2b.2 (W25 as an opt-in; W24 already held at scale 1),
 3.1 (OneLua; the PS3 draw path and the 3DS quad inset cache followed), 3.2, 3.4, 3.5, and from 3b.1 the pure-Lua stubs `shear`, `setLineStyle`/`setLineJoin`/`setPointSize`, `Font:hasGlyph`/`setFilter`/`setFallbacks` and `filesystem.mount`/`unmount` (directories only). Decided against: 3.3.
 Not started: 1.3, 2b.3, 3b.2 to 3b.6, 3b.1 particle curves (W45), 4.*, 5.*.
 
-Open at Gate 1: Balatro `SELECTING_HAND` runs at about 1.1 fps (draw 372 ms, update 105 ms per step) against
-15.6 fps for the native engine. Update alone caps the game near 9.5 steps/s. The 105 ms update cost is
-measured: a sampling profile puts it in the game's own Moveable, Node, Controller and Card updates, with no wrapper
-function among the top entries (`PERFORMANCE_FINDINGS.md` section 7). The Gate 1 decision is the maintainer's.
+**Gate 1 is decided (2026-11-17):** Balatro `SELECTING_HAND` through OneLua stays near 1.1 fps (draw 372 ms, update 105 ms
+per step, all in the game's own Lua), against 15.6 to 16.4 fps for the native engine. The project moved the PSP target to a
+native backend (4.3, W17); the OneLua path keeps Phases 2 and 3 only.
+
+## Status, 2026-11-24 (native PSP backend)
+
+Phase 4.3 and 4.4 are done in the repository: `native/` (C engine on sceGu, Lua 5.1.5), `LOVE-WrapLua/PSPNative/` (the `love.*`
+layer), `tools/lovepsp.lua` (build, package, manifest). 4.4 has real canvas, Mesh, ImageFont, ImageData, `captureScreenshot` and
+MP3 on `sceAudiocodec`; Shader stays a stub and stencil is only what the engine does for canvas alpha. Measured in PPSSPP, Balatro
+`SELECTING_HAND` (emulator figures, no hardware yet):
+
+| Date | Change | fps |
+|---|---|---|
+| 11-17 | native baseline, audio off | 16.4 |
+| 11-21 | MP3 on the Media Engine, tight mixer loop (audio on) | 16.2 |
+| 11-22 | UI canvas cache in strips, shadows off | 17.7 to 18.0 |
+| 11-22 | signature walk skipped on alternate frames (`walk2`) | 18.6 |
+| 11-23 | `Moveable:move` and `move_*` in C | 25.6 |
+| 11-23 | UI cache signature walk in C | 27.1 |
+| 11-23 | round-robin update gate in C | 28.2 |
+| 11-23 | `Game:update` moveable loops in C | 29.4 |
+| 11-23 | `prep_draw` and `translate_container` in C | 31.8 |
+
+The 30 fps working target of the native phase is met (update 14.6 ms, draw 17.1 ms). Details and the traps found on the way are in
+`NATIVE_PSP_AUDIT.md`. Open on this path, in order:
+
+1. Blind-select and overlay screenshot diffs with the UI cache on and off; the canvas test game is `tests/games/canvas`.
+2. The cache code and the C fast paths still live in the Balatro harness (`balatro_psp/psp/opt.lua` plus the engine's Balatro-shaped
+   `moveable.c`, `uiwalk.c`, `reduce.c`); decide what is a generic engine feature and what stays game-side.
+3. Decide whether shadows off is the PSP default (about 2.7 ms by itself).
+4. Hardware test: nothing here ran on a real PSP, and PPSSPP timing is not hardware timing.
+5. Native `hash`, joystick/thread/filesystem from the shared modules, a PSP-native row in `core/capabilities.lua`.
+
+## Status of the OneLua and other backends, 2026-11-17
+
+Done, or done in part judging by the commit history (2.1 to 2.3 were not re-audited against their task text): 0.1, 0.2 (`frame_cost.lua` prints wall time per frame and the Lua runtime, `-joff` included), 0.3 (`api_coverage.lua` boots the runtime in `script.lua` order; checked against ten calls), 1.1, 1.2 (first same-scene number, `PERFORMANCE_FINDINGS.md` section 7), 2.1, 2.2 (font width cache, 3DS text), 2.3 (circle and ellipse point cache), 2.4 (the polygon cache snaps to the nearest pixel, so animated shapes hit it), 2.5, 2.6, 2b.1
+(partial: plain blit measured, rotated blit not), 2b.2 (W25 as an opt-in; W24 already held at scale 1),
+3.1 (OneLua; the PS3 draw path and the 3DS quad inset cache followed), 3.2, 3.4, 3.5, and from 3b.1 the pure-Lua stubs `shear`, `setLineStyle`/`setLineJoin`/`setPointSize`, `Font:hasGlyph`/`setFilter`/`setFallbacks` and `filesystem.mount`/`unmount` (directories only). Decided against: 3.3.
+Not started: 1.3, 2b.3, 3b.2 to 3b.6, 3b.1 particle curves (W45), 4.1, 4.2, 5.*. Since 11-17 also: 3b.4 partial (3DS text input, Vita vibration, Vita and native PSP screenshot).
 
 ## Phase 0 — baseline and guard (1 day)
 | # | Task | Items | Done when |
